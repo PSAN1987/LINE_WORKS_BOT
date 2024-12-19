@@ -1,66 +1,103 @@
+﻿import os
+import requests
 from flask import Flask, request, jsonify
-from linebot import LineBotApi, WebhookHandler
-from linebot.exceptions import InvalidSignatureError
-from linebot.models import MessageEvent, TextMessage, FileMessage
-import psycopg2
-import os
 
+# Flaskアプリケーションの初期化
 app = Flask(__name__)
 
-# LINE Works�A�N�Z�X�g�[�N���ƃV�[�N���b�g
-LINE_CHANNEL_ACCESS_TOKEN = os.getenv("LINE_CHANNEL_ACCESS_TOKEN")
-LINE_CHANNEL_SECRET = os.getenv("LINE_CHANNEL_SECRET")
+# LINE Works Bot API設定
+CLIENT_ID = "FAKUIs1_C7TzbMG9ZoCp"  # 管理画面で取得
+CLIENT_SECRET = "n6ugyKvfCf"  # 管理画面で取得
+TOKEN_URL = "https://auth.worksmobile.com/oauth2/v2.0/token"
+BOT_NO = "6807091"  # Botの番号
+API_URL = f"https://www.worksapis.com/v1.0/bots/{BOT_NO}/messages"
 
-line_bot_api = LineBotApi(LINE_CHANNEL_ACCESS_TOKEN)
-handler = WebhookHandler(LINE_CHANNEL_SECRET)
 
-# PostgreSQL�ڑ��ݒ�
-DB_HOST = os.getenv("DB_HOST")
-DB_PORT = os.getenv("DB_PORT", 5432)
-DB_NAME = os.getenv("DB_NAME")
-DB_USER = os.getenv("DB_USER")
-DB_PASSWORD = os.getenv("DB_PASSWORD")
-
-def save_to_db(file_name, file_content):
-    conn = psycopg2.connect(
-        host=DB_HOST,
-        database=DB_NAME,
-        user=DB_USER,
-        password=DB_PASSWORD,
-        port=DB_PORT
-    )
-    cur = conn.cursor()
-    cur.execute(
-        "INSERT INTO files (file_name, file_content) VALUES (%s, %s)",
-        (file_name, file_content)
-    )
-    conn.commit()
-    cur.close()
-    conn.close()
-
-@app.route("/callback", methods=['POST'])
-def callback():
-    # X-Line-Signature�w�b�_�[�̌���
-    signature = request.headers['X-Line-Signature']
-    body = request.get_data(as_text=True)
+# トークンを取得する関数
+def get_access_token():
+    print("Fetching access token...")
+    payload = {
+        "grant_type": "client_credentials",
+        "client_id": CLIENT_ID,
+        "client_secret": CLIENT_SECRET,
+        "scope": "bot"
+    }
     try:
-        handler.handle(body, signature)
-    except InvalidSignatureError:
-        return 'Invalid signature', 400
-    return 'OK', 200
+        response = requests.post(TOKEN_URL, data=payload)
+        print(f"Token request status code: {response.status_code}")
+        print(f"Token request response: {response.text}")
 
-@handler.add(MessageEvent, message=FileMessage)
-def handle_file_message(event):
-    message_id = event.message.id
-    file_name = event.message.file_name
-    file_content = line_bot_api.get_message_content(message_id).content
-    save_to_db(file_name, file_content)
+        if response.status_code == 200:
+            token_data = response.json()
+            print("Access token fetched successfully.")
+            return token_data.get("access_token")
+        else:
+            print("Failed to fetch access token.")
+            return None
+    except Exception as e:
+        print(f"Error during token request: {e}")
+        return None
 
-@handler.add(MessageEvent, message=TextMessage)
-def handle_text_message(event):
-    text = event.message.text
-    save_to_db("text_message.txt", text.encode("utf-8"))
 
+# Webhookエンドポイント
+@app.route("/webhook", methods=["POST"])
+def webhook():
+    print("Webhook called.")
+    try:
+        # ユーザーからのメッセージを受信
+        data = request.json
+        print(f"Received webhook data: {data}")
+
+        if "content" in data and "text" in data["content"]:
+            user_message = data["content"]["text"]
+            reply_message = f"あなたのメッセージ: {user_message}"
+            print(f"User message: {user_message}, Reply message: {reply_message}")
+
+            # メッセージ送信
+            send_message(data["source"]["accountId"], reply_message)
+        else:
+            print("Webhook data does not contain expected 'content' or 'text' fields.")
+    except Exception as e:
+        print(f"Error in webhook processing: {e}")
+
+    return jsonify({"status": "ok"}), 200
+
+
+# メッセージを送信する関数
+def send_message(account_id, text):
+    print("Sending message...")
+    access_token = get_access_token()
+    if not access_token:
+        print("Error: Unable to retrieve access token.")
+        return
+
+    headers = {
+        "Authorization": f"Bearer {access_token}",
+        "Content-Type": "application/json"
+    }
+    payload = {
+        "botNo": BOT_NO,
+        "accountId": account_id,
+        "content": {
+            "type": "text",
+            "text": text
+        }
+    }
+    try:
+        print(f"Message payload: {payload}")
+        response = requests.post(API_URL, headers=headers, json=payload)
+        print(f"Message send status code: {response.status_code}")
+        print(f"Message send response: {response.text}")
+
+        if response.status_code == 200:
+            print("Message sent successfully!")
+        else:
+            print("Failed to send message.")
+    except Exception as e:
+        print(f"Error during message send: {e}")
+
+
+# アプリケーション起動
 if __name__ == "__main__":
-    app.run(host="0.0.0.0", port=5000)
-
+    print("Starting Flask app on port 3000...")
+    app.run(port=3000)
