@@ -19,13 +19,16 @@ token_cache = {"access_token": None, "expires_in": 0}
 def get_access_token():
     print("Fetching access token...")
     payload = {
-        "grant_type": "client_credentials",  # この形式を必ず使用
+        "grant_type": "client_credentials",  # 必ずこの値を指定
         "client_id": CLIENT_ID,
         "client_secret": CLIENT_SECRET,
-        "scope": "bot"  # 必要に応じてスコープを修正
+        "scope": "bot"
+    }
+    headers = {
+        "Content-Type": "application/x-www-form-urlencoded"  # 必須
     }
     try:
-        response = requests.post(TOKEN_URL, data=payload)
+        response = requests.post(TOKEN_URL, data=payload, headers=headers)  # 'data' にペイロードを渡す
         print(f"Token request status code: {response.status_code}")
         print(f"Token request response: {response.text}")
 
