@@ -19,7 +19,7 @@ token_cache = {"access_token": None, "expires_in": 0}
 def get_access_token():
     print("Fetching access token...")
     payload = {
-        "grant_type": "client_credentials",  # 必須
+        "grant_type": "client_credentials",  # 必ず 'client_credentials'
         "client_id": CLIENT_ID,
         "client_secret": CLIENT_SECRET,
         "scope": "bot"  # 必須スコープ
@@ -28,7 +28,7 @@ def get_access_token():
         "Content-Type": "application/x-www-form-urlencoded"  # 必須
     }
     try:
-        # URLエンコードされた形式でリクエスト送信
+        # POSTリクエストでペイロードを送信
         response = requests.post(TOKEN_URL, data=payload, headers=headers)
         print(f"Token request status code: {response.status_code}")
         print(f"Token request response: {response.text}")
@@ -46,6 +46,7 @@ def get_access_token():
     except Exception as e:
         print(f"Error during token request: {e}")
         return None
+
     
 
 # トークンを確認するエンドポイント
