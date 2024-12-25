@@ -19,16 +19,17 @@ token_cache = {"access_token": None, "expires_in": 0}
 def get_access_token():
     print("Fetching access token...")
     payload = {
-        "grant_type": "client_credentials",  # 必ずこの値を指定
+        "grant_type": "client_credentials",  # 必須
         "client_id": CLIENT_ID,
         "client_secret": CLIENT_SECRET,
-        "scope": "bot"
+        "scope": "bot"  # 必須スコープ
     }
     headers = {
-        "Content-Type": "application/x-www-form-urlencoded"  # 必須
+        "Content-Type": "application/x-www-form-urlencoded"  # LINE Worksが期待する形式
     }
     try:
-        response = requests.post(TOKEN_URL, data=payload, headers=headers)  # 'data' にペイロードを渡す
+        # URLエンコードされた形式でリクエスト送信
+        response = requests.post(TOKEN_URL, data=payload, headers=headers)
         print(f"Token request status code: {response.status_code}")
         print(f"Token request response: {response.text}")
 
