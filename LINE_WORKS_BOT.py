@@ -12,6 +12,8 @@ TOKEN_URL = "https://auth.worksmobile.com/oauth2/v2.0/token"
 BOT_NO = "6807091"  # Botの番号
 API_URL = f"https://www.worksapis.com/v1.0/bots/{BOT_NO}/messages"
 
+# トークンをグローバル変数として保持
+token_cache = {"access_token": None, "expires_in": 0}
 
 # トークンを取得する関数
 def get_access_token():
@@ -30,7 +32,9 @@ def get_access_token():
         if response.status_code == 200:
             token_data = response.json()
             print("Access token fetched successfully.")
-            return token_data.get("access_token")
+            token_cache["access_token"] = token_data.get("access_token")
+            token_cache["expires_in"] = token_data.get("expires_in")
+            return token_cache["access_token"]
         else:
             print("Failed to fetch access token.")
             return None
@@ -38,6 +42,13 @@ def get_access_token():
         print(f"Error during token request: {e}")
         return None
 
+# トークンを確認するエンドポイント
+@app.route("/check_token", methods=["GET"])
+def check_token():
+    if token_cache["access_token"]:
+        return jsonify({"status": "ok", "access_token": token_cache["access_token"], "expires_in": token_cache["expires_in"]}), 200
+    else:
+        return jsonify({"status": "error", "message": "No access token available."}), 400
 
 # Webhookエンドポイント
 @app.route("/webhook", methods=["POST"])
@@ -61,7 +72,6 @@ def webhook():
         print(f"Error in webhook processing: {e}")
 
     return jsonify({"status": "ok"}), 200
-
 
 # メッセージを送信する関数
 def send_message(account_id, text):
@@ -96,15 +106,15 @@ def send_message(account_id, text):
     except Exception as e:
         print(f"Error during message send: {e}")
 
-
 # ルートエンドポイント
-@app.route("/", methods=["GET", "POST"])
+@app.route("/", methods=["GET", "POST", "HEAD"])
 def home():
-    if request.method == "GET":
+    if request.method == "HEAD":
+        return "", 200  # 空のレスポンスボディを返す
+    elif request.method == "GET":
         return jsonify({"status": "ok", "message": "LINE Works Bot is running!"}), 200
     elif request.method == "POST":
         return jsonify({"status": "ok", "message": "POST request received!"}), 200
-
 
 # アプリケーション起動
 if __name__ == "__main__":
