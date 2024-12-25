@@ -10,6 +10,7 @@ CLIENT_ID = "FAKUIs1_C7TzbMG9ZoCp"  # 管理画面で取得
 CLIENT_SECRET = "n6ugyKvfCf"  # 管理画面で取得
 TOKEN_URL = "https://auth.worksmobile.com/oauth2/v2.0/token"
 REDIRECT_URI = "http://localhost:3000/callback"  # 必ず管理コンソールに登録
+AUTH_URL = "https://auth.worksmobile.com/oauth2/v2.0/authorize"
 
 # グローバルキャッシュ
 token_cache = {"access_token": None, "refresh_token": None, "expires_in": 0}
@@ -18,7 +19,7 @@ token_cache = {"access_token": None, "refresh_token": None, "expires_in": 0}
 @app.route("/authorize", methods=["GET"])
 def authorize():
     auth_url = (
-        f"https://auth.worksmobile.com/oauth2/v2.0/authorize?"
+        f"{AUTH_URL}?"
         f"response_type=code&"
         f"client_id={CLIENT_ID}&"
         f"redirect_uri={REDIRECT_URI}&"
