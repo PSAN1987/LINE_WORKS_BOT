@@ -25,7 +25,7 @@ def get_access_token():
         "scope": "bot"  # 必須スコープ
     }
     headers = {
-        "Content-Type": "application/x-www-form-urlencoded"  # LINE Worksが期待する形式
+        "Content-Type": "application/x-www-form-urlencoded"  # 必須
     }
     try:
         # URLエンコードされた形式でリクエスト送信
@@ -41,10 +41,12 @@ def get_access_token():
             return token_cache["access_token"]
         else:
             print("Failed to fetch access token.")
+            print(f"Error response: {response.text}")
             return None
     except Exception as e:
         print(f"Error during token request: {e}")
         return None
+    
 
 # トークンを確認するエンドポイント
 @app.route("/check_token", methods=["GET"])
