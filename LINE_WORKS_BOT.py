@@ -64,8 +64,12 @@ def webhook():
             reply_message = user_message  # オウム返し
             print(f"User message: {user_message}, Reply message: {reply_message}")
 
-            # メッセージ送信
-            send_message(data["source"]["accountId"], reply_message)
+            # `source` から必要な情報を取得
+            if "source" in data and "userId" in data["source"]:
+                user_id = data["source"]["userId"]  # 正しいユーザーID
+                send_message(user_id, reply_message)
+            else:
+                print("Error: Missing 'userId' in source data.")
         else:
             print("Webhook data does not contain expected 'content' or 'text' fields.")
     except Exception as e:
@@ -120,3 +124,4 @@ def home():
 if __name__ == "__main__":
     print("Starting Flask app on port 3000...")
     app.run(port=3000, debug=True, host="0.0.0.0")
+
