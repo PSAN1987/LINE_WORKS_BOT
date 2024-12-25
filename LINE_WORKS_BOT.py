@@ -98,9 +98,12 @@ def send_message(account_id, text):
 
 
 # ルートエンドポイント
-@app.route("/", methods=["GET"])
+@app.route("/", methods=["GET", "POST"])
 def home():
-    return jsonify({"status": "ok", "message": "LINE Works Bot is running!"}), 200
+    if request.method == "GET":
+        return jsonify({"status": "ok", "message": "LINE Works Bot is running!"}), 200
+    elif request.method == "POST":
+        return jsonify({"status": "ok", "message": "POST request received!"}), 200
 
 
 # アプリケーション起動
