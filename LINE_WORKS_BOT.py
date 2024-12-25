@@ -50,7 +50,7 @@ def webhook():
 
         if "content" in data and "text" in data["content"]:
             user_message = data["content"]["text"]
-            reply_message = f"あなたのメッセージ: {user_message}"
+            reply_message = user_message  # オウム返し
             print(f"User message: {user_message}, Reply message: {reply_message}")
 
             # メッセージ送信
@@ -97,7 +97,13 @@ def send_message(account_id, text):
         print(f"Error during message send: {e}")
 
 
+# ルートエンドポイント
+@app.route("/", methods=["GET"])
+def home():
+    return jsonify({"status": "ok", "message": "LINE Works Bot is running!"}), 200
+
+
 # アプリケーション起動
 if __name__ == "__main__":
     print("Starting Flask app on port 3000...")
-    app.run(port=3000)
+    app.run(port=3000, debug=True, host="0.0.0.0")
