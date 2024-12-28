@@ -27,7 +27,7 @@ def create_jwt():
     print("Creating JWT...")
     now = int(time.time())
     payload = {
-        "iss": CLIENT_ID,  # Service Account ID
+        "iss": CLIENT_ID,  # CLIENT IDを使う
         "sub": ISS,  # 同じくService Account ID
         "iat": now,  # 現在のタイムスタンプ
         "exp": now + 3600,  # 1時間後の有効期限
@@ -70,40 +70,30 @@ except Exception as e:
 # メッセージを送信する関数
 def send_message(account_id, text):
     print("Preparing to send message...")
-    access_token = token_cache.get("access_token")
-    if not access_token:
-        print("Access token is not available. Fetching with JWT...")
-        token_data = get_access_token_with_jwt()
-        if token_data:
-            access_token = token_data.get("access_token")
-            token_cache["access_token"] = access_token
-        else:
-            print("Failed to fetch access token. Cannot send message.")
-            return
-
-    headers = {
-        "Authorization": f"Bearer {access_token}",
-        "Content-Type": "application/json"
-    }
-    payload = {
-        "botNo": BOT_NO,
-        "accountId": account_id,
-        "content": {
-            "type": "text",
-            "text": text
-        }
-    }
     try:
+        # 正しいアクセストークン取得関数を呼び出す
+        access_token = get_valid_access_token()
+        headers = {
+            "Authorization": f"Bearer {access_token}",
+            "Content-Type": "application/json"
+        }
+        payload = {
+            "botNo": BOT_NO,
+            "accountId": account_id,
+            "content": {
+                "type": "text",
+                "text": text
+            }
+        }
         response = requests.post(API_URL, json=payload, headers=headers)
         print(f"Message send request status code: {response.status_code}")
-        print(f"Message send request response: {response.text}")
-
         if response.status_code == 200:
             print("Message sent successfully!")
         else:
-            print("Failed to send message. Check API response.")
+            print(f"Failed to send message. Response: {response.text}")
     except Exception as e:
         print(f"Error during message send: {e}")
+
 
 # Webhookエンドポイント
 @app.route("/webhook", methods=["POST"])
@@ -120,14 +110,13 @@ def webhook():
 
             if "source" in data and "userId" in data["source"]:
                 user_id = data["source"]["userId"]
-                send_message(user_id, reply_message)
+                send_message(user_id, reply_message)  # 修正済みのsend_message関数を呼び出し
             else:
                 print("Error: Missing 'userId' in source data.")
         else:
             print("Webhook data does not contain expected 'content' or 'text' fields.")
     except Exception as e:
         print(f"Error in webhook processing: {e}")
-
     return jsonify({"status": "ok"}), 200
 
 # アプリケーション起動
