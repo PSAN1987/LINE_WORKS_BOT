@@ -38,31 +38,33 @@ def create_jwt():
     return token
 
 # アクセストークンを取得する関数
-def get_access_token_with_jwt():
-    print("Fetching access token with JWT...")
+# アクセストークンを取得
+def get_access_token():
     jwt_token = create_jwt()
     payload = {
         "grant_type": "urn:ietf:params:oauth:grant-type:jwt-bearer",
-        "assertion": jwt_token
+        "assertion": jwt_token,
+        "client_id": CLIENT_ID,
+        "client_secret": CLIENT_SECRET,
+        "scope": SCOPE
     }
     headers = {
         "Content-Type": "application/x-www-form-urlencoded"
     }
-    print(f"Token request payload: {payload}")  # デバッグ用
-    try:
-        response = requests.post(TOKEN_URL, data=payload, headers=headers)
-        print(f"Token request status code: {response.status_code}")
-        print(f"Token request response: {response.text}")
-        if response.status_code == 200:
-            token_data = response.json()
-            print("Access token fetched successfully.")
-            return token_data
-        else:
-            print(f"Failed to fetch access token. Details: {response.text}")
-            return None
-    except Exception as e:
-        print(f"Error during token request: {e}")
-        return None
+    response = requests.post(TOKEN_URL, data=payload, headers=headers)
+    print(f"Status Code: {response.status_code}")
+    print(f"Response: {response.text}")
+    if response.status_code == 200:
+        return response.json()
+    else:
+        raise Exception(f"Failed to fetch access token: {response.text}")
+
+# トークン取得の試行
+try:
+    token_data = get_access_token()
+    print("Access Token:", token_data.get("access_token"))
+except Exception as e:
+    print("Error:", e)
 
 # メッセージを送信する関数
 def send_message(account_id, text):
