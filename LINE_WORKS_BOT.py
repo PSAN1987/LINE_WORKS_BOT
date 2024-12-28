@@ -62,9 +62,12 @@ def get_access_token(auth_code):
         print(f"Token request response: {response.text}")
 
         if response.status_code == 200:
-            return response.json()
+            token_data = response.json()
+            print("Access token fetched successfully.")
+            return token_data
         else:
             print("Failed to fetch access token.")
+            print(f"Error details: {response.text}")
             return None
     except Exception as e:
         print(f"Error during token request: {e}")
@@ -98,6 +101,7 @@ def refresh_access_token():
             return token_data
         else:
             print("Failed to refresh access token.")
+            print(f"Error details: {response.text}")
             return None
     except Exception as e:
         print(f"Error during refresh token request: {e}")
