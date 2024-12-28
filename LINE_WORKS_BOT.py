@@ -91,7 +91,8 @@ def check_token():
 def refresh_access_token():
     print("Refreshing access token...")
     if not token_cache.get("refresh_token"):
-        print("No refresh token available.")
+        print("No refresh token available. Please re-authorize.")
+        # 再認証を要求
         return None
 
     payload = {
@@ -112,7 +113,8 @@ def refresh_access_token():
             token_data = response.json()
             token_cache["access_token"] = token_data.get("access_token")
             token_cache["expires_in"] = token_data.get("expires_in")
-            return token_data
+            print("Access token refreshed successfully.")
+            return token_data.get("access_token")
         else:
             print("Failed to refresh access token.")
             print(f"Error details: {response.text}")
