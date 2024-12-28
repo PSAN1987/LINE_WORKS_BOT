@@ -51,7 +51,7 @@ def create_jwt():
     print("Creating JWT...")
     now = int(time.time())
     payload = {
-        "iss": ISS,  # Service Account ID
+        "iss": CLIENT_ID,  # Service Account ID
         "sub": ISS,  # 同じくService Account ID
         "iat": now,  # 現在のタイムスタンプ
         "exp": now + 3600,  # 1時間後の有効期限
