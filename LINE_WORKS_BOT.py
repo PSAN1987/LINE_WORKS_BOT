@@ -79,10 +79,8 @@ def send_message(account_id, text):
             "Content-Type": "application/json"
         }
         # 正しいエンドポイント
-        url = f"https://www.worksapis.com/v1.0/bots/{BOT_NO}/messages"
+        url = f"https://www.worksapis.com/v1.0/bots/{BOT_NO}/users/{account_id}/messages"
         payload = {
-            "botNo": BOT_NO,
-            "accountId": account_id,
             "content": {
                 "type": "text",
                 "text": text
@@ -96,6 +94,7 @@ def send_message(account_id, text):
             print(f"Failed to send message. Response: {response.text}")
     except Exception as e:
         print(f"Error during message send: {e}")
+
 
 
 # Webhookエンドポイント
