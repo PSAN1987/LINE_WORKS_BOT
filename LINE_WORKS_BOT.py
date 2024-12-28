@@ -78,6 +78,8 @@ def send_message(account_id, text):
             "Authorization": f"Bearer {access_token}",
             "Content-Type": "application/json"
         }
+        # 正しいエンドポイント
+        url = f"https://www.worksapis.com/v1.0/bots/{BOT_NO}/messages"
         payload = {
             "botNo": BOT_NO,
             "accountId": account_id,
@@ -86,7 +88,7 @@ def send_message(account_id, text):
                 "text": text
             }
         }
-        response = requests.post(API_URL, json=payload, headers=headers)
+        response = requests.post(url, json=payload, headers=headers)
         print(f"Message send request status code: {response.status_code}")
         if response.status_code == 200:
             print("Message sent successfully!")
@@ -94,6 +96,7 @@ def send_message(account_id, text):
             print(f"Failed to send message. Response: {response.text}")
     except Exception as e:
         print(f"Error during message send: {e}")
+
 
 # Webhookエンドポイント
 @app.route("/webhook", methods=["POST"])
