@@ -71,8 +71,10 @@ except Exception as e:
 def send_message(account_id, text):
     print("Preparing to send message...")
     try:
-        # 正しいアクセストークン取得関数を呼び出す
-        access_token = get_valid_access_token()
+        # アクセストークンを取得
+        token_data = get_access_token()
+        access_token = token_data.get("access_token")
+        
         headers = {
             "Authorization": f"Bearer {access_token}",
             "Content-Type": "application/json"
@@ -93,7 +95,6 @@ def send_message(account_id, text):
             print(f"Failed to send message. Response: {response.text}")
     except Exception as e:
         print(f"Error during message send: {e}")
-
 
 # Webhookエンドポイント
 @app.route("/webhook", methods=["POST"])
