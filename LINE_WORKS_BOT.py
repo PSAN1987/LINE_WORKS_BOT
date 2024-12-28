@@ -11,7 +11,7 @@ CLIENT_SECRET = "n6ugyKvfCf"  # 管理コンソールで取得
 TOKEN_URL = "https://auth.worksmobile.com/oauth2/v2.0/token"
 AUTH_URL = "https://auth.worksmobile.com/oauth2/v2.0/authorize"
 API_URL = "https://www.worksapis.com/v1.0/bots/6807091/messages"  # BOT番号を含む
-REDIRECT_URI = "http://localhost:3000/callback"  # 管理コンソールに登録
+REDIRECT_URI = "https://line-works-bot-1.onrender.com/callback"  # 管理コンソールに登録
 BOT_NO = "6807091"
 
 # トークンキャッシュ
