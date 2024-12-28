@@ -73,6 +73,7 @@ def get_access_token_with_jwt():
     headers = {
         "Content-Type": "application/x-www-form-urlencoded"
     }
+    print(f"Token request payload: {payload}")  # デバッグ用
     try:
         response = requests.post(TOKEN_URL, data=payload, headers=headers)
         print(f"Token request status code: {response.status_code}")
@@ -82,7 +83,7 @@ def get_access_token_with_jwt():
             print("Access token fetched successfully.")
             return token_data
         else:
-            print("Failed to fetch access token.")
+            print(f"Failed to fetch access token. Details: {response.text}")
             return None
     except Exception as e:
         print(f"Error during token request: {e}")
