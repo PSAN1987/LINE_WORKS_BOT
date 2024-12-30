@@ -1,5 +1,7 @@
 ﻿import os
 import time
+import pytesseract
+from PIL import Image
 import jwt  # PyJWTライブラリを使用
 import requests
 from flask import Flask, request, jsonify
@@ -99,6 +101,36 @@ def send_message(account_id, text):
     except Exception as e:
         print(f"Error during message send: {e}")
 
+# 保存した画像からテキストを抽出して送信する関数
+def process_saved_images_and_send_text():
+    print("Processing saved images...")
+    try:
+        # 保存された画像を順番に処理
+        for image_file in sorted(os.listdir(IMAGE_SAVE_PATH)):
+            image_path = os.path.join(IMAGE_SAVE_PATH, image_file)
+
+            # 画像内のテキストを抽出
+            try:
+                text = pytesseract.image_to_string(Image.open(image_path), lang="eng")
+                print(f"Extracted text from {image_file}: {text}")
+
+                # 抽出したテキストをLINE Worksユーザーに送信
+                user_id = "target_user_id"  # 実際のユーザーIDに置き換えてください
+                if text.strip():
+                    send_message(user_id, text)
+                else:
+                    print(f"No text found in {image_file}.")
+
+            except Exception as e:
+                print(f"Failed to process {image_file}: {e}")
+
+            # 処理済みの画像を削除
+            os.remove(image_path)
+            print(f"Processed and removed {image_file}.")
+
+    except Exception as e:
+        print(f"Error processing saved images: {e}")
+
 # Webhookエンドポイント
 @app.route("/webhook", methods=["POST"])
 def webhook():
@@ -135,6 +167,9 @@ def webhook():
                             for chunk in response.iter_content(1024):
                                 img_file.write(chunk)
                         print(f"画像を保存しました: {file_name}")
+
+                        # 保存した画像を処理
+                        process_saved_images_and_send_text()
                     else:
                         print(f"画像のダウンロードに失敗しました。ステータスコード: {response.status_code}")
                 else:
