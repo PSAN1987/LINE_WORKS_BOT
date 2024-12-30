@@ -1,7 +1,7 @@
 ﻿import os
 import time
-import pytesseract
-from PIL import Image
+from google.cloud import vision
+import io
 import jwt  # PyJWTライブラリを使用
 import requests
 from flask import Flask, request, jsonify
@@ -101,20 +101,40 @@ def send_message(account_id, text):
     except Exception as e:
         print(f"Error during message send: {e}")
 
+# Google Vision APIクライアントを初期化
+def initialize_vision_client():
+    return vision.ImageAnnotatorClient()
+
+# Google Vision APIを使って画像からテキストを抽出する関数
+def extract_text_from_image_with_vision_api(image_path):
+    client = initialize_vision_client()
+
+    with io.open(image_path, 'rb') as image_file:
+        content = image_file.read()
+
+    image = vision.Image(content=content)
+    response = client.text_detection(image=image)
+    texts = response.text_annotations
+
+    if response.error.message:
+        raise Exception(f"Google Vision API error: {response.error.message}")
+
+    # テキストを抽出（最初の要素が画像全体のテキスト）
+    return texts[0].description if texts else ""
+
 # 保存した画像からテキストを抽出して送信する関数
 def process_saved_images_and_send_text():
-    print("Processing saved images...")
+    print("Processing saved images with Google Vision API...")
     try:
-        # 保存された画像を順番に処理
         for image_file in sorted(os.listdir(IMAGE_SAVE_PATH)):
             image_path = os.path.join(IMAGE_SAVE_PATH, image_file)
 
-            # 画像内のテキストを抽出
+            # Google Vision APIを使ってテキストを抽出
             try:
-                text = pytesseract.image_to_string(Image.open(image_path), lang="eng")
+                text = extract_text_from_image_with_vision_api(image_path)
                 print(f"Extracted text from {image_file}: {text}")
 
-                # 抽出したテキストをLINE Worksユーザーに送信
+                # テキストをLINE Worksユーザーに送信
                 user_id = "target_user_id"  # 実際のユーザーIDに置き換えてください
                 if text.strip():
                     send_message(user_id, text)
