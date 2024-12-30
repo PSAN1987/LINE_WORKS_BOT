@@ -19,6 +19,10 @@ API_URL = "https://www.worksapis.com/v1.0/bots/6807091/messages"  # BOT番号を
 BOT_NO = "6807091"
 SCOPE = "bot"
 
+# 保存先ディレクトリ設定
+IMAGE_SAVE_PATH = "/saved_images"
+os.makedirs(IMAGE_SAVE_PATH, exist_ok=True)
+
 # JWTを生成する関数
 def create_jwt():
     print("Creating JWT...")
@@ -95,8 +99,6 @@ def send_message(account_id, text):
     except Exception as e:
         print(f"Error during message send: {e}")
 
-
-
 # Webhookエンドポイント
 @app.route("/webhook", methods=["POST"])
 def webhook():
@@ -105,20 +107,42 @@ def webhook():
         data = request.json
         print(f"Received webhook data: {data}")
 
-        if "content" in data and "text" in data["content"]:
-            user_message = data["content"]["text"]
-            reply_message = user_message  # オウム返し
-            print(f"User message: {user_message}, Reply message: {reply_message}")
+        if "content" in data:
+            content_type = data["content"].get("type", "")
 
-            if "source" in data and "userId" in data["source"]:
-                user_id = data["source"]["userId"]
-                send_message(user_id, reply_message)  # 修正済みのsend_message関数を呼び出し
-            else:
-                print("Error: Missing 'userId' in source data.")
+            # テキストメッセージを処理
+            if content_type == "text":
+                user_message = data["content"]["text"]
+                reply_message = user_message  # メッセージをそのまま返信
+                print(f"User message: {user_message}, Reply message: {reply_message}")
+
+                if "source" in data and "userId" in data["source"]:
+                    user_id = data["source"]["userId"]
+                    send_message(user_id, reply_message)
+                else:
+                    print("エラー: 'userId' が 'source' データにありません。")
+
+            # 画像メッセージを処理
+            elif content_type == "image":
+                print("画像メッセージを受信しました。")
+                image_url = data["content"].get("fileUrl")
+                if image_url:
+                    # 画像をダウンロードして保存
+                    response = requests.get(image_url, stream=True)
+                    if response.status_code == 200:
+                        file_name = os.path.join(IMAGE_SAVE_PATH, f"{int(time.time())}.jpg")
+                        with open(file_name, "wb") as img_file:
+                            for chunk in response.iter_content(1024):
+                                img_file.write(chunk)
+                        print(f"画像を保存しました: {file_name}")
+                    else:
+                        print(f"画像のダウンロードに失敗しました。ステータスコード: {response.status_code}")
+                else:
+                    print("画像の 'fileUrl' が見つかりません。")
         else:
-            print("Webhook data does not contain expected 'content' or 'text' fields.")
+            print("Webhookデータに 'content' フィールドが含まれていません。")
     except Exception as e:
-        print(f"Error in webhook processing: {e}")
+        print(f"Webhook処理中のエラー: {e}")
     return jsonify({"status": "ok"}), 200
 
 # アプリケーション起動
