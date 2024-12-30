@@ -20,7 +20,7 @@ BOT_NO = "6807091"
 SCOPE = "bot"
 
 # 保存先ディレクトリ設定
-IMAGE_SAVE_PATH = "/saved_images"
+IMAGE_SAVE_PATH = "/tmp/saved_images"
 os.makedirs(IMAGE_SAVE_PATH, exist_ok=True)
 
 # JWTを生成する関数
