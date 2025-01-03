@@ -101,6 +101,32 @@ def send_message(account_id, text):
     except Exception as e:
         print(f"Error during message send: {e}")
 
+# fileIdを使って画像URLを取得する関数
+def get_file_url(file_id):
+    try:
+        # アクセストークンを取得
+        token_data = get_access_token()
+        if token_data is None or "access_token" not in token_data:
+            raise Exception("Failed to obtain access token.")
+
+        access_token = token_data["access_token"]
+        headers = {
+            "Authorization": f"Bearer {access_token}",
+            "Content-Type": "application/json"
+        }
+        # ファイル情報を取得するエンドポイント
+        url = f"https://www.worksapis.com/v1.0/bots/{BOT_NO}/files/{file_id}"
+        response = requests.get(url, headers=headers)
+        if response.status_code == 200:
+            file_data = response.json()
+            return file_data.get("fileUrl", "")
+        else:
+            print(f"Failed to fetch file URL. Response: {response.text}")
+            return ""
+    except Exception as e:
+        print(f"Error fetching file URL: {e}")
+        return ""
+
 # Google Vision APIクライアントを初期化
 def initialize_vision_client():
     return vision.ImageAnnotatorClient()
@@ -177,23 +203,28 @@ def webhook():
             # 画像メッセージを処理
             elif content_type == "image":
                 print("画像メッセージを受信しました。")
-                image_url = data["content"].get("fileUrl")
-                if image_url:
-                    # 画像をダウンロードして保存
-                    response = requests.get(image_url, stream=True)
-                    if response.status_code == 200:
-                        file_name = os.path.join(IMAGE_SAVE_PATH, f"{int(time.time())}.jpg")
-                        with open(file_name, "wb") as img_file:
-                            for chunk in response.iter_content(1024):
-                                img_file.write(chunk)
-                        print(f"画像を保存しました: {file_name}")
+                file_id = data["content"].get("fileId")
+                if file_id:
+                    # fileIdを使ってfileUrlを取得
+                    file_url = get_file_url(file_id)
+                    if file_url:
+                        # 画像をダウンロードして保存
+                        response = requests.get(file_url, stream=True)
+                        if response.status_code == 200:
+                            file_name = os.path.join(IMAGE_SAVE_PATH, f"{int(time.time())}.jpg")
+                            with open(file_name, "wb") as img_file:
+                                for chunk in response.iter_content(1024):
+                                    img_file.write(chunk)
+                            print(f"画像を保存しました: {file_name}")
 
-                        # 保存した画像を処理
-                        process_saved_images_and_send_text()
+                            # 保存した画像を処理
+                            process_saved_images_and_send_text()
+                        else:
+                            print(f"画像のダウンロードに失敗しました。ステータスコード: {response.status_code}")
                     else:
-                        print(f"画像のダウンロードに失敗しました。ステータスコード: {response.status_code}")
+                        print("fileUrlを取得できませんでした。")
                 else:
-                    print("画像の 'fileUrl' が見つかりません。")
+                    print("画像の 'fileId' が見つかりません。")
         else:
             print("Webhookデータに 'content' フィールドが含まれていません。")
     except Exception as e:
