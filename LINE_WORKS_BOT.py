@@ -114,14 +114,14 @@ def get_file_url(file_id):
             "Authorization": f"Bearer {access_token}",
             "Content-Type": "application/json"
         }
-        # ファイル情報を取得するエンドポイント
-        url = f"https://www.worksapis.com/v1.0/bots/{BOT_NO}/files/{file_id}"
+        # 添付ファイル情報を取得するエンドポイント
+        url = f"https://www.worksapis.com/v1.0/bots/{BOT_NO}/attachments/{file_id}"
         response = requests.get(url, headers=headers)
         if response.status_code == 200:
             file_data = response.json()
             return file_data.get("fileUrl", "")
         else:
-            print(f"Failed to fetch file URL. Response: {response.text}")
+            print(f"Failed to fetch file URL. Status Code: {response.status_code}, Response: {response.text}")
             return ""
     except Exception as e:
         print(f"Error fetching file URL: {e}")
