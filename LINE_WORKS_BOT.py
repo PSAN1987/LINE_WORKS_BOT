@@ -192,11 +192,12 @@ def extract_text_from_image_with_vision_api(image_path):
     return texts[0].description if texts else ""
 
 # 保存した画像からテキストを抽出して送信する関数
-def process_saved_images_and_send_text():
+def process_saved_images_and_send_text(image_path=None):
     print("Processing saved images with Google Vision API...")
     try:
-        for image_file in sorted(os.listdir(IMAGE_SAVE_PATH)):
-            image_path = os.path.join(IMAGE_SAVE_PATH, image_file)
+        image_files = [image_path] if image_path else sorted(os.listdir(IMAGE_SAVE_PATH))
+        for image_file in image_files:
+            image_path = os.path.join(IMAGE_SAVE_PATH, image_file) if not image_path else image_path
 
             # Google Vision APIを使ってテキストを抽出
             try:
@@ -214,8 +215,9 @@ def process_saved_images_and_send_text():
                 print(f"Failed to process {image_file}: {e}")
 
             # 処理済みの画像を削除
-            os.remove(image_path)
-            print(f"Processed and removed {image_file}.")
+            if not image_path:
+                os.remove(image_path)
+                print(f"Processed and removed {image_file}.")
 
     except Exception as e:
         print(f"Error processing saved images: {e}")
@@ -275,10 +277,6 @@ def webhook():
     except Exception as e:
         print(f"Webhook処理中のエラー: {e}")
     return jsonify({"status": "ok"}), 200
-
-print(f"IMAGE_SAVE_PATH: {IMAGE_SAVE_PATH}")
-print("Files in IMAGE_SAVE_PATH:")
-print(os.listdir(IMAGE_SAVE_PATH))
 
 # アプリケーション起動
 @app.route("/", methods=["GET"])
