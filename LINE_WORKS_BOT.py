@@ -266,7 +266,7 @@ def webhook():
                                 print(f"Downloaded file saved at {downloaded_file}")
 
                                 # 保存した画像を処理
-                                process_and_send_text_from_image(downloaded_file)
+                                process_saved_images_and_send_text(downloaded_file)
                             else:
                                 print("画像のダウンロードに失敗しました。")
                         else:
