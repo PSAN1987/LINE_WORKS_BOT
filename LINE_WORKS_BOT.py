@@ -102,7 +102,7 @@ def send_message(account_id, text):
         print(f"Error during message send: {e}")
 
 # fileIdを使って画像URLを取得する関数
-def get_user_file_url(user_id, file_id):
+def get_file_url(file_id):
     try:
         # アクセストークンを取得
         token_data = get_access_token()
@@ -114,19 +114,17 @@ def get_user_file_url(user_id, file_id):
             "Authorization": f"Bearer {access_token}",
             "Content-Type": "application/json"
         }
-        # ユーザー添付ファイル情報を取得するエンドポイント
-        url = f"https://www.worksapis.com/v1.0/users/{user_id}/attachments/{file_id}"
-        print(f"Requesting file URL with: {url}")
+        # 添付ファイル情報を取得するエンドポイント
+        url = f"https://www.worksapis.com/v1.0/bots/{BOT_NO}/attachments/{file_id}"
         response = requests.get(url, headers=headers)
-        
         if response.status_code == 200:
             file_data = response.json()
             return file_data.get("fileUrl", "")
         else:
-            print(f"Failed to fetch user file URL. Status Code: {response.status_code}, Response: {response.text}")
+            print(f"Failed to fetch file URL. Status Code: {response.status_code}, Response: {response.text}")
             return ""
     except Exception as e:
-        print(f"Error fetching user file URL: {e}")
+        print(f"Error fetching file URL: {e}")
         return ""
 
 # Google Vision APIクライアントを初期化
@@ -190,9 +188,9 @@ def webhook():
         if "content" in data:
             content_type = data["content"].get("type", "")
 
-            # テキストメッセージを処理（オウム返し処理）
+            # テキストメッセージを処理
             if content_type == "text":
-                user_message = data["content"].get("text", "")
+                user_message = data["content"]["text"]
                 reply_message = user_message  # メッセージをそのまま返信
                 print(f"User message: {user_message}, Reply message: {reply_message}")
 
@@ -206,10 +204,9 @@ def webhook():
             elif content_type == "image":
                 print("画像メッセージを受信しました。")
                 file_id = data["content"].get("fileId")
-                user_id = data["source"].get("userId")  # ユーザーIDを取得
-                if file_id and user_id:
-                    # fileIdとuserIdを使ってfileUrlを取得
-                    file_url = get_user_file_url(user_id, file_id)
+                if file_id:
+                    # fileIdを使ってfileUrlを取得
+                    file_url = get_file_url(file_id)
                     if file_url:
                         # 画像をダウンロードして保存
                         response = requests.get(file_url, stream=True)
@@ -227,7 +224,7 @@ def webhook():
                     else:
                         print("fileUrlを取得できませんでした。")
                 else:
-                    print("fileIdまたはuserIdが見つかりません。")
+                    print("画像の 'fileId' が見つかりません。")
         else:
             print("Webhookデータに 'content' フィールドが含まれていません。")
     except Exception as e:
