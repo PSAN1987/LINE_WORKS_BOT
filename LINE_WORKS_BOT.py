@@ -120,20 +120,23 @@ def get_file_url(file_id):
         print(f"Requesting file URL with: {url}")
         print(f"Request Headers: {headers}")
 
-        response = requests.get(url, headers=headers)
+        # リクエストを送信
+        response = requests.get(url, headers=headers, allow_redirects=False)
         print(f"Response Status Code: {response.status_code}")
-        print(f"Response Body: {response.text}")
+        print(f"Response Headers: {response.headers}")
 
-        if response.status_code == 302:
-            file_data = response.json()
-            return file_data.get("fileUrl", "")
+        # 302リダイレクトの場合
+        if response.status_code == 302 and "Location" in response.headers:
+            file_url = response.headers["Location"]
+            print(f"Redirected file URL: {file_url}")
+            return file_url
         else:
             print(f"Failed to fetch file URL. Status Code: {response.status_code}, Response: {response.text}")
             return ""
     except Exception as e:
         print(f"Error fetching file URL: {e}")
         return ""
-""
+
 
 # Google Vision APIクライアントを初期化
 def initialize_vision_client():
