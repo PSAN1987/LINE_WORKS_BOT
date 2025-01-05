@@ -1,6 +1,7 @@
 ﻿import os
 import time
 from google.cloud import vision
+from google.cloud.vision_v1 import types
 import io
 import jwt  # PyJWTライブラリを使用
 import requests
@@ -176,30 +177,47 @@ def initialize_vision_client():
 
 # Google Vision APIを使って画像からテキストを抽出する関数
 def extract_text_from_image_with_vision_api(image_path):
-    client = initialize_vision_client()
+    """Google Cloud Vision APIを使用して画像からテキストを抽出する"""
+    try:
+        # クライアントを作成
+        client = vision.ImageAnnotatorClient()
 
-    with io.open(image_path, 'rb') as image_file:
-        content = image_file.read()
+        # 画像データを読み込む
+        with open(image_path, "rb") as image_file:
+            content = image_file.read()
 
-    image = vision.Image(content=content)
-    response = client.text_detection(image=image)
-    texts = response.text_annotations
+        # Google Vision APIリクエストの準備
+        image = types.Image(content=content)
+        response = client.text_detection(image=image)
 
-    if response.error.message:
-        raise Exception(f"Google Vision API error: {response.error.message}")
+        # レスポンスからテキストを取得
+        if response.error.message:
+            raise Exception(f"Vision API Error: {response.error.message}")
 
-    # テキストを抽出（最初の要素が画像全体のテキスト）
-    return texts[0].description if texts else ""
+        texts = response.text_annotations
+        if texts:
+            return texts[0].description  # 最初の要素が全体のテキスト
+        else:
+            return ""
+
+    except Exception as e:
+        raise Exception(f"Error extracting text from image: {e}")
 
 # 保存した画像からテキストを抽出して送信する関数
 def process_saved_images_and_send_text(image_path=None):
     print("Processing saved images with Google Vision API...")
-    try:
-        image_files = [image_path] if image_path else sorted(os.listdir(IMAGE_SAVE_PATH))
-        for image_file in image_files:
-            image_path = os.path.join(IMAGE_SAVE_PATH, image_file) if not image_path else image_path
 
-            # Google Vision APIを使ってテキストを抽出
+    if image_path:
+        image_files = [image_path]
+    else:
+        image_files = sorted(os.listdir(IMAGE_SAVE_PATH))
+
+    try:
+        for image_file in image_files:
+            if not image_path:  # If not provided, combine path
+                image_path = os.path.join(IMAGE_SAVE_PATH, image_file)
+
+            # Google Vision APIでテキストを抽出
             try:
                 text = extract_text_from_image_with_vision_api(image_path)
                 print(f"Extracted text from {image_file}: {text}")
@@ -215,9 +233,8 @@ def process_saved_images_and_send_text(image_path=None):
                 print(f"Failed to process {image_file}: {e}")
 
             # 処理済みの画像を削除
-            if not image_path:
-                os.remove(image_path)
-                print(f"Processed and removed {image_file}.")
+            os.remove(image_path)
+            print(f"Processed and removed {image_file}.")
 
     except Exception as e:
         print(f"Error processing saved images: {e}")
