@@ -196,16 +196,16 @@ def initialize_vision_client():
 def process_and_send_text_from_image(image_path=None, webhook_data=None):
     """
     Google Vision APIを使用して画像からテキストを抽出し、
-    抽出したテキストを画像を送信したユーザーに送信します。
+    抽出したテキストをAccount IDに基づいて送信します。
     """
     print("Processing images with Google Vision API...")
 
+    # WebhookデータからAccount IDを取得
     if not webhook_data or "source" not in webhook_data or "userId" not in webhook_data["source"]:
-        print("Invalid webhook data. Cannot determine target user ID.")
+        print("Invalid webhook data. Cannot determine Account ID.")
         return
 
-    # Webhookデータから送信元ユーザーIDを取得
-    target_user_id = webhook_data["source"]["userId"]
+    account_id = webhook_data["source"]["userId"]  # Webhookから取得したAccount ID
 
     image_files = [image_path] if image_path else sorted(os.listdir(IMAGE_SAVE_PATH))
 
@@ -214,12 +214,14 @@ def process_and_send_text_from_image(image_path=None, webhook_data=None):
             current_image_path = image_path if image_path else os.path.join(IMAGE_SAVE_PATH, image_file)
 
             try:
+                # 画像を読み込んでGoogle Vision APIで処理
                 with open(current_image_path, "rb") as image_file:
                     content = image_file.read()
 
                 image = types.Image(content=content)
                 response = client.text_detection(image=image)
 
+                # レスポンスからテキストを抽出
                 if response.error.message:
                     raise Exception(f"Vision API Error: {response.error.message}")
 
@@ -228,9 +230,9 @@ def process_and_send_text_from_image(image_path=None, webhook_data=None):
 
                 print(f"Extracted text from {current_image_path}: {text}")
 
-                # テキストを送信
+                # 抽出したテキストを送信
                 if text.strip():
-                    send_message(target_user_id, text)
+                    send_message(account_id, text)
                 else:
                     print(f"No text found in {current_image_path}.")
 
