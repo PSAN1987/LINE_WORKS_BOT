@@ -190,8 +190,20 @@ def webhook():
         if "content" in data:
             content_type = data["content"].get("type", "")
 
+            # テキストメッセージを処理（オウム返し処理）
+            if content_type == "text":
+                user_message = data["content"].get("text", "")
+                reply_message = user_message  # メッセージをそのまま返信
+                print(f"User message: {user_message}, Reply message: {reply_message}")
+
+                if "source" in data and "userId" in data["source"]:
+                    user_id = data["source"]["userId"]
+                    send_message(user_id, reply_message)
+                else:
+                    print("エラー: 'userId' が 'source' データにありません。")
+
             # 画像メッセージを処理
-            if content_type == "image":
+            elif content_type == "image":
                 print("画像メッセージを受信しました。")
                 file_id = data["content"].get("fileId")
                 user_id = data["source"].get("userId")  # ユーザーIDを取得
