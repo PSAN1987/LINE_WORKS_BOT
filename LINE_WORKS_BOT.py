@@ -197,10 +197,6 @@ def process_and_send_text_from_image(image_path=None, webhook_data=None):
     """
     Google Vision APIを使用して画像からテキストを抽出し、
     抽出したテキストを画像を送信したユーザーに送信します。
-
-    Parameters:
-        image_path (str): 処理する単一の画像ファイルのパス。省略すると保存フォルダ内の画像を処理。
-        webhook_data (dict): Webhookから受信したデータ。送信元ユーザーIDを取得するために使用。
     """
     print("Processing images with Google Vision API...")
 
@@ -211,23 +207,19 @@ def process_and_send_text_from_image(image_path=None, webhook_data=None):
     # Webhookデータから送信元ユーザーIDを取得
     target_user_id = webhook_data["source"]["userId"]
 
-    # 処理対象の画像を決定
     image_files = [image_path] if image_path else sorted(os.listdir(IMAGE_SAVE_PATH))
 
     try:
         for image_file in image_files:
-            # 画像パスを組み立て
             current_image_path = image_path if image_path else os.path.join(IMAGE_SAVE_PATH, image_file)
 
             try:
-                # Google Vision APIでテキストを抽出
                 with open(current_image_path, "rb") as image_file:
                     content = image_file.read()
 
                 image = types.Image(content=content)
                 response = client.text_detection(image=image)
 
-                # レスポンスからテキストを取得
                 if response.error.message:
                     raise Exception(f"Vision API Error: {response.error.message}")
 
@@ -236,7 +228,7 @@ def process_and_send_text_from_image(image_path=None, webhook_data=None):
 
                 print(f"Extracted text from {current_image_path}: {text}")
 
-                # テキストをLINE Worksユーザーに送信
+                # テキストを送信
                 if text.strip():
                     send_message(target_user_id, text)
                 else:
@@ -245,14 +237,12 @@ def process_and_send_text_from_image(image_path=None, webhook_data=None):
             except Exception as e:
                 print(f"Failed to process {current_image_path}: {e}")
 
-            # 処理済みの画像を削除
-            if not image_path:  # フォルダ内の処理の場合に削除
+            if not image_path:
                 os.remove(current_image_path)
                 print(f"Processed and removed {current_image_path}.")
 
     except Exception as e:
         print(f"Error processing images: {e}")
-
 
 
 # Webhookエンドポイント
