@@ -260,20 +260,8 @@ def webhook():
                             if downloaded_file:
                                 print(f"Downloaded file saved at {downloaded_file}")
 
-                                # 画像をダウンロードして保存
-                                response = requests.get(file_url, stream=True)
-                                if response.status_code == 200:
-                                    file_name = os.path.join(IMAGE_SAVE_PATH, f"{int(time.time())}.jpg")
-                                    with open(file_name, "wb") as img_file:
-                                        for chunk in response.iter_content(1024):
-                                            img_file.write(chunk)
-                                    print(f"画像を保存しました: {file_name}")
-
-                                    # 保存した画像を処理
-                                    process_saved_images_and_send_text()
-                                else:
-                                    print(f"画像のダウンロードに失敗しました。ステータスコード: {response.status_code}")
-
+                                # 保存した画像を処理
+                                process_saved_images_and_send_text()
                             else:
                                 print("画像のダウンロードに失敗しました。")
                         else:
