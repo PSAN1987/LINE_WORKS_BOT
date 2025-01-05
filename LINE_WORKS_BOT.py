@@ -237,7 +237,7 @@ def process_and_send_text_from_image(image_path=None):
                 print(f"Extracted text from {current_image_path}: {text}")
 
                 # テキストをLINE Worksユーザーに送信
-                user_id = "target_user_id"  # 実際のユーザーIDに置き換えてください
+                user_id = webhook_data["source"]["userId"]
                 if text.strip():
                     send_message(user_id, text)
                 else:
