@@ -137,6 +137,7 @@ def get_file_url(file_id):
         print(f"Error fetching file URL: {e}")
         return ""
     
+# 添付ファイルをダウンロードする関数
 def download_attachment(file_url, access_token):
     """
     添付ファイルをダウンロードする関数
@@ -144,14 +145,14 @@ def download_attachment(file_url, access_token):
     headers = {
         "Authorization": f"Bearer {access_token}"
     }
-    
+
     try:
         print(f"Downloading file from: {file_url}")
         response = requests.get(file_url, headers=headers, stream=True)
         print(f"Response Status Code: {response.status_code}")
 
         if response.status_code == 200:
-            file_name = f"downloaded_image_{int(time.time())}.png"
+            file_name = os.path.join(IMAGE_SAVE_PATH, f"downloaded_image_{int(time.time())}.jpg")
             with open(file_name, "wb") as f:
                 for chunk in response.iter_content(1024):
                     f.write(chunk)
@@ -250,19 +251,33 @@ def webhook():
                     # fileIdを使ってfileUrlを取得
                     file_url = get_file_url(file_id)
                     if file_url:
-                        # 画像をダウンロードして保存
-                        response = requests.get(file_url, stream=True)
-                        if response.status_code == 200:
-                            file_name = os.path.join(IMAGE_SAVE_PATH, f"{int(time.time())}.jpg")
-                            with open(file_name, "wb") as img_file:
-                                for chunk in response.iter_content(1024):
-                                    img_file.write(chunk)
-                            print(f"画像を保存しました: {file_name}")
+                        # アクセストークンを取得
+                        token_data = get_access_token()
+                        if token_data and "access_token" in token_data:
+                            access_token = token_data["access_token"]
+                            # 添付ファイルをダウンロード
+                            downloaded_file = download_attachment(file_url, access_token)
+                            if downloaded_file:
+                                print(f"Downloaded file saved at {downloaded_file}")
 
-                            # 保存した画像を処理
-                            process_saved_images_and_send_text()
+                                # 画像をダウンロードして保存
+                                response = requests.get(file_url, stream=True)
+                                if response.status_code == 200:
+                                    file_name = os.path.join(IMAGE_SAVE_PATH, f"{int(time.time())}.jpg")
+                                    with open(file_name, "wb") as img_file:
+                                        for chunk in response.iter_content(1024):
+                                            img_file.write(chunk)
+                                    print(f"画像を保存しました: {file_name}")
+
+                                    # 保存した画像を処理
+                                    process_saved_images_and_send_text()
+                                else:
+                                    print(f"画像のダウンロードに失敗しました。ステータスコード: {response.status_code}")
+
+                            else:
+                                print("画像のダウンロードに失敗しました。")
                         else:
-                            print(f"画像のダウンロードに失敗しました。ステータスコード: {response.status_code}")
+                            print("アクセストークンを取得できませんでした。")
                     else:
                         print("fileUrlを取得できませんでした。")
                 else:
@@ -273,6 +288,13 @@ def webhook():
         print(f"Webhook処理中のエラー: {e}")
     return jsonify({"status": "ok"}), 200
 
+@app.route("/", methods=["GET"])
+def home():
+    return jsonify({"status": "ok", "message": "LINE Works Bot is running!"}), 200
+
+if __name__ == "__main__":
+    print("Starting Flask app on port 3000...")
+    app.run(port=3000, debug=True, host="0.0.0.0")
 # アプリケーション起動
 @app.route("/", methods=["GET"])
 def home():
