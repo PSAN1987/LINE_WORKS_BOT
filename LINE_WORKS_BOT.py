@@ -23,9 +23,6 @@ API_URL = "https://www.worksapis.com/v1.0/bots/6807091/messages"  # BOT番号を
 BOT_NO = "6807091"
 SCOPE = "bot"
 
-export GOOGLE_APPLICATION_CREDENTIALS="/etc/secrets/sincere-cacao-446311-e7-c898772e4f96"
-
-
 # .envファイルを読み込む
 load_dotenv()
 # 環境変数の取得
