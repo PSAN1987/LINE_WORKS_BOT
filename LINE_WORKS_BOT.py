@@ -174,11 +174,6 @@ def download_attachment(file_url, access_token):
         print(f"Error occurred while downloading the file: {e}")
         return None
 
-# 使用例
-file_url = "https://apis-storage.worksmobile.com/k/emsg/r/jp2/1736079562146597354.1736165962.2.6807091.500257777.301400366.101/image_20241230_19.png/download.api"
-access_token = "jp2AAABD6++8mDzAZrqX7lsJv9ZIU0aw7LeU9BIvycWNy+wkd0..."
-downloaded_file = download_attachment(file_url, access_token)
-
 # Google Vision APIクライアントを初期化
 def initialize_vision_client():
     return vision.ImageAnnotatorClient()
@@ -286,7 +281,7 @@ def webhook():
                                 print(f"Downloaded file saved at {downloaded_file}")
 
                                 # 保存した画像を処理
-                                process_saved_images_and_send_text(downloaded_file)
+                                process_and_send_text_from_image(downloaded_file)
                             else:
                                 print("画像のダウンロードに失敗しました。")
                         else:
