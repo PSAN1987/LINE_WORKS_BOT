@@ -136,7 +136,38 @@ def get_file_url(file_id):
     except Exception as e:
         print(f"Error fetching file URL: {e}")
         return ""
+    
+def download_attachment(file_url, access_token):
+    """
+    添付ファイルをダウンロードする関数
+    """
+    headers = {
+        "Authorization": f"Bearer {access_token}"
+    }
+    
+    try:
+        print(f"Downloading file from: {file_url}")
+        response = requests.get(file_url, headers=headers, stream=True)
+        print(f"Response Status Code: {response.status_code}")
 
+        if response.status_code == 200:
+            file_name = f"downloaded_image_{int(time.time())}.png"
+            with open(file_name, "wb") as f:
+                for chunk in response.iter_content(1024):
+                    f.write(chunk)
+            print(f"File saved as {file_name}")
+            return file_name
+        else:
+            print(f"Failed to download the file. Status Code: {response.status_code}, Response: {response.text}")
+            return None
+    except Exception as e:
+        print(f"Error occurred while downloading the file: {e}")
+        return None
+
+# 使用例
+file_url = "https://apis-storage.worksmobile.com/k/emsg/r/jp2/1736079562146597354.1736165962.2.6807091.500257777.301400366.101/image_20241230_19.png/download.api"
+access_token = "jp2AAABD6++8mDzAZrqX7lsJv9ZIU0aw7LeU9BIvycWNy+wkd0..."
+downloaded_file = download_attachment(file_url, access_token)
 
 # Google Vision APIクライアントを初期化
 def initialize_vision_client():
