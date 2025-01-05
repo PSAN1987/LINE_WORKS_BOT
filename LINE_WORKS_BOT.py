@@ -117,7 +117,13 @@ def get_file_url(file_id):
         }
         # 添付ファイル情報を取得するエンドポイント
         url = f"https://www.worksapis.com/v1.0/bots/{BOT_NO}/attachments/{file_id}"
+        print(f"Requesting file URL with: {url}")
+        print(f"Request Headers: {headers}")
+
         response = requests.get(url, headers=headers)
+        print(f"Response Status Code: {response.status_code}")
+        print(f"Response Body: {response.text}")
+
         if response.status_code == 200:
             file_data = response.json()
             return file_data.get("fileUrl", "")
@@ -127,6 +133,7 @@ def get_file_url(file_id):
     except Exception as e:
         print(f"Error fetching file URL: {e}")
         return ""
+""
 
 # Google Vision APIクライアントを初期化
 def initialize_vision_client():
