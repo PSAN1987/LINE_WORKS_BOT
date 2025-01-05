@@ -173,6 +173,21 @@ def download_attachment(file_url, access_token):
     except Exception as e:
         print(f"Error occurred while downloading the file: {e}")
         return None
+    
+# 環境変数 GOOGLE_APPLICATION_CREDENTIALS をログに記録
+def verify_google_application_credentials():
+    try:
+        credentials_path = os.getenv("GOOGLE_APPLICATION_CREDENTIALS")
+        if credentials_path and os.path.exists(credentials_path):
+            print(f"GOOGLE_APPLICATION_CREDENTIALS is set correctly: {credentials_path}")
+        else:
+            print("Error: GOOGLE_APPLICATION_CREDENTIALS is not set or the file does not exist.")
+    except Exception as e:
+        print(f"Error verifying GOOGLE_APPLICATION_CREDENTIALS: {e}")
+
+# Vision API クライアント作成前に呼び出し
+verify_google_application_credentials()
+client = vision.ImageAnnotatorClient()
 
 # Google Vision APIクライアントを初期化
 def initialize_vision_client():
