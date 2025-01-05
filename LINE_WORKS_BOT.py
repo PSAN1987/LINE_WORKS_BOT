@@ -238,7 +238,7 @@ def process_and_send_text_from_image(image_path=None):
                 print(f"Extracted text from {current_image_path}: {text}")
 
                 # テキストをLINE Worksユーザーに送信
-                user_id = "userId"  # 実際のユーザーIDに置き換えてください
+                user_id = "9295462e-77df-4410-10a1-05ed80ea849d"  # 実際のユーザーIDに置き換えてください
                 if text.strip():
                     send_message(user_id, text)
                 else:
