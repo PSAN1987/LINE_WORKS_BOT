@@ -193,67 +193,32 @@ client = vision.ImageAnnotatorClient()
 def initialize_vision_client():
     return vision.ImageAnnotatorClient()
 
-def process_and_send_text_from_image(webhook_data, image_path=None):
-    """
-    Google Vision APIを使用して画像からテキストを抽出し、
-    抽出したテキストをLINE Worksユーザーに送信します。
-    
-    Parameters:
-        image_path (str): 処理する単一の画像ファイルのパス。省略すると保存フォルダ内の画像を処理。
-    """
+def process_saved_images_and_send_text(webhook_data, image_path=None):
     print("Processing images with Google Vision API...")
 
-    # 処理対象の画像を決定
-    image_files = [image_path] if image_path else sorted(os.listdir(IMAGE_SAVE_PATH))
-
     try:
-        for image_file in image_files:
-            # 画像パスを組み立て
-            current_image_path = image_path if image_path else os.path.join(IMAGE_SAVE_PATH, image_file)
+        # WebhookデータからuserIdを取得
+        user_id = webhook_data["source"]["userId"]
 
-            try:
-                # Google Vision APIでテキストを抽出
-                from google.cloud import vision
-                from google.cloud.vision_v1 import types
+        # テスト目的で固定画像パス
+        if image_path is None:
+            image_path = "/tmp/saved_images/test_image.jpg"  # 動的に変更可能
 
-                # クライアントを作成
-                client = vision.ImageAnnotatorClient()
+        # Google Vision APIでテキストを抽出
+        text = extract_text_from_image_with_vision_api(image_path)
+        print(f"Extracted text from {image_path}: {text}")
 
-                # 画像データを読み込む
-                with open(current_image_path, "rb") as image_file:
-                    content = image_file.read()
-
-                # Google Vision APIリクエストの準備
-                image = types.Image(content=content)
-                response = client.text_detection(image=image)
-
-                # レスポンスからテキストを取得
-                if response.error.message:
-                    raise Exception(f"Vision API Error: {response.error.message}")
-
-                texts = response.text_annotations
-                text = texts[0].description if texts else ""
-
-                print(f"Extracted text from {current_image_path}: {text}")
-
-                # テキストをLINE Worksユーザーに送信
-                user_id = webhook_data["source"]["userId"]
-                if text.strip():
-                    send_message(user_id, text)
-                else:
-                    print(f"No text found in {current_image_path}.")
-
-            except Exception as e:
-                print(f"Failed to process {current_image_path}: {e}")
-
-            # 処理済みの画像を削除
-            if not image_path:  # フォルダ内の処理の場合に削除
-                os.remove(current_image_path)
-                print(f"Processed and removed {current_image_path}.")
-
+        if text.strip():
+            # メッセージ送信
+            response = send_message(user_id, text)
+            if response.status_code != 200:
+                print(f"Failed to send message. Status Code: {response.status_code}")
+                print(f"Response: {response.json()}")
+        else:
+            print(f"No text found in {image_path}.")
+    
     except Exception as e:
-        print(f"Error processing images: {e}")
-
+        print(f"Error processing image or sending message: {e}")
 
 # Webhookエンドポイント
 @app.route("/webhook", methods=["POST"])
