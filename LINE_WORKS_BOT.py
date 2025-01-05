@@ -103,29 +103,37 @@ def send_message(account_id, text):
         print(f"Error during message send: {e}")
 
 # fileIdを使って画像URLを取得する関数
-def get_attachments(bot_id, file_id, access_token):
-    """コンテンツダウンロード"""
-    url = f"https://www.worksapis.com/v1.0/bots/{bot_id}/attachments/{file_id}"
-
-    headers = {
-        'Authorization': f"Bearer {access_token}"
-    }
-
+def get_file_url(file_id):
     try:
-        print(f"Requesting URL: {url}")
-        print(f"Headers: {headers}")
-        
-        r = requests.get(url=url, headers=headers)
-        r.raise_for_status()  # ステータスコードが200でない場合は例外を発生
+        # アクセストークンを取得
+        token_data = get_access_token()
+        if token_data is None or "access_token" not in token_data:
+            raise Exception("Failed to obtain access token.")
 
-        print("Request successful!")
-        return r.content
-    except requests.exceptions.HTTPError as http_err:
-        print(f"HTTP error occurred: {http_err}")
-        print(f"Response Body: {r.text}")
-    except Exception as err:
-        print(f"An error occurred: {err}")
-    return None
+        access_token = token_data["access_token"]
+        headers = {
+            "Authorization": f"Bearer {access_token}",
+            "Content-Type": "application/json"
+        }
+        # 添付ファイル情報を取得するエンドポイント
+        url = f"https://www.worksapis.com/v1.0/bots/{BOT_NO}/attachments/{file_id}"
+        print(f"Requesting file URL with: {url}")
+        print(f"Request Headers: {headers}")
+
+        response = requests.get(url, headers=headers)
+        print(f"Response Status Code: {response.status_code}")
+        print(f"Response Body: {response.text}")
+
+        if response.status_code == 200:
+            file_data = response.json()
+            return file_data.get("fileUrl", "")
+        else:
+            print(f"Failed to fetch file URL. Status Code: {response.status_code}, Response: {response.text}")
+            return ""
+    except Exception as e:
+        print(f"Error fetching file URL: {e}")
+        return ""
+""
 
 # Google Vision APIクライアントを初期化
 def initialize_vision_client():
