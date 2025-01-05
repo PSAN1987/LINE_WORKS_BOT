@@ -193,7 +193,7 @@ client = vision.ImageAnnotatorClient()
 def initialize_vision_client():
     return vision.ImageAnnotatorClient()
 
-def process_and_send_text_from_image(image_path=None):
+def process_and_send_text_from_image(webhook_data, image_path=None):
     """
     Google Vision APIを使用して画像からテキストを抽出し、
     抽出したテキストをLINE Worksユーザーに送信します。
