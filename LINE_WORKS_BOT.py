@@ -198,7 +198,9 @@ def process_saved_images_and_send_text(webhook_data, image_path=None):
 
     try:
         # WebhookデータからuserIdを取得
-        user_id = webhook_data["source"]["userId"]
+        user_id = webhook_data.get("source", {}).get("userId", "unknown_user")
+        if user_id == "unknown_user":
+            raise ValueError("Invalid or missing userId in webhook data.")
 
         # テスト目的で固定画像パス
         if image_path is None:
@@ -211,12 +213,15 @@ def process_saved_images_and_send_text(webhook_data, image_path=None):
         if text.strip():
             # メッセージ送信
             response = send_message(user_id, text)
+            response_json = response.json()  # レスポンスをJSONに変換
+            print(f"Send message response: {response_json}")
+
             if response.status_code != 200:
-                print(f"Failed to send message. Status Code: {response.status_code}")
-                print(f"Response: {response.json()}")
+                raise Exception(f"Message send failed: {response_json}")
+
         else:
             print(f"No text found in {image_path}.")
-    
+
     except Exception as e:
         print(f"Error processing image or sending message: {e}")
 
