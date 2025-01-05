@@ -95,7 +95,7 @@ def send_message(account_id, text):
         }
         response = requests.post(url, json=payload, headers=headers)
         print(f"Message send request status code: {response.status_code}")
-        if response.status_code == 200:
+        if response.status_code == 201:
             print("Message sent successfully!")
         else:
             print(f"Failed to send message. Response: {response.text}")
@@ -124,7 +124,7 @@ def get_file_url(file_id):
         print(f"Response Status Code: {response.status_code}")
         print(f"Response Body: {response.text}")
 
-        if response.status_code == 200:
+        if response.status_code == 302:
             file_data = response.json()
             return file_data.get("fileUrl", "")
         else:
