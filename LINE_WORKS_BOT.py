@@ -19,7 +19,7 @@ ISS = "d7ya7.serviceaccount@reichan"  # 管理画面で確認 (Service Account I
 TOKEN_URL = "https://auth.worksmobile.com/oauth2/v2.0/token"
 API_URL = "https://www.worksapis.com/v1.0/bots/6807091/messages"  # BOT番号を含む
 BOT_NO = "6807091"
-SCOPE = "bot" "bot.message"
+SCOPE = "bot"
 
 # 保存先ディレクトリ設定
 IMAGE_SAVE_PATH = "/tmp/saved_images"
