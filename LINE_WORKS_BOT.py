@@ -37,6 +37,7 @@ def create_jwt():
         "aud": TOKEN_URL  # トークン取得エンドポイント
     }
     # JWTに署名
+    print(f"JWT Payload: {payload}")
     token = jwt.encode(payload, PRIVATE_KEY, algorithm="RS256")
     print("JWT created successfully.")
     return token
