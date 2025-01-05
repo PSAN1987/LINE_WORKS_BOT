@@ -261,7 +261,7 @@ def webhook():
                                 print(f"Downloaded file saved at {downloaded_file}")
 
                                 # 保存した画像を処理
-                                process_saved_images_and_send_text()
+                                process_saved_images_and_send_text(downloaded_file)
                             else:
                                 print("画像のダウンロードに失敗しました。")
                         else:
@@ -275,6 +275,10 @@ def webhook():
     except Exception as e:
         print(f"Webhook処理中のエラー: {e}")
     return jsonify({"status": "ok"}), 200
+
+print(f"IMAGE_SAVE_PATH: {IMAGE_SAVE_PATH}")
+print("Files in IMAGE_SAVE_PATH:")
+print(os.listdir(IMAGE_SAVE_PATH))
 
 # アプリケーション起動
 @app.route("/", methods=["GET"])
