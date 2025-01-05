@@ -6,6 +6,7 @@ import io
 import jwt  # PyJWTライブラリを使用
 import requests
 from flask import Flask, request, jsonify
+from dotenv import load_dotenv
 
 # Flaskアプリケーションの初期化
 app = Flask(__name__)
@@ -21,6 +22,13 @@ TOKEN_URL = "https://auth.worksmobile.com/oauth2/v2.0/token"
 API_URL = "https://www.worksapis.com/v1.0/bots/6807091/messages"  # BOT番号を含む
 BOT_NO = "6807091"
 SCOPE = "bot"
+
+# .envファイルを読み込む
+load_dotenv()
+# 環境変数の取得
+google_credentials_path = os.getenv("GOOGLE_APPLICATION_CREDENTIALS")
+# Google Cloud Vision APIの認証設定
+os.environ["GOOGLE_APPLICATION_CREDENTIALS"] = google_credentials_path
 
 # 保存先ディレクトリ設定
 IMAGE_SAVE_PATH = "/tmp/saved_images"
