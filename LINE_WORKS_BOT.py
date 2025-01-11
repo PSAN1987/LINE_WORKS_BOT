@@ -14,7 +14,7 @@ os.environ["GOOGLE_APPLICATION_CREDENTIALS"] = GOOGLE_CREDENTIALS_PATH
 # Constants
 CLIENT_ID = os.getenv("CLIENT_ID")
 CLIENT_SECRET = os.getenv("CLIENT_SECRET")
-PRIVATE_KEY = os.getenv("PRIVATE_KEY")
+PRIVATE_KEY = os.getenv("PRIVATE_KEY").replace("\\n", "\n")
 ISS = os.getenv("ISS")
 TOKEN_URL = "https://auth.worksmobile.com/oauth2/v2.0/token"
 BOT_NO = "6807091"
