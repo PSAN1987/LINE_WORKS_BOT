@@ -194,41 +194,82 @@ client = vision.ImageAnnotatorClient()
 def initialize_vision_client():
     return vision.ImageAnnotatorClient()
 
+def process_extracted_text(text):
+    """
+    抽出されたテキストを処理し、指定されたリスト形式に整える。
+    Parameters:
+        text (str): OCRで抽出されたテキスト
+    Returns:
+        list[dict]: テキスト、変数名、手書き回答をまとめたリスト
+    """
+    print(f"Original Extracted Text: {text}")
+    
+    # 定義されたテンプレート
+    template = [
+        ("お届け日", "delivery_date"),
+        ("商品のご使用日", "use_date"),
+        ("表示名", "line_name"),
+        ("学校名", "school_name"),
+        ("団体名", "group_name"),
+        ("学校住所", "school_address"),
+        ("学校TEL", "school_tel"),
+        ("自署 フリガナ", "boss_furigana"),
+        ("ご担任(保護者)携帯", "boss_mobile"),
+        ("ご担任(保護者)メール", "boss_email"),
+        ("代表者 氏名 フリガナ", "representative_furigana"),
+        ("代表者 携帯", "representative_mobile"),
+        ("代表者 メール", "representative_email"),
+        ("商品名", "product_name"),
+        ("商品カラー", "product_color"),
+        ("S", "S"),
+        ("M", "M"),
+        ("L(F)", "L(F)"),
+        ("LL(XL)", "LL(XL)"),
+        ("3L(XXL)", "3L(XXL)"),
+        ("小計", "sub_total"),
+        ("合計", "total")
+    ]
+    
+    # テキストを行単位に分割
+    lines = text.split("\n")
+    result = []
+
+    # 各テンプレート項目とOCR結果を照合
+    for label, variable_name in template:
+        # 行をスキャンして対応するテキストを探す
+        value = ""
+        for line in lines:
+            if label in line:
+                value = line.replace(label, "").strip()  # ラベル部分を除去して手書き回答を取得
+                break
+        # 結果リストに追加
+        result.append({
+            "テキスト": label,
+            "変数名": variable_name,
+            "手書き回答": value
+        })
+
+    print(f"Processed Result: {result}")
+    return result
+
+
 def process_and_send_text_from_image(image_path=None):
     """
     Google Vision APIを使用して画像からテキストを抽出し、
-    抽出したテキストをLINE Worksユーザーに送信します。
-    
-    Parameters:
-        image_path (str): 処理する単一の画像ファイルのパス。省略すると保存フォルダ内の画像を処理。
+    抽出したテキストを処理および送信する関数。
     """
     print("Processing images with Google Vision API...")
-
-    # 処理対象の画像を決定
     image_files = [image_path] if image_path else sorted(os.listdir(IMAGE_SAVE_PATH))
-
     try:
         for image_file in image_files:
-            # 画像パスを組み立て
             current_image_path = image_path if image_path else os.path.join(IMAGE_SAVE_PATH, image_file)
-
             try:
-                # Google Vision APIでテキストを抽出
-                from google.cloud import vision
-                from google.cloud.vision_v1 import types
-
-                # クライアントを作成
-                client = vision.ImageAnnotatorClient()
-
-                # 画像データを読み込む
                 with open(current_image_path, "rb") as image_file:
                     content = image_file.read()
 
-                # Google Vision APIリクエストの準備
-                image = types.Image(content=content)
+                image = vision.Image(content=content)
                 response = client.text_detection(image=image)
 
-                # レスポンスからテキストを取得
                 if response.error.message:
                     raise Exception(f"Vision API Error: {response.error.message}")
 
@@ -237,24 +278,26 @@ def process_and_send_text_from_image(image_path=None):
 
                 print(f"Extracted text from {current_image_path}: {text}")
 
-                # テキストをLINE Worksユーザーに送信
-                user_id = "9295462e-77df-4410-10a1-05ed80ea849d"  # 実際のユーザーIDに置き換えてください
-                if text.strip():
-                    send_message(user_id, text)
+                # 抽出テキストを処理
+                processed_result = process_extracted_text(text)
+                cleaned_text = processed_result["cleaned_text"]
+                
+                # LINE Worksユーザーに送信
+                user_id = "9295462e-77df-4410-10a1-05ed80ea849d"  # 実際のユーザーIDに置き換え
+                if cleaned_text.strip():
+                    send_message(user_id, f"Processed Text: {cleaned_text}")
                 else:
-                    print(f"No text found in {current_image_path}.")
+                    print(f"No meaningful text found in {current_image_path}.")
 
             except Exception as e:
                 print(f"Failed to process {current_image_path}: {e}")
 
-            # 処理済みの画像を削除
-            if not image_path:  # フォルダ内の処理の場合に削除
+            # 処理済み画像を削除
+            if not image_path:
                 os.remove(current_image_path)
                 print(f"Processed and removed {current_image_path}.")
-
     except Exception as e:
         print(f"Error processing images: {e}")
-
 
 # Webhookエンドポイント
 @app.route("/webhook", methods=["POST"])
