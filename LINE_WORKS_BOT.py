@@ -195,16 +195,101 @@ client = vision.ImageAnnotatorClient()
 def initialize_vision_client():
     return vision.ImageAnnotatorClient()
 
-def process_extracted_text(text):
+import re
+
+def process_extracted_text(response):
     """
-    抽出されたテキストを処理し、指定されたリスト形式に整える。
+    Google Vision APIのレスポンスを使用して、テキストを処理し、
+    座標情報を基に手書き回答を関連付ける。
+
     Parameters:
-        text (str): OCRで抽出されたテキスト
+        response (obj): Google Vision APIのレスポンス
+
     Returns:
-        list[dict]: テキスト、変数名、手書き回答をまとめたリスト
+        list[dict]: テキスト、変数名、手書き回答、座標情報をまとめたリスト
     """
-    print(f"Original Extracted Text: {text}")
-    
+
+    def extract_text_with_coordinates(response):
+        """
+        Google Vision APIのレスポンスからテキストとその座標情報を抽出
+        """
+        text_data = []
+        for text in response.text_annotations:
+            # テキストとバウンディングボックスの座標を取得
+            description = text.description
+            vertices = text.bounding_poly.vertices
+            coordinates = [(v.x, v.y) for v in vertices]
+            text_data.append({
+                "text": description,
+                "coordinates": coordinates
+            })
+        return text_data
+
+    def calculate_distance(coords1, coords2):
+        """
+        2つの座標間の距離を計算
+        """
+        x1, y1 = coords1[0]  # 左上の座標
+        x2, y2 = coords2[0]  # 左上の座標
+        return ((x2 - x1) ** 2 + (y2 - y1) ** 2) ** 0.5
+
+    def find_nearby_text(label, text_data, threshold=50):
+        """
+        指定されたラベルの近くにある手書き回答を検索
+        Parameters:
+            label (str): 探す対象のテキスト
+            text_data (list): テキストと座標情報のリスト
+            threshold (int): 座標距離のしきい値
+        Returns:
+            dict: ラベル、手書き回答、座標
+        """
+        result = {"label": label, "answer": "", "label_coordinates": None, "answer_coordinates": None}
+
+        # ラベルの座標を見つける
+        label_item = next((item for item in text_data if label in item["text"]), None)
+        if not label_item:
+            return result  # ラベルが見つからなければ空の結果を返す
+
+        label_coordinates = label_item["coordinates"]
+        result["label_coordinates"] = label_coordinates
+
+        # ラベルの座標に近い他のテキストを検索
+        for item in text_data:
+            if item["text"] == label:
+                continue  # ラベル自身はスキップ
+
+            # 座標の距離を計算
+            item_coordinates = item["coordinates"]
+            distance = calculate_distance(label_coordinates, item_coordinates)
+
+            if distance < threshold:
+                result["answer"] = item["text"]
+                result["answer_coordinates"] = item_coordinates
+                break
+
+        return result
+
+    def normalize_text(value):
+        """
+        OCRで抽出された手書き回答を正規化する
+        """
+        if not value:
+            return ""
+
+        # 電話番号のフォーマットを整える
+        value = re.sub(r"(\d{3})(\d{4})(\d{4})", r"\1-\2-\3", value)
+
+        # 特殊文字を削除
+        value = re.sub(r"[^\w\s\(\):\-]", "", value)
+
+        # 不要な空白を削除
+        value = value.strip()
+
+        return value
+
+    # Google Vision APIレスポンスからデータを抽出
+    text_data = extract_text_with_coordinates(response)
+
     # 定義されたテンプレート
     template = [
         ("お届け日", "delivery_date"),
@@ -230,36 +315,20 @@ def process_extracted_text(text):
         ("小計", "sub_total"),
         ("合計", "total")
     ]
-    
-    # テキストを行単位に分割
-    lines = text.split("\n")
-    result = []
 
-    # 各テンプレート項目とOCR結果を照合
+    results = []
     for label, variable_name in template:
-        value = ""
-        for line in lines:
-            if label in line:
-                value = line.replace(label, "").strip()
-                value = normalize_text(value)  # 正規化を適用
-                break
-        result.append({
+        result = find_nearby_text(label, text_data)
+        results.append({
             "テキスト": label,
             "変数名": variable_name,
-            "手書き回答": value
+            "手書き回答": normalize_text(result["answer"]),
+            "ラベル座標": result["label_coordinates"],
+            "回答座標": result["answer_coordinates"]
         })
 
-    print(f"Processed Result: {result}")
-    return result
+    return results
 
-def normalize_text(value):
-    """
-    手書き回答を正規化する
-    """
-    # 不要な文字やフォーマットエラーを削除
-    value = re.sub(r"[^\w\s\(\):]", "", value)  # 特殊文字を削除
-    value = value.strip()  # 前後の空白を削除
-    return value
 
 def process_and_send_text_from_image(image_path=None):
     """
