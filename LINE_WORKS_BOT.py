@@ -7,6 +7,7 @@ import jwt  # PyJWTライブラリを使用
 import requests
 from flask import Flask, request, jsonify
 from dotenv import load_dotenv
+import re
 
 # Flaskアプリケーションの初期化
 app = Flask(__name__)
@@ -236,13 +237,12 @@ def process_extracted_text(text):
 
     # 各テンプレート項目とOCR結果を照合
     for label, variable_name in template:
-        # 行をスキャンして対応するテキストを探す
         value = ""
         for line in lines:
             if label in line:
-                value = line.replace(label, "").strip()  # ラベル部分を除去して手書き回答を取得
+                value = line.replace(label, "").strip()
+                value = normalize_text(value)  # 正規化を適用
                 break
-        # 結果リストに追加
         result.append({
             "テキスト": label,
             "変数名": variable_name,
@@ -252,6 +252,14 @@ def process_extracted_text(text):
     print(f"Processed Result: {result}")
     return result
 
+def normalize_text(value):
+    """
+    手書き回答を正規化する
+    """
+    # 不要な文字やフォーマットエラーを削除
+    value = re.sub(r"[^\w\s\(\):]", "", value)  # 特殊文字を削除
+    value = value.strip()  # 前後の空白を削除
+    return value
 
 def process_and_send_text_from_image(image_path=None):
     """
