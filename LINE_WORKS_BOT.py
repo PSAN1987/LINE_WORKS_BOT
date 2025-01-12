@@ -279,27 +279,27 @@ search_coordinates_template = [
     {
         "label": "S",
         "variable_name": "S",
-        "search_area": {"top": 5, "bottom": 5, "left": 0, "right": 100}
+        "search_area": {"top": 5, "bottom": 5, "left": 0, "right": 0}
     },
     {
         "label": "M",
         "variable_name": "M",
-        "search_area": {"top": 5, "bottom": 5, "left": 0, "right": 100}
+        "search_area": {"top": 5, "bottom": 5, "left": 0, "right": 0}
     },
     {
         "label": "L(F)",
         "variable_name": "L(F)",
-        "search_area": {"top": 5, "bottom": 5, "left": 0, "right": 100}
+        "search_area": {"top": 5, "bottom": 5, "left": 0, "right": 0}
     },
     {
         "label": "LL(XL)",
         "variable_name": "LL(XL)",
-        "search_area": {"top": 5, "bottom": 5, "left": 0, "right": 100}
+        "search_area": {"top": 5, "bottom": 5, "left": 0, "right": 0}
     },
     {
         "label": "3L(XXL)",
         "variable_name": "3L(XXL)",
-        "search_area": {"top": 5, "bottom": 5, "left": 0, "right": 100}
+        "search_area": {"top": 5, "bottom": 5, "left": 0, "right": 0}
     },
     {
         "label": "小計",
@@ -337,8 +337,9 @@ def process_extracted_text(response, search_coordinates_template):
     import re
 
     def normalize_text(text):
-        """テキストを正規化して比較可能な形に整える。"""
-        return re.sub(r"\s+", "", text).lower()
+        text = unicodedata.normalize('NFKC', text)  # 全角→半角
+        text = re.sub(r"\s+", "", text)  # スペース削除
+        return text.lower()
 
     def extract_blocks_with_coordinates(response):
         """OCRレスポンスからblock単位でテキストと座標情報を抽出。"""
