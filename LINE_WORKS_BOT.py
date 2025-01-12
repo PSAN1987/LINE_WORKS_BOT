@@ -278,7 +278,7 @@ search_coordinates_template = [
     {
         "label": "商品カラー",
         "variable_name": "product_color",
-        "prompt_instructions": "以下の整理されたデータから「商品カラー」に該当する情報を抽出してください。回答は商品カラー座標の直ぐ下にある回答として色を連想させる回答を期待しています。記載する回答は回答だけにしてください。"
+        "prompt_instructions": "以下の整理されたデータから「商品カラー」に該当する情報を抽出してください。回答は商品カラー座標の直ぐ下にある回答として色を連想させる回答を期待しています。記載する回答は回答だけにしてください。。"
     },
     {
         "label": "S",
@@ -395,7 +395,7 @@ def process_extracted_text(response, search_coordinates_template):
         """
         prompt = (
             "以下はOCRで抽出されたテキストブロックと座標のデータです。"
-            "search_coordinates_templateで定義されているlabel処理が実行しやすいようにテキストと座標データを再構築してください"
+            "データを整理して、search_coordinates_templateで定義されたラベルと回答が探しやすいようにテキストと座標データを再構築してください。:\n"
             f"{block_data}"
         )
         try:
@@ -404,8 +404,8 @@ def process_extracted_text(response, search_coordinates_template):
                 messages=[
                     {"role": "system", "content": "You are a helpful assistant."},
                     {"role": "user", "content": prompt}
-                temperature=0,
                 ],
+                temperature = 0,
             )
             ai_message = response_obj.choices[0].message.content
             return ai_message
@@ -436,6 +436,7 @@ def process_extracted_text(response, search_coordinates_template):
                     {"role": "system", "content": "You are a helpful assistant."},
                     {"role": "user", "content": prompt}
                 ],
+                temperature = 0,
             )
             return response_obj.choices[0].message.content
         except Exception as e:
