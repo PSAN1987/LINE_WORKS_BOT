@@ -195,15 +195,15 @@ def initialize_vision_client():
     return vision.ImageAnnotatorClient()
 
 search_coordinates_template = [
-    {"label": "お届け日", "variable_name": "delivery_date", "search_range": [(100, 50), (400, 100)]},
-    {"label": "商品のご使用日", "variable_name": "use_date", "search_range": [(450, 50), (750, 100)]},
-    {"label": "学校名", "variable_name": "school_name", "search_range": [(100, 150), (700, 200)]},
-    {"label": "学校住所", "variable_name": "school_address", "search_range": [(100, 220), (700, 270)]},
-    {"label": "学校TEL", "variable_name": "school_tel", "search_range": [(720, 220), (1000, 270)]},
-    {"label": "代表者 氏名 フリガナ", "variable_name": "representative_furigana", "search_range": [(100, 320), (700, 370)]},
-    {"label": "代表者 携帯", "variable_name": "representative_mobile", "search_range": [(720, 320), (1000, 370)]},
-    {"label": "商品名", "variable_name": "product_name", "search_range": [(100, 420), (700, 470)]},
-    {"label": "商品カラー", "variable_name": "product_color", "search_range": [(720, 420), (1000, 470)]},
+    {"label": "お届け日", "variable_name": "delivery_date", "search_range": [(50, 30), (250, 80)]},
+    {"label": "商品のご使用日", "variable_name": "use_date", "search_range": [(300, 30), (500, 80)]},
+    {"label": "学校名", "variable_name": "school_name", "search_range": [(50, 100), (400, 150)]},
+    {"label": "学校住所", "variable_name": "school_address", "search_range": [(50, 180), (500, 230)]},
+    {"label": "学校TEL", "variable_name": "school_tel", "search_range": [(550, 180), (750, 230)]},
+    {"label": "代表者 氏名 フリガナ", "variable_name": "representative_furigana", "search_range": [(50, 280), (400, 330)]},
+    {"label": "代表者 携帯", "variable_name": "representative_mobile", "search_range": [(550, 280), (750, 330)]},
+    {"label": "商品名", "variable_name": "product_name", "search_range": [(50, 380), (400, 430)]},
+    {"label": "商品カラー", "variable_name": "product_color", "search_range": [(550, 380), (750, 430)]},
 ]
 
 # OCR処理後のテキスト処理
@@ -238,14 +238,13 @@ def process_extracted_text(response, search_coordinates_template):
         return text_data
 
     def is_within_coordinates(coords, search_range):
-        """
-        座標が指定された範囲内にあるか判定
-        """
         x_min, y_min = search_range[0]
         x_max, y_max = search_range[1]
         x, y = coords[0]  # 左上の座標のみ使用
 
-        return x_min <= x <= x_max and y_min <= y <= y_max
+        within = x_min <= x <= x_max and y_min <= y <= y_max
+        print(f"Checking coordinates {coords[0]} in range {search_range}: {within}")  # デバッグ用
+        return within
 
     def find_text_in_range(label, text_data, search_range):
         """
@@ -304,7 +303,7 @@ def process_extracted_text(response, search_coordinates_template):
         results.append(processed_result)
 
         # ログ出力
-        print(f"Processed Result: {processed_result}")
+        print(f"Processed Result for '{label}': {processed_result}")
 
     return results
 
