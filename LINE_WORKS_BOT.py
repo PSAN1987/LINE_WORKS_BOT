@@ -8,6 +8,7 @@ import requests
 from flask import Flask, request, jsonify
 from dotenv import load_dotenv
 import re
+import unicodedata
 
 # Flaskアプリケーションの初期化
 app = Flask(__name__)
@@ -212,6 +213,13 @@ search_coordinates_template = [
     },
 ]
 
+def normalize_text(text):
+    """
+    テキストの正規化（例: 全角→半角、スペース除去）。
+    """
+    text = unicodedata.normalize('NFKC', text)  # 全角を半角に変換
+    text = text.strip()  # 前後のスペースを削除
+    return text
 
 def find_text_near_label(label, text_data):
     """
