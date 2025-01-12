@@ -195,15 +195,15 @@ def initialize_vision_client():
     return vision.ImageAnnotatorClient()
 
 search_coordinates_template = [
-    {"label": "お届け日", "variable_name": "delivery_date", "search_range": [(50, 100), (200, 150)]},
-    {"label": "商品のご使用日", "variable_name": "use_date", "search_range": [(250, 100), (400, 150)]},
-    {"label": "学校名", "variable_name": "school_name", "search_range": [(50, 200), (300, 250)]},
-    {"label": "学校住所", "variable_name": "school_address", "search_range": [(50, 300), (500, 350)]},
-    {"label": "学校TEL", "variable_name": "school_tel", "search_range": [(550, 300), (700, 350)]},
-    {"label": "代表者 氏名 フリガナ", "variable_name": "representative_furigana", "search_range": [(50, 400), (300, 450)]},
-    {"label": "代表者 携帯", "variable_name": "representative_mobile", "search_range": [(350, 400), (600, 450)]},
-    {"label": "商品名", "variable_name": "product_name", "search_range": [(50, 500), (300, 550)]},
-    {"label": "商品カラー", "variable_name": "product_color", "search_range": [(350, 500), (600, 550)]},
+    {"label": "お届け日", "variable_name": "delivery_date", "search_range": [(100, 50), (400, 100)]},
+    {"label": "商品のご使用日", "variable_name": "use_date", "search_range": [(450, 50), (750, 100)]},
+    {"label": "学校名", "variable_name": "school_name", "search_range": [(100, 150), (700, 200)]},
+    {"label": "学校住所", "variable_name": "school_address", "search_range": [(100, 220), (700, 270)]},
+    {"label": "学校TEL", "variable_name": "school_tel", "search_range": [(720, 220), (1000, 270)]},
+    {"label": "代表者 氏名 フリガナ", "variable_name": "representative_furigana", "search_range": [(100, 320), (700, 370)]},
+    {"label": "代表者 携帯", "variable_name": "representative_mobile", "search_range": [(720, 320), (1000, 370)]},
+    {"label": "商品名", "variable_name": "product_name", "search_range": [(100, 420), (700, 470)]},
+    {"label": "商品カラー", "variable_name": "product_color", "search_range": [(720, 420), (1000, 470)]},
 ]
 
 # OCR処理後のテキスト処理
@@ -294,13 +294,17 @@ def process_extracted_text(response, search_coordinates_template):
             continue
 
         result = find_text_in_range(label, text_data, search_range)
-        results.append({
+        processed_result = {
             "テキスト": label,
             "変数名": variable_name,
             "手書き回答": normalize_text(result["answer"]),
             "ラベル座標": result["label_coordinates"],
             "回答座標": result["answer_coordinates"]
-        })
+        }
+        results.append(processed_result)
+
+        # ログ出力
+        print(f"Processed Result: {processed_result}")
 
     return results
 
