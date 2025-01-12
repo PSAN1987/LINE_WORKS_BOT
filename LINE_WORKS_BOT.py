@@ -587,6 +587,7 @@ def organize_results_by_variable_name(results):
 
 # Webhookエンドポイント
 @app.route("/webhook", methods=["POST"])
+@app.route("/webhook", methods=["POST"])
 def webhook():
     print("Webhook called.")
     try:
@@ -625,8 +626,18 @@ def webhook():
                             if downloaded_file:
                                 print(f"Downloaded file saved at {downloaded_file}")
 
-                                # 保存した画像を処理
-                                process_and_send_text_from_image(downloaded_file)
+                                # 保存した画像を処理して結果を取得
+                                results = process_and_send_text_from_image(downloaded_file)
+
+                                # 結果を変数名ごとに整理
+                                organized_data = organize_results_by_variable_name(results)
+
+                                # ユーザーに整理済みデータを送信
+                                user_id = data["source"]["userId"]
+                                for variable_name, answer in organized_data.items():
+                                    message = f"{variable_name}: {answer}"
+                                    send_message(user_id, message)
+
                             else:
                                 print("画像のダウンロードに失敗しました。")
                         else:
@@ -640,6 +651,7 @@ def webhook():
     except Exception as e:
         print(f"Webhook処理中のエラー: {e}")
     return jsonify({"status": "ok"}), 200
+
 
 # アプリケーション起動
 @app.route("/", methods=["GET"])
