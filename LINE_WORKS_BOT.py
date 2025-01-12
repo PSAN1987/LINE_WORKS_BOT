@@ -218,12 +218,12 @@ search_coordinates_template = [
     {
         "label": "LINEアカウント名",
         "variable_name": "line_name",
-        "prompt_instructions": "以下の整理されたデータから「LINEアカウント名」に該当する情報を抽出してください。"
+        "prompt_instructions": "以下の整理されたデータから「LINEアカウント名」に該当する情報を抽出してください。回答は表示名をご記入くださいの近くの[]の中の文字です。"
     },
     {
         "label": "クラス団体名",
         "variable_name": "group_name",
-        "prompt_instructions": "以下の整理されたデータから「クラス団体名」に該当する情報を抽出してください。"
+        "prompt_instructions": "以下の整理されたデータから「クラス団体名」に該当する情報を抽出してください。回答は団体名の右にある手紙文字だけで良いです。"
     },
     {
         "label": "学校住所",
@@ -238,7 +238,7 @@ search_coordinates_template = [
     {
         "label": "ご担任",
         "variable_name": "boss_furigana",
-        "prompt_instructions": "以下の整理されたデータから「ご担任」に該当する情報を抽出してください。回答は漢字の名前とフリガナを期待しています。"
+        "prompt_instructions": "以下の整理されたデータから「ご担任」に該当する情報を抽出してください。回答は漢字の名前とフリガナだけで良いです。。"
     },
     {
         "label": "ご担任(保護者)携帯",
@@ -258,7 +258,7 @@ search_coordinates_template = [
     {
         "label": "代表者氏名",
         "variable_name": "representative_furigana",
-        "prompt_instructions": "以下の整理されたデータから「代表者指名」に該当する情報を抽出してください。回答は漢字の名前とフリガナを期待しています。"
+        "prompt_instructions": "以下の整理されたデータから「代表者指名」に該当する情報を抽出してください。回答は漢字の名前とフリガナだけで良いです"
     },
     {
         "label": "代表者携帯",
@@ -273,37 +273,37 @@ search_coordinates_template = [
     {
         "label": "商品名",
         "variable_name": "product_name",
-        "prompt_instructions": "以下の整理されたデータから「商品名」に該当する情報を抽出してください。回答は商品名座標の直ぐ下にある回答として洋服の種類を期待しています。"
+        "prompt_instructions": "以下の整理されたデータから「商品名」に該当する情報を抽出してください。回答は商品名座標の直ぐ下にある回答として洋服の種類だけで良いです。"
     },
     {
         "label": "商品カラー",
         "variable_name": "product_color",
-        "prompt_instructions": "以下の整理されたデータから「商品カラー」に該当する情報を抽出してください。回答は商品カラー座標の直ぐ下にある回答として色に関する情報を期待しています。"
+        "prompt_instructions": "以下の整理されたデータから「商品カラー」に該当する情報を抽出してください。回答は商品カラー座標の直ぐ下にある回答として色に関する情報だけで良いです"
     },
     {
         "label": "S",
         "variable_name": "S",
-        "prompt_instructions": "以下の整理されたデータから「S」に該当する情報を抽出してください。回答は商品カラーの近くにあってSの真下の数字を期待しています。"
+        "prompt_instructions": "以下の整理されたデータから「S」に該当する情報を抽出してください。回答は商品カラーの近くにあってSの直下の数字だけで良いです。"
     },
     {
         "label": "M",
         "variable_name": "M",
-        "prompt_instructions": "以下の整理されたデータから「M」に該当する情報を抽出してください。回答は商品カラーの近くにあってMの真下の数字を期待しています。"
+        "prompt_instructions": "以下の整理されたデータから「M」に該当する情報を抽出してください。回答は商品カラーの近くにあってMの直下の数字だけで良いです。"
     },
     {
         "label": "L(F)",
         "variable_name": "L(F)",
-        "prompt_instructions": "以下の整理されたデータから「L(F)」に該当する情報を抽出してください。回答は商品カラーの近くにあってL(F)の真下の数字を期待しています。"
+        "prompt_instructions": "以下の整理されたデータから「L(F)」に該当する情報を抽出してください。回答は商品カラーの近くにあってL(F)の直下の数字だけで良いです。"
     },
     {
         "label": "LL",
         "variable_name": "LL(XL)",
-        "prompt_instructions": "以下の整理されたデータから「LL」に該当する情報を抽出してください。回答は商品カラーの近くにあってLLの真下の数字を期待しています。"
+        "prompt_instructions": "以下の整理されたデータから「LL」に該当する情報を抽出してください。回答は商品カラーの近くにあってLLの直下の数字だけで良いです。"
     },
     {
         "label": "3L",
         "variable_name": "3L(XXL)",
-        "prompt_instructions": "以下の整理されたデータから「3L」に該当する情報を抽出してください。回答は商品カラーの近くにあって3Lの真下の数字を期待しています。"
+        "prompt_instructions": "以下の整理されたデータから「3L」に該当する情報を抽出してください。回答は商品カラーの近くにあって3Lの直下の数字だけで良いです。"
     },
     {
         "label": "小計",
