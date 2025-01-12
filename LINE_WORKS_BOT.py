@@ -222,7 +222,7 @@ search_coordinates_template = [
         "search_area": {"top": 5, "bottom": 5, "left": 0, "right": 150}
     },
     {
-        "label": "お届け",
+        "label": "(お届け)学校",
         "variable_name": "school_address",
         "search_area": {"top": 10, "bottom": 10, "left": 0, "right": 300}
     },
@@ -232,7 +232,7 @@ search_coordinates_template = [
         "search_area": {"top": 5, "bottom": 5, "left": 0, "right": 150}
     },
     {
-        "label": "ご担任",
+        "label": "自 署",
         "variable_name": "boss_furigana",
         "search_area": {"top": 5, "bottom": 5, "left": 0, "right": 100}
     },
@@ -252,17 +252,17 @@ search_coordinates_template = [
         "search_area": {"top": 5, "bottom": 5, "left": 0, "right": 200}
     },
     {
-        "label": "代表者",
+        "label": "代表者氏名",
         "variable_name": "representative_furigana",
         "search_area": {"top": 5, "bottom": 5, "left": 0, "right": 100}
     },
     {
-        "label": "代表者 携帯",
+        "label": "代表者携帯",
         "variable_name": "representative_mobile",
         "search_area": {"top": 5, "bottom": 5, "left": 0, "right": 200}
     },
     {
-        "label": "メール",
+        "label": "代表者メール",
         "variable_name": "representative_email",
         "search_area": {"top": 5, "bottom": 5, "left": 0, "right": 300}
     },
