@@ -389,14 +389,16 @@ def process_extracted_text(response, search_coordinates_template):
                 f"以下の整理されたデータから「{label}」に該当する内容を抽出してください:\n"
                 f"{organized_text}"
             )
-            response = openai.ChatCompletion.create(
-                model="gpt-3.5-turbo",
+        try:
+            response = openai.chat.completions.create(
+                model="gpt-3.5-turbo",  # または "gpt-4"
                 messages=[
                     {"role": "system", "content": "You are a helpful assistant."},
                     {"role": "user", "content": prompt}
-                ]
+                ],
             )
-            return response.choices[0].message.content.strip()
+            ai_message = response.choices[0].message.content
+            return ai_message
         except Exception as e:
             print(f"OpenAI API Error: {e}")
             return ""
