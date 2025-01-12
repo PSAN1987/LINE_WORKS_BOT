@@ -326,6 +326,10 @@ def normalize_text(text):
     text = text.strip()  # 前後のスペースを削除
     return text
 
+import openai
+import re
+import unicodedata
+
 def process_extracted_text(response, search_coordinates_template):
     """
     OCRレスポンスから指定されたラベルに対応する回答を抽出。
@@ -338,14 +342,15 @@ def process_extracted_text(response, search_coordinates_template):
     Returns:
         list[dict]: ラベル、変数名、回答、座標をまとめた結果。
     """
+
     def normalize_text(text):
         """テキストを正規化して比較可能な形に整える。"""
         text = unicodedata.normalize('NFKC', text)  # 全角→半角
-        text = re.sub(r"\s+", "", text)  # スペース削除
+        text = re.sub(r"\s+", "", text)            # スペース削除
         return text.lower()
 
     def extract_blocks_with_coordinates(response):
-        """OCRレスポンスからblock単位でテキストと座標情報を抽出。"""
+        """OCRレスポンスから block 単位でテキストと座標情報を抽出。"""
         block_data = []
         if not response.full_text_annotation:
             return []
@@ -353,16 +358,25 @@ def process_extracted_text(response, search_coordinates_template):
         for page in response.full_text_annotation.pages:
             for block in page.blocks:
                 block_text = "".join(
-                    ["".join([symbol.text for symbol in word.symbols]) + " "
-                     for paragraph in block.paragraphs for word in paragraph.words]
+                    [
+                        "".join(symbol.text for symbol in word.symbols) + " "
+                        for paragraph in block.paragraphs
+                        for word in paragraph.words
+                    ]
                 )
                 coordinates = [(v.x, v.y) for v in block.bounding_box.vertices]
-                block_data.append({"text": block_text.strip(), "coordinates": coordinates})
+                block_data.append({
+                    "text": block_text.strip(),
+                    "coordinates": coordinates
+                })
 
         return block_data
 
     def query_openai_for_analysis(block_data):
-        """OpenAI APIを使用してブロックデータを整理。"""
+        """
+        OpenAI APIを使用してブロックデータを整理。
+        ドキュメントに沿って openai.chat.completions.create を用いた実装に修正。
+        """
         prompt = (
             "以下はOCRで抽出されたテキストブロックと座標のデータです。"
             "データを整理して、人が理解しやすい形式に変換してください:\n"
@@ -370,7 +384,7 @@ def process_extracted_text(response, search_coordinates_template):
         )
         try:
             response_obj = openai.chat.completions.create(
-                model="gpt-3.5-turbo",  # または "gpt-4"
+                model="gpt-3.5-turbo",  # 必要に応じて "gpt-4" 等に変更
                 messages=[
                     {"role": "system", "content": "You are a helpful assistant."},
                     {"role": "user", "content": prompt}
@@ -379,29 +393,58 @@ def process_extracted_text(response, search_coordinates_template):
             ai_message = response_obj.choices[0].message.content
             return ai_message
         except Exception as e:
-            print(f"OpenAI API Error: {e}")
+            print(f"OpenAI API Error (analysis): {e}")
             return ""
 
     def find_label_in_organized_text(organized_text, label):
-        """整理されたテキストからラベルに対応する回答を探す。"""
+        """
+        整理されたテキストからラベルに対応する回答を探す。
+        openai.chat.completions.create を利用して実装。
+        """
+        prompt = (
+            f"以下の整理されたデータから「{label}」に該当する内容を抽出してください:\n"
+            f"{organized_text}"
+        )
         try:
-            prompt = (
-                f"以下の整理されたデータから「{label}」に該当する内容を抽出してください:\n"
-                f"{organized_text}"
-            )
-        try:
-            response = openai.chat.completions.create(
-                model="gpt-3.5-turbo",  # または "gpt-4"
+            response_obj = openai.chat.completions.create(
+                model="gpt-3.5-turbo",  # 必要に応じて "gpt-4" 等に変更
                 messages=[
                     {"role": "system", "content": "You are a helpful assistant."},
                     {"role": "user", "content": prompt}
                 ],
             )
-            ai_message = response.choices[0].message.content
+            ai_message = response_obj.choices[0].message.content
             return ai_message
         except Exception as e:
-            print(f"OpenAI API Error: {e}")
+            print(f"OpenAI API Error (label-search): {e}")
             return ""
+
+    # --- ここからメイン処理 ---
+
+    # 1. OCR結果のブロックを抽出
+    block_data = extract_blocks_with_coordinates(response)
+
+    # 2. OpenAI API を使って全ブロックデータを人が理解しやすい形に整理
+    organized_text = query_openai_for_analysis(block_data)
+
+    # 3. ラベルごとに回答を探索して格納
+    results = []
+    for template_item in search_coordinates_template:
+        label = template_item["label"]
+        variable_name = template_item["variable_name"]
+
+        # OpenAIに問い合わせてラベルに対応する回答を取得
+        refined_answer = find_label_in_organized_text(organized_text, label)
+
+        results.append({
+            "テキスト": label,
+            "変数名": variable_name,
+            "回答": refined_answer,
+            "座標": None  # 必要なら座標などを追加
+        })
+
+    return results
+
 
     # OCRレスポンスからブロックデータを抽出
     block_data = extract_blocks_with_coordinates(response)
