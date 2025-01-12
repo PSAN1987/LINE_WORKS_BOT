@@ -391,26 +391,53 @@ def process_extracted_text(response, search_coordinates_template):
     def query_openai_for_analysis(block_data):
         """
         OpenAI APIを使用してブロックデータを整理。
-        ドキュメントに沿って openai.chat.completions.create を用いた実装に修正。
+        Few-shot prompting を取り入れて、サンプルの入力→出力例を提示する。
         """
+
+        # Few-shot 用の例
+        # ※ あくまで例示です。実際のOCRブロックの形や、期待する出力形式に合わせて書き換えてください。
+        few_shot_examples = """
+    [サンプルの入力例]
+    [
+      {"text": "お届け日 2025年1月15日", "coordinates": [[0, 0], [100, 0], [100, 50], [0, 50]]},
+      {"text": "学校名 東京高校 2-2", "coordinates": [[0, 60], [200, 60], [200, 110], [0, 110]]},
+      {"text": "商品カラー 白/ブラック/青 計=3色", "coordinates": [...]}
+    ]
+
+    [サンプルの出力例]
+    「お届け日」は 2025年1月15日。
+    「学校名」は 東京高校(クラス 2-2)。
+    「商品カラー」は 白/ブラック/青 計=3色 です。
+    ---
+        """
+
+        # 実際の入力データを文字列化
+        actual_input_str = f"{block_data}"
+
+        # プロンプト構築
         prompt = (
-            "以下はOCRで抽出されたテキストブロックと座標のデータです。"
-            "データを整理して、ラベルと回答検索が簡単な形式に変換してください。この処理は実行精度を一定にするために同じ画像の場合は毎回同一にしてください:\n"
-            f"{block_data}"
+            "以下のOCRテキストブロックと座標情報について、指定ラベルで情報を抽出しやすいように整理してください。\n"
+            "サンプル入力とその出力例を先に示しますので、同じ形式・ルールで出力してください。\n\n"
+            f"{few_shot_examples}\n"
+            "--- ここから本番入力 ---\n"
+            f"{actual_input_str}\n"
         )
+
         try:
             response_obj = openai.chat.completions.create(
-                model="gpt-3.5-turbo",  # 必要に応じて "gpt-4" 等に変更
+                model="gpt-3.5-turbo",
                 messages=[
                     {"role": "system", "content": "You are a helpful assistant."},
                     {"role": "user", "content": prompt}
                 ],
+                temperature=0,  # 同じ入力に対して安定した出力が得やすい
             )
             ai_message = response_obj.choices[0].message.content
             return ai_message
         except Exception as e:
             print(f"OpenAI API Error (analysis): {e}")
             return ""
+
 
     def find_label_in_organized_text(organized_text, label, custom_prompt=None):
         """
