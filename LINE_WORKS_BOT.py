@@ -239,7 +239,7 @@ def process_extracted_text(response, search_coordinates_template):
         """
         text_data = []
         print("Extracting text data with coordinates...")
-        for index, text in enumerate(response.text_annotations):
+        for index, text in enumerate(response.text_annotations[1:], start=1):
             description = text.description
             vertices = text.bounding_poly.vertices
             coordinates = [(v.x, v.y) for v in vertices]
