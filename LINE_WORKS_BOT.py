@@ -248,7 +248,7 @@ search_coordinates_template = [
     {
         "label": "担任(保護者)メール",
         "variable_name": "boss_email",
-        "prompt_instructions": "以下の整理されたデータから「担任(保護者)メール」に該当する情報を抽出してください。回答はxxx@xxxのようなemail形式だけで良いです。"
+        "prompt_instructions": "以下の整理されたデータから「担任(保護者)メール」に該当する情報を抽出してください。回答はxxx@xxxのようなemail形式を期待しています。回答は抽出されたemail情報だけで良いです。"
     },
     {
         "label": "デザイン確認方法",
@@ -268,7 +268,7 @@ search_coordinates_template = [
     {
         "label": "代表者メール",
         "variable_name": "representative_email",
-        "prompt_instructions": "以下の整理されたデータから「代表者メール」に該当する情報を抽出してください。回答はxxx@xxxのようなemail形式だけで良いです。"
+        "prompt_instructions": "以下の整理されたデータから「代表者メール」に該当する情報を抽出してください。回答はxxx@xxxのようなemail形式を期待しています。回答は抽出されたemail情報だけで良いです。"
     },
     {
         "label": "商品名",
@@ -283,27 +283,27 @@ search_coordinates_template = [
     {
         "label": "S",
         "variable_name": "S",
-        "prompt_instructions": "以下の整理されたデータから「S」に該当する情報を抽出してください。回答はSから数10ピクセル以内で真下にある数字です。回答は数字だけで良いです。"
+        "prompt_instructions": "以下の整理されたデータから「S」に該当する情報を抽出してください。回答はSから数10ピクセル以内で真下にある数字です。回答は数字だけにしてください。"
     },
     {
         "label": "M",
         "variable_name": "M",
-        "prompt_instructions": "以下の整理されたデータから「M」に該当する情報を抽出してください。回答はMから数10ピクセル以内で真下にある数字です。回答は数字だけで良いです。"
+        "prompt_instructions": "以下の整理されたデータから「M」に該当する情報を抽出してください。回答はMから数10ピクセル以内で真下にある数字です。回答は数字だけにしてください。"
     },
     {
         "label": "L",
         "variable_name": "L",
-        "prompt_instructions": "以下の整理されたデータから「L」に該当する情報を抽出してください。回答はLから数10ピクセル以内で真下にある数字です。回答は数字だけで良いです。"
+        "prompt_instructions": "以下の整理されたデータから「L」に該当する情報を抽出してください。回答はLから数10ピクセル以内で真下にある数字です。回答は数字だけにしてください。。"
     },
     {
         "label": "LL",
         "variable_name": "LL(XL)",
-        "prompt_instructions": "以下の整理されたデータから「LL」に該当する情報を抽出してください。回答はLLから数10ピクセル以内で真下にある数字です。回答は数字だけで良いです。"
+        "prompt_instructions": "以下の整理されたデータから「LL」に該当する情報を抽出してください。回答はLLから数10ピクセル以内で真下にある数字です。回答は数字だけにしてください。"
     },
     {
         "label": "3L",
         "variable_name": "3L(XXL)",
-        "prompt_instructions": "以下の整理されたデータから「3L」に該当する情報を抽出してください。回答は3Lから数10ピクセル以内で真下にある数字です。回答は数字だけで良いです"
+        "prompt_instructions": "以下の整理されたデータから「3L」に該当する情報を抽出してください。回答は3Lから数10ピクセル以内で真下にある数字です。回答は数字だけにしてください。"
     },
     {
         "label": "小計",
@@ -315,6 +315,22 @@ search_coordinates_template = [
         "variable_name": "total",
         "prompt_instructions": "以下の整理されたデータから「合計」に該当する情報を抽出してください。回答は数字のみで良いです。"
     },
+    {
+        "label": "プリントサイズ",
+        "variable_name": "print_size",
+        "prompt_instructions": "以下の整理されたデータから「サイズ」に該当する情報を抽出してください。期待する回答はヨコxx cm x タテxx cmという回答です。回答形式はX=xxcm, Y=xxcmです。"
+    },
+    {
+        "label": "プリントカラー/オプション",
+        "variable_name": "print_colorl",
+        "prompt_instructions": "以下の整理されたデータから「プリントカラー/オプション」に該当する情報を抽出してください。期待する回答は色情報と計xx色という回答です。回答形式は色=a,b,c,d, 計=x色です。"
+    },
+    {
+        "label": "デザインサンプル",
+        "variable_name": "print_design",
+        "prompt_instructions": "以下の整理されたデータから「デザインサンプル」に該当する情報を抽出してください。期待する回答はD-352のようなアルファベットと数字の組み合わせ情報です。回答形式はx-xxxです。"
+    },
+
 ]
 
 
