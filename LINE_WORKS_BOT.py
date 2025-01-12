@@ -376,14 +376,17 @@ def process_extracted_text(response, search_coordinates_template):
     def query_openai_api(prompt):
         """OpenAI APIを呼び出して回答を生成。"""
         try:
-            response = openai.Completion.create(
-                engine="text-davinci-003",
-                prompt=prompt,
+            response = openai.ChatCompletion.create(
+                model="gpt-3.5-turbo",  # または "gpt-4"
+                messages=[
+                    {"role": "system", "content": "You are a helpful assistant."},
+                    {"role": "user", "content": prompt}
+                ],
                 max_tokens=100,
                 n=1,
                 stop=None
             )
-            return response.choices[0].text.strip()
+            return response["choices"][0]["message"]["content"].strip()
         except Exception as e:
             print(f"OpenAI API Error: {e}")
             return ""
