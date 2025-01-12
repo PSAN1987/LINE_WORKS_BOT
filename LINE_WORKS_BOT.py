@@ -195,15 +195,10 @@ def initialize_vision_client():
     return vision.ImageAnnotatorClient()
 
 search_coordinates_template = [
-    {"label": "お届け日", "variable_name": "delivery_date", "search_range": [(50, 30), (250, 80)]},
-    {"label": "ご使用日", "variable_name": "use_date", "search_range": [(300, 30), (500, 80)]},
-    {"label": "学校名", "variable_name": "school_name", "search_range": [(50, 100), (400, 150)]},
-    {"label": "学校住所", "variable_name": "school_address", "search_range": [(50, 180), (500, 230)]},
-    {"label": "学校TEL", "variable_name": "school_tel", "search_range": [(550, 180), (750, 230)]},
-    {"label": "氏名", "variable_name": "representative_furigana", "search_range": [(50, 280), (400, 330)]},
-    {"label": "携帯", "variable_name": "representative_mobile", "search_range": [(550, 280), (750, 330)]},
-    {"label": "商品名", "variable_name": "product_name", "search_range": [(50, 380), (400, 430)]},
-    {"label": "商品カラー", "variable_name": "product_color", "search_range": [(550, 380), (750, 430)]},
+    {"label": "お届け日", "variable_name": "delivery_date", "offset": (50, 50)},
+    {"label": "商品のご使用日", "variable_name": "use_date", "offset": (60, 40)},
+    {"label": "学校名", "variable_name": "school_name", "offset": (70, 50)},
+    {"label": "学校住所", "variable_name": "school_address", "offset": (50, 50)},
 ]
 
 def find_text_near_label(label, text_data):
