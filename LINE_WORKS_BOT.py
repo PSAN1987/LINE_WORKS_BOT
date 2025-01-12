@@ -224,7 +224,7 @@ def normalize_text(text):
 def process_extracted_text(response, search_coordinates_template):
     """
     OCRレスポンスから指定されたラベルに対応する回答を抽出。
-    各block単位でテキストのラベル座標を取得。
+    各block単位でテキストのラベル座標を取得し、指定範囲内の回答を探す。
 
     Parameters:
         response (obj): Google Vision APIのレスポンス。
@@ -236,92 +236,74 @@ def process_extracted_text(response, search_coordinates_template):
     import re
 
     def normalize_text(text):
-        """
-        テキストを正規化して比較可能な形に整える。
-        スペースや特殊文字を削除し、小文字化する。
-        """
+        """テキストを正規化して比較可能な形に整える。"""
         return re.sub(r"\s+", "", text).lower()
 
     def extract_blocks_with_coordinates(response):
-        """
-        OCRレスポンスからblock単位でテキストと座標情報を抽出。
-        """
+        """OCRレスポンスからblock単位でテキストと座標情報を抽出。"""
         block_data = []
-        print("Extracting block data with coordinates...")
-
         if not response.full_text_annotation:
-            print("No full_text_annotation found in the response.")
             return []
-
         for page in response.full_text_annotation.pages:
             for block in page.blocks:
-                # block内のすべてのテキストを結合
-                block_text = ""
-                for paragraph in block.paragraphs:
-                    for word in paragraph.words:
-                        block_text += ''.join([symbol.text for symbol in word.symbols])
-                        block_text += " "  # 単語間にスペースを追加
-
-                # 座標を取得
-                vertices = block.bounding_box.vertices
-                coordinates = [(v.x, v.y) for v in vertices]
-
-                # blockデータのログ出力
-                print(f"Block Text: '{block_text.strip()}'")
-                print(f"Block Coordinates: {coordinates}")
-
+                block_text = "".join(
+                    ["".join([symbol.text for symbol in word.symbols]) + " "
+                     for paragraph in block.paragraphs for word in paragraph.words]
+                )
+                coordinates = [(v.x, v.y) for v in block.bounding_box.vertices]
                 block_data.append({"text": block_text.strip(), "coordinates": coordinates})
-
-        print(f"Total blocks extracted: {len(block_data)}")
         return block_data
 
-    def find_all_texts_for_label(label, block_data):
-        """
-        ラベル名に基づいて、OCRデータから該当するすべてのblockテキストと座標を探す。
-        複数のブロックを結合し、回答を1つの文字列としてまとめる。
-        """
-        normalized_label = normalize_text(label)
-        results = []
-        for item in block_data:
-            normalized_text = normalize_text(item["text"])
-            if normalized_label in normalized_text:
-                results.append({
-                    "label_coordinates": item["coordinates"],
-                    "text": item["text"]
-                })
-        return results
+    def is_within_search_area(label_coords, block_coords, search_area):
+        """指定された範囲内にblockが存在するかチェック。"""
+        x_min = min(v[0] for v in label_coords) + search_area["left"]
+        x_max = max(v[0] for v in label_coords) + search_area["right"]
+        y_min = min(v[1] for v in label_coords) - search_area["top"]
+        y_max = max(v[1] for v in label_coords) + search_area["bottom"]
 
-    # blockデータを抽出
+        block_x_min = min(v[0] for v in block_coords)
+        block_x_max = max(v[0] for v in block_coords)
+        block_y_min = min(v[1] for v in block_coords)
+        block_y_max = max(v[1] for v in block_coords)
+
+        return (x_min <= block_x_min <= x_max or x_min <= block_x_max <= x_max) and \
+               (y_min <= block_y_min <= y_max or y_min <= block_y_max <= y_max)
+
     block_data = extract_blocks_with_coordinates(response)
-
-    # 結果リストの初期化
     results = []
 
-    # 各ラベルに対して処理を実行
     for item in search_coordinates_template:
         label = item["label"]
         variable_name = item["variable_name"]
+        search_area = item["search_area"]
 
-        # ラベルの座標をすべて取得
-        all_label_results = find_all_texts_for_label(label, block_data)
+        # ラベルを探す
+        label_results = []
+        for block in block_data:
+            if normalize_text(label) in normalize_text(block["text"]):
+                label_results.append(block)
 
-        # ラベル座標のログ出力
-        if all_label_results:
-            for res in all_label_results:
-                print(f"Label '{label}' found at coordinates: {res['label_coordinates']}")
+        if label_results:
+            for label_result in label_results:
+                label_coords = label_result["coordinates"]
+                # 検索範囲内の回答を探す
+                answers = []
+                for block in block_data:
+                    if is_within_search_area(label_coords, block["coordinates"], search_area):
+                        answers.append(block["text"])
+                results.append({
+                    "テキスト": label,
+                    "変数名": variable_name,
+                    "回答": " ".join(answers),
+                    "座標": label_coords
+                })
         else:
-            print(f"Label '{label}' not found.")
-
-        # 結果をリストに追加（回答を1つの文字列にまとめる）
-        answers = " ".join([res["text"] for res in all_label_results])
-        coordinates = [res["label_coordinates"] for res in all_label_results]
-
-        results.append({
-            "テキスト": label,
-            "変数名": variable_name,
-            "回答": answers,
-            "座標": coordinates
-        })
+            results.append({
+                "テキスト": label,
+                "変数名": variable_name,
+                "回答": "",
+                "座標": None
+            })
 
     return results
 
