@@ -202,7 +202,7 @@ search_coordinates_template = [
         "search_area": {"top": 10, "bottom": 50, "left": 20, "right": 200}
     },
     {
-        "label": "商品のご使用日",
+        "label": "ご使用日",
         "variable_name": "use_date",
         "search_area": {"top": 15, "bottom": 40, "left": 30, "right": 150}
     },
@@ -248,7 +248,7 @@ def process_extracted_text(response, search_coordinates_template):
         search_coordinates_template (list[dict]): ラベル情報と範囲情報を含むテンプレート。
 
     Returns:
-        list[dict]: 各ラベルの回答、ラベル座標、回答座標をまとめた結果。
+        list[dict]: 各ラベルの回答（テキスト、変数名、回答）をまとめた結果。
     """
 
     def extract_text_with_coordinates(response):
@@ -266,9 +266,6 @@ def process_extracted_text(response, search_coordinates_template):
     # OCRデータを抽出
     text_data = extract_text_with_coordinates(response)
 
-    # ここにログ出力を追加
-    print("Extracted text data:", text_data)
-
     results = []
     for item in search_coordinates_template:
         label = item["label"]
@@ -277,12 +274,6 @@ def process_extracted_text(response, search_coordinates_template):
         # ラベルの座標を取得
         label_result = find_text_near_label(label, text_data)
         label_coords = label_result["label_coordinates"]
-
-        # ラベルの座標をログ出力
-        if label_coords:
-            print(f"Label '{label}' coordinates: {label_coords}")
-        else:
-            print(f"Label '{label}' coordinates not found.")
 
         if label_coords:
             # search_coordinates_template 内の search_area を使用
@@ -294,14 +285,12 @@ def process_extracted_text(response, search_coordinates_template):
 
             # 検索範囲内で回答を探す
             answer = ""
-            answer_coords = None
             for text_item in text_data:
                 # 各テキストの座標を確認して検索範囲内かチェック
                 text_coords = text_item["coordinates"]
                 for x, y in text_coords:
                     if x_min <= x <= x_max and y_min <= y <= y_max:
                         answer = text_item["text"]
-                        answer_coords = text_coords
                         break
                 if answer:  # 回答が見つかった場合はループを終了
                     break
@@ -309,20 +298,17 @@ def process_extracted_text(response, search_coordinates_template):
             results.append({
                 "テキスト": label,
                 "変数名": variable_name,
-                "手書き回答": normalize_text(answer),
-                "ラベル座標": label_coords,
-                "回答座標": answer_coords
+                "回答": normalize_text(answer)
             })
         else:
             results.append({
                 "テキスト": label,
                 "変数名": variable_name,
-                "手書き回答": "",
-                "ラベル座標": None,
-                "回答座標": None
+                "回答": ""
             })
 
     return results
+
 
 
 def process_and_send_text_from_image(image_path=None):
