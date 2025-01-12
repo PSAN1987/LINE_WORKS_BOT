@@ -231,18 +231,25 @@ def process_extracted_text(response, search_coordinates_template):
         search_coordinates_template (list[dict]): ラベル情報と範囲情報を含むテンプレート。
 
     Returns:
-        list[dict]: ラベル、変数名、回答をまとめた結果。
+        list[dict]: ラベル、変数名、回答、座標をまとめた結果。
     """
     def extract_text_with_coordinates(response):
         """
         OCRレスポンスからテキストと座標情報を抽出。
         """
         text_data = []
-        for text in response.text_annotations:
+        print("Extracting text data with coordinates...")
+        for index, text in enumerate(response.text_annotations):
             description = text.description
             vertices = text.bounding_poly.vertices
             coordinates = [(v.x, v.y) for v in vertices]
+
+            # 各テキストデータのログ出力
+            print(f"[Text {index + 1}] Description: '{description}'")
+            print(f"[Text {index + 1}] Coordinates: {coordinates}")
+
             text_data.append({"text": description, "coordinates": coordinates})
+        print(f"Total texts extracted: {len(text_data)}")
         return text_data
 
     # OCRデータを抽出
@@ -260,13 +267,24 @@ def process_extracted_text(response, search_coordinates_template):
         label_result = find_text_near_label(label, text_data)
         label_coords = label_result["label_coordinates"]
 
-        # デバッグログの追加
+        # ラベル座標のログ出力
         if label_coords:
-            print(f"Label '{label}' coordinates: {label_coords}")
+            print(f"Label '{label}' found at coordinates: {label_coords}")
         else:
             print(f"Label '{label}' not found.")
 
-        # 結果をまとめる
+        # 検索範囲を計算してログに出力
+        if label_coords:
+            search_area = item.get("search_area", {"top": 0, "bottom": 50, "left": 0, "right": 100})
+            x_min = min(v[0] for v in label_coords) + search_area["left"]
+            y_min = min(v[1] for v in label_coords) - search_area["top"]
+            x_max = max(v[0] for v in label_coords) + search_area["right"]
+            y_max = max(v[1] for v in label_coords) + search_area["bottom"]
+            print(f"Computed search range for label '{label}': [(x_min={x_min}, y_min={y_min}), (x_max={x_max}, y_max={y_max})]")
+        else:
+            print(f"No search range computed for label '{label}' as coordinates were not found.")
+
+        # 結果をリストに追加
         results.append({
             "テキスト": label,
             "変数名": variable_name,
@@ -275,7 +293,6 @@ def process_extracted_text(response, search_coordinates_template):
         })
 
     return results
-
 
 def find_text_near_label(label, text_data):
     """
