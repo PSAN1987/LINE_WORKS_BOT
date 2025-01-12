@@ -281,7 +281,8 @@ def process_extracted_text(response, search_coordinates_template):
         results = []
         for item in block_data:
             print(f"Checking block: '{item['text']}' with coordinates: {item['coordinates']}")
-            if label in item["text"]:  # 部分一致をサポート
+            # 部分一致をサポート (大文字・小文字を区別せず検索)
+            if label.lower() in item["text"].lower():  # 部分一致
                 print(f"Found label '{label}' at coordinates: {item['coordinates']}")
                 results.append({
                     "label_coordinates": item["coordinates"],
@@ -321,6 +322,7 @@ def process_extracted_text(response, search_coordinates_template):
         })
 
     return results
+
 
 def process_and_send_text_from_image(image_path=None):
     """
