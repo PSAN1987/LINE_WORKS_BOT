@@ -24,7 +24,6 @@ API_URL = "https://www.worksapis.com/v1.0/bots/6807091/messages"  # BOT番号を
 BOT_NO = "6807091"
 SCOPE = "bot"
 
-
 # .envファイルを読み込む
 load_dotenv()
 # 環境変数の取得
@@ -195,15 +194,30 @@ client = vision.ImageAnnotatorClient()
 def initialize_vision_client():
     return vision.ImageAnnotatorClient()
 
-import re
 
-def process_extracted_text(response):
+#
+search_coordinates_template = [
+    {"label": "お届け日", "variable_name": "delivery_date", "search_range": [(50, 100), (200, 150)]},
+    {"label": "商品のご使用日", "variable_name": "use_date", "search_range": [(250, 100), (400, 150)]},
+    {"label": "学校名", "variable_name": "school_name", "search_range": [(50, 200), (300, 250)]},
+    {"label": "学校住所", "variable_name": "school_address", "search_range": [(50, 300), (500, 350)]},
+    {"label": "学校TEL", "variable_name": "school_tel", "search_range": [(550, 300), (700, 350)]},
+    {"label": "代表者 氏名 フリガナ", "variable_name": "representative_furigana", "search_range": [(50, 400), (300, 450)]},
+    {"label": "代表者 携帯", "variable_name": "representative_mobile", "search_range": [(350, 400), (600, 450)]},
+    {"label": "商品名", "variable_name": "product_name", "search_range": [(50, 500), (300, 550)]},
+    {"label": "商品カラー", "variable_name": "product_color", "search_range": [(350, 500), (600, 550)]},
+]
+# OCR処理後のテキスト処理
+
+def process_extracted_text(response, search_coordinates_template):
     """
     Google Vision APIのレスポンスを使用して、テキストを処理し、
-    座標情報を基に手書き回答を関連付ける。
+    指定した座標範囲内で回答を検索します。
 
     Parameters:
         response (obj): Google Vision APIのレスポンス
+        search_coordinates_template (list[dict]): 各パラメータごとの座標範囲を指定する辞書のリスト
+        （例: [{"label": "お届け日", "variable_name": "delivery_date", "search_range": [(x_min, y_min), (x_max, y_max)]}]）
 
     Returns:
         list[dict]: テキスト、変数名、手書き回答、座標情報をまとめたリスト
@@ -225,46 +239,27 @@ def process_extracted_text(response):
             })
         return text_data
 
-    def calculate_distance(coords1, coords2):
+    def is_within_coordinates(coords, search_range):
         """
-        2つの座標間の距離を計算
+        座標が指定された範囲内にあるか判定
         """
-        x1, y1 = coords1[0]  # 左上の座標
-        x2, y2 = coords2[0]  # 左上の座標
-        return ((x2 - x1) ** 2 + (y2 - y1) ** 2) ** 0.5
+        x_min, y_min = search_range[0]
+        x_max, y_max = search_range[1]
+        x, y = coords[0]  # 左上の座標のみ使用
 
-    def find_nearby_text(label, text_data, threshold=50):
+        return x_min <= x <= x_max and y_min <= y <= y_max
+
+    def find_text_in_range(label, text_data, search_range):
         """
-        指定されたラベルの近くにある手書き回答を検索
-        Parameters:
-            label (str): 探す対象のテキスト
-            text_data (list): テキストと座標情報のリスト
-            threshold (int): 座標距離のしきい値
-        Returns:
-            dict: ラベル、手書き回答、座標
+        指定された範囲内でラベルに対応するテキストを検索
         """
         result = {"label": label, "answer": "", "label_coordinates": None, "answer_coordinates": None}
 
-        # ラベルの座標を見つける
-        label_item = next((item for item in text_data if label in item["text"]), None)
-        if not label_item:
-            return result  # ラベルが見つからなければ空の結果を返す
-
-        label_coordinates = label_item["coordinates"]
-        result["label_coordinates"] = label_coordinates
-
-        # ラベルの座標に近い他のテキストを検索
+        # 指定された範囲内でテキストを検索
         for item in text_data:
-            if item["text"] == label:
-                continue  # ラベル自身はスキップ
-
-            # 座標の距離を計算
-            item_coordinates = item["coordinates"]
-            distance = calculate_distance(label_coordinates, item_coordinates)
-
-            if distance < threshold:
+            if is_within_coordinates(item["coordinates"], search_range):
                 result["answer"] = item["text"]
-                result["answer_coordinates"] = item_coordinates
+                result["answer_coordinates"] = item["coordinates"]
                 break
 
         return result
@@ -290,35 +285,17 @@ def process_extracted_text(response):
     # Google Vision APIレスポンスからデータを抽出
     text_data = extract_text_with_coordinates(response)
 
-    # 定義されたテンプレート
-    template = [
-        ("お届け日", "delivery_date"),
-        ("商品のご使用日", "use_date"),
-        ("表示名", "line_name"),
-        ("学校名", "school_name"),
-        ("団体名", "group_name"),
-        ("学校住所", "school_address"),
-        ("学校TEL", "school_tel"),
-        ("自署 フリガナ", "boss_furigana"),
-        ("ご担任(保護者)携帯", "boss_mobile"),
-        ("ご担任(保護者)メール", "boss_email"),
-        ("代表者 氏名 フリガナ", "representative_furigana"),
-        ("代表者 携帯", "representative_mobile"),
-        ("代表者 メール", "representative_email"),
-        ("商品名", "product_name"),
-        ("商品カラー", "product_color"),
-        ("S", "S"),
-        ("M", "M"),
-        ("L(F)", "L(F)"),
-        ("LL(XL)", "LL(XL)"),
-        ("3L(XXL)", "3L(XXL)"),
-        ("小計", "sub_total"),
-        ("合計", "total")
-    ]
-
     results = []
-    for label, variable_name in template:
-        result = find_nearby_text(label, text_data)
+    for item in search_coordinates_template:
+        label = item.get("label")
+        variable_name = item.get("variable_name")
+        search_range = item.get("search_range")
+
+        if not search_range:
+            print(f"No search range defined for label '{label}'")
+            continue
+
+        result = find_text_in_range(label, text_data, search_range)
         results.append({
             "テキスト": label,
             "変数名": variable_name,
@@ -328,6 +305,7 @@ def process_extracted_text(response):
         })
 
     return results
+
 
 
 def process_and_send_text_from_image(image_path=None):
