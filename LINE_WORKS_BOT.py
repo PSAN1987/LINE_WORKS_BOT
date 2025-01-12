@@ -215,22 +215,20 @@ search_coordinates_template = [
 
 def find_text_near_label(label, text_data):
     """
-    指定されたラベルの座標を取得する関数。
-
-    Parameters:
-        label (str): 探したいラベルのテキスト。
-        text_data (list): OCRで抽出されたテキストデータ。
-
-    Returns:
-        dict: ラベル座標情報を返す。
+    ラベル名に基づいて、OCRデータから該当するテキストの座標を探す。
+    部分一致を導入。
     """
     for item in text_data:
-        if item["text"] == label:
-            label_coords = item["coordinates"]
-            print(f"Label '{label}' found with coordinates: {label_coords}")
-            return {"label_coordinates": label_coords}
-    print(f"Label '{label}' not found in text data.")
-    return {"label_coordinates": None}
+        # ラベルが部分一致する場合に座標を返す
+        if label in item['text']:  # 部分一致を導入
+            return {
+                "label_coordinates": item["coordinates"],
+                "text": item["text"]
+            }
+    return {
+        "label_coordinates": None,
+        "text": None
+    }
 
 # OCR処理後のテキスト処理
 def process_extracted_text(response, search_coordinates_template):
