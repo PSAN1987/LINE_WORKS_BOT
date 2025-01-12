@@ -209,9 +209,65 @@ search_coordinates_template = [
     {
         "label": "学校名",
         "variable_name": "school_name",
-        "search_area": {"top": 10, "bottom": 10, "left": 5, "right": 400}
+        "search_area": {"top": 10, "bottom": 10, "left": 0, "right": 400}
+    },
+    {
+        "label": "表示名",
+        "variable_name": "line_name",
+        "search_area": {"top": 5, "bottom": 5, "left": 0, "right": 100}
+    },
+    {
+        "label": "団体名",
+        "variable_name": "group_name",
+        "search_area": {"top": 5, "bottom": 5, "left": 0, "right": 150}
+    },
+    {
+        "label": "お届け",
+        "variable_name": "school_address",
+        "search_area": {"top": 10, "bottom": 10, "left": 0, "right": 300}
+    },
+    {
+        "label": "学校TEL",
+        "variable_name": "school_tel",
+        "search_area": {"top": 5, "bottom": 5, "left": 0, "right": 150}
+    },
+    {
+        "label": "ご担任",
+        "variable_name": "boss_furigana",
+        "search_area": {"top": 5, "bottom": 5, "left": 0, "right": 100}
+    },
+    {
+        "label": "ご担任(保護者)携帯",
+        "variable_name": "boss_mobile",
+        "search_area": {"top": 5, "bottom": 5, "left": 0, "right": 200}
+    },
+    {
+        "label": "ご担任(保護者)メール",
+        "variable_name": "boss_email",
+        "search_area": {"top": 5, "bottom": 5, "left": 0, "right": 300}
+    },
+    {
+        "label": "デザイン確認方法",
+        "variable_name": "design_confirm",
+        "search_area": {"top": 5, "bottom": 5, "left": 0, "right": 200}
+    },
+    {
+        "label": "代表者",
+        "variable_name": "representative_furigana",
+        "search_area": {"top": 5, "bottom": 5, "left": 0, "right": 100}
+    },
+    {
+        "label": "代表者 携帯",
+        "variable_name": "representative_mobile",
+        "search_area": {"top": 5, "bottom": 5, "left": 0, "right": 200}
+    },
+    {
+        "label": "メール",
+        "variable_name": "representative_email",
+        "search_area": {"top": 5, "bottom": 5, "left": 0, "right": 300}
     },
 ]
+
 
 def normalize_text(text):
     """
