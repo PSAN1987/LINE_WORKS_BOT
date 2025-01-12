@@ -252,6 +252,31 @@ def process_extracted_text(response, search_coordinates_template):
         print(f"Total texts extracted: {len(text_data)}")
         return text_data
 
+    def find_all_texts_for_label(label, text_data):
+        """
+        ラベル名に基づいて、OCRデータから該当するすべてのテキストと座標を探す。
+        
+        Parameters:
+            label (str): 検索対象のラベル名。
+            text_data (list[dict]): OCRで抽出されたテキストデータ。
+
+        Returns:
+            list[dict]: ラベルの座標情報と対応するテキストのリスト。
+        """
+        print(f"Searching for all matches for label: '{label}'")
+        results = []
+        for item in text_data:
+            print(f"Checking text: '{item['text']}' with coordinates: {item['coordinates']}")
+            if label in item["text"]:  # 部分一致をサポート
+                print(f"Found label '{label}' at coordinates: {item['coordinates']}")
+                results.append({
+                    "label_coordinates": item["coordinates"],
+                    "text": item["text"]
+                })
+        if not results:
+            print(f"Label '{label}' not found in the provided text data.")
+        return results
+
     # OCRデータを抽出
     text_data = extract_text_with_coordinates(response)
 
@@ -263,68 +288,25 @@ def process_extracted_text(response, search_coordinates_template):
         label = item["label"]
         variable_name = item["variable_name"]
 
-        # ラベルの座標を取得
-        label_result = find_text_near_label(label, text_data)
-        label_coords = label_result["label_coordinates"]
+        # ラベルの座標をすべて取得
+        all_label_results = find_all_texts_for_label(label, text_data)
 
         # ラベル座標のログ出力
-        if label_coords:
-            print(f"Label '{label}' found at coordinates: {label_coords}")
+        if all_label_results:
+            for res in all_label_results:
+                print(f"Label '{label}' found at coordinates: {res['label_coordinates']}")
         else:
             print(f"Label '{label}' not found.")
-
-        # 検索範囲を計算してログに出力
-        if label_coords:
-            search_area = item.get("search_area", {"top": 0, "bottom": 50, "left": 0, "right": 100})
-            x_min = min(v[0] for v in label_coords) + search_area["left"]
-            y_min = min(v[1] for v in label_coords) - search_area["top"]
-            x_max = max(v[0] for v in label_coords) + search_area["right"]
-            y_max = max(v[1] for v in label_coords) + search_area["bottom"]
-            print(f"Computed search range for label '{label}': [(x_min={x_min}, y_min={y_min}), (x_max={x_max}, y_max={y_max})]")
-        else:
-            print(f"No search range computed for label '{label}' as coordinates were not found.")
 
         # 結果をリストに追加
         results.append({
             "テキスト": label,
             "変数名": variable_name,
-            "回答": label_result["text"] if label_coords else "",
-            "座標": label_coords
+            "回答": [res["text"] for res in all_label_results],
+            "座標": [res["label_coordinates"] for res in all_label_results]
         })
 
     return results
-
-def find_text_near_label(label, text_data):
-    """
-    ラベル名に基づいて、OCRデータから該当するテキストの座標を探す。
-    部分一致をサポートし、最初に一致したものを返す。
-    
-    Parameters:
-        label (str): 検索対象のラベル名。
-        text_data (list[dict]): OCRで抽出されたテキストデータ。
-    
-    Returns:
-        dict: ラベルの座標情報と対応するテキスト。
-    """
-    print(f"Searching for label: '{label}'")
-    
-    for item in text_data:
-        print(f"Checking text: '{item['text']}' with coordinates: {item['coordinates']}")
-        
-        # 部分一致の条件
-        if label in item["text"]:
-            print(f"Found label '{label}' at coordinates: {item['coordinates']}")
-            return {
-                "label_coordinates": item["coordinates"],
-                "text": item["text"]
-            }
-    
-    # ラベルが見つからない場合の処理
-    print(f"Label '{label}' not found in the provided text data.")
-    return {
-        "label_coordinates": None,
-        "text": None
-    }
 
 def process_and_send_text_from_image(image_path=None):
     """
