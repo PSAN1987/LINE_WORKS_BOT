@@ -199,7 +199,7 @@ search_coordinates_template = [
     {
         "label": "お届け日",
         "variable_name": "delivery_date",
-        "search_area": {"top": 1, "bottom": 1, "left": 0, "right": 70}
+        "search_area": {"top": 1, "bottom": 10, "left": 0, "right": 10  0}
     },
     {
         "label": "ご使用日",
@@ -252,17 +252,17 @@ search_coordinates_template = [
         "search_area": {"top": 5, "bottom": 5, "left": 0, "right": 200}
     },
     {
-        "label": "代表者氏名",
+        "label": "代表 者 文 内容 ・ 氏 名",
         "variable_name": "representative_furigana",
         "search_area": {"top": 5, "bottom": 5, "left": 0, "right": 100}
     },
     {
-        "label": "代表者携帯",
+        "label": "携帯",
         "variable_name": "representative_mobile",
         "search_area": {"top": 5, "bottom": 5, "left": 0, "right": 200}
     },
     {
-        "label": "代表者メール",
+        "label": "代表 者 メール",
         "variable_name": "representative_email",
         "search_area": {"top": 5, "bottom": 5, "left": 0, "right": 300}
     },
