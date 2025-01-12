@@ -393,7 +393,7 @@ def process_extracted_text(response, search_coordinates_template):
         エラー時は空文字列 "" を返す。
         """
         try:
-            response_obj = openai.ChatCompletion.create(
+            response_obj = openai.chat.completions.create(
                 model="gpt-3.5-turbo",  # または "gpt-4"
                 messages=[
                     {"role": "system", "content": "You are a helpful assistant."},
