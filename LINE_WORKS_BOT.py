@@ -199,7 +199,7 @@ search_coordinates_template = [
     {
         "label": "お届け日",
         "variable_name": "delivery_date",
-        "search_area": {"top": 1, "bottom": 1, "left": 1, "right": 20}
+        "search_area": {"top": 20, "bottom": 20, "left": 20, "right": 200}
     },
     {
         "label": "ご使用日",
@@ -209,7 +209,7 @@ search_coordinates_template = [
     {
         "label": "学校名",
         "variable_name": "school_name",
-        "search_area": {"top": 1, "bottom": 1, "left": 1, "right": 20}
+        "search_area": {"top": 20, "bottom": 20, "left": 20, "right": 200}
     },
 ]
 
