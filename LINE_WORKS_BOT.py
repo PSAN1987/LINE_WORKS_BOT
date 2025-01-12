@@ -472,32 +472,6 @@ def process_extracted_text(response, search_coordinates_template):
 
     return results
 
-    # OCRレスポンスからブロックデータを抽出
-    block_data = extract_blocks_with_coordinates(response)
-
-    # OpenAIを使用してブロックデータを整理
-    organized_text = query_openai_for_analysis(block_data)
-
-    # ラベルごとに回答を抽出
-    results = []
-    for item in search_coordinates_template:
-        label = item["label"]
-        variable_name = item["variable_name"]
-
-        # 整理されたデータからラベルに対応する回答を取得
-        answer = find_label_in_organized_text(organized_text, label)
-
-        # 結果をまとめる
-        results.append({
-            "テキスト": label,
-            "変数名": variable_name,
-            "回答": answer,
-            "座標": None  # 座標情報は整理後にOpenAIで管理されるため、ここでは省略
-        })
-
-    return results
-
-
 
 def process_and_send_text_from_image(image_path=None):
     """
