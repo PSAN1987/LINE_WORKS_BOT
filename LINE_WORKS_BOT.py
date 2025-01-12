@@ -199,17 +199,17 @@ search_coordinates_template = [
     {
         "label": "お届け日",
         "variable_name": "delivery_date",
-        "search_area": {"top": 1, "bottom": 1, "left": 1, "right": 1}
+        "search_area": {"top": 1, "bottom": 1, "left": 1, "right": 20}
     },
     {
         "label": "ご使用日",
         "variable_name": "use_date",
-        "search_area": {"top": 1, "bottom": 1, "left": 1, "right": 1}
+        "search_area": {"top": 1, "bottom": 1, "left": 1, "right": 20}
     },
     {
         "label": "学校名",
         "variable_name": "school_name",
-        "search_area": {"top": 1, "bottom": 1, "left": 10, "right": 1}
+        "search_area": {"top": 1, "bottom": 1, "left": 1, "right": 20}
     },
 ]
 
