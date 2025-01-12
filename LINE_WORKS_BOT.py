@@ -277,21 +277,25 @@ def process_extracted_text(response, search_coordinates_template):
             print(f"Label '{label}' coordinates not found.")
 
         if label_coords:
-            # ラベル座標と `search_area` を使って検索範囲を設定
+            # search_coordinates_template 内の search_area を使用
             search_area = item.get("search_area", {"top": 0, "bottom": 50, "left": 0, "right": 100})
             x_min = min(v[0] for v in label_coords) + search_area["left"]
             y_min = min(v[1] for v in label_coords) - search_area["top"]
             x_max = max(v[0] for v in label_coords) + search_area["right"]
             y_max = max(v[1] for v in label_coords) + search_area["bottom"]
-            search_range = [(x_min, y_min), (x_max, y_max)]
 
             # 検索範囲内で回答を探す
             answer = ""
             answer_coords = None
             for text_item in text_data:
-                if is_within_coordinates(text_item["coordinates"], search_range):
-                    answer = text_item["text"]
-                    answer_coords = text_item["coordinates"]
+                # 各テキストの座標を確認して検索範囲内かチェック
+                text_coords = text_item["coordinates"]
+                for x, y in text_coords:
+                    if x_min <= x <= x_max and y_min <= y <= y_max:
+                        answer = text_item["text"]
+                        answer_coords = text_coords
+                        break
+                if answer:  # 回答が見つかった場合はループを終了
                     break
 
             results.append({
