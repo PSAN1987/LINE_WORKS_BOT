@@ -277,7 +277,7 @@ def process_extracted_text(response, search_coordinates_template):
 
         if label_coords:
             # search_coordinates_template 内の search_area を使用
-            search_area = item.get("search_area", {"top": 0, "bottom": 50, "left": 0, "right": 100})
+            search_area = item.get("search_area", {"top": 0, "bottom": 0, "left": 0, "right": 0})
             x_min = min(v[0] for v in label_coords) + search_area["left"]
             y_min = min(v[1] for v in label_coords) - search_area["top"]
             x_max = max(v[0] for v in label_coords) + search_area["right"]
@@ -351,8 +351,9 @@ def process_and_send_text_from_image(image_path=None):
                 for result in processed_results:
                     label = result["テキスト"]
                     answer = result["回答"]  # 修正
+                    variable_name = result["変数名"]
                     if answer.strip():
-                        send_message(user_id, f"{label}: {answer}")
+                        send_message(user_id, f"{label}: {variable_name}: {answer}")
                     else:
                         print(f"No meaningful answer found for label '{label}' in {current_image_path}.")
 
