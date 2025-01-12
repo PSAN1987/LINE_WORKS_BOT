@@ -303,17 +303,20 @@ def find_text_near_label(label, text_data):
     ラベル名に基づいて、OCRデータから該当するテキストの座標を探す。
     部分一致をサポート。
     """
+    print(f"Searching for label: {label}")
     for item in text_data:
+        print(f"Checking text: {item['text']} with coordinates: {item['coordinates']}")
         if label in item["text"]:  # 部分一致
+            print(f"Found label '{label}' at coordinates: {item['coordinates']}")
             return {
                 "label_coordinates": item["coordinates"],
                 "text": item["text"]
             }
+    print(f"Label '{label}' not found.")
     return {
         "label_coordinates": None,
         "text": None
     }
-
 
 
 def process_and_send_text_from_image(image_path=None):
