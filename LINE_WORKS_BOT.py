@@ -206,140 +206,112 @@ search_coordinates_template = [
     {"label": "商品カラー", "variable_name": "product_color", "search_range": [(550, 380), (750, 430)]},
 ]
 
-def find_text_near_label(label, text_data, search_range_offset):
+def find_text_near_label(label, text_data):
     """
-    指定されたラベルの座標を取得し、その周辺位置から回答を探す
+    指定されたラベルの座標を取得する関数。
 
     Parameters:
-        label (str): ラベルのテキスト (例: "お届け日")
-        text_data (list): OCRで抽出されたテキストデータ
-        search_range_offset (tuple): ラベルの座標からのオフセット範囲 (例: (x_offset, y_offset))
+        label (str): 探したいラベルのテキスト。
+        text_data (list): OCRで抽出されたテキストデータ。
 
     Returns:
-        dict: 回答とその座標情報
+        dict: ラベル座標情報を返す。
     """
-    result = {"answer": "", "label_coordinates": None, "answer_coordinates": None}
-
-    # ラベルを探してその座標を取得
     for item in text_data:
         if item["text"] == label:
-            label_coords = item["coordinates"]
-            result["label_coordinates"] = label_coords
-
-            # 座標範囲の計算
-            x_min = min(v[0] for v in label_coords) - search_range_offset[0]
-            y_min = min(v[1] for v in label_coords) - search_range_offset[1]
-            x_max = max(v[0] for v in label_coords) + search_range_offset[0]
-            y_max = max(v[1] for v in label_coords) + search_range_offset[1]
-            search_range = [(x_min, y_min), (x_max, y_max)]
-
-            # 指定された範囲内で回答を探す
-            for answer_item in text_data:
-                if is_within_coordinates(answer_item["coordinates"], search_range):
-                    result["answer"] = answer_item["text"]
-                    result["answer_coordinates"] = answer_item["coordinates"]
-                    break
-            break
-
-    return result
-
+            return {"label_coordinates": item["coordinates"]}
+    return {"label_coordinates": None}
 
 # OCR処理後のテキスト処理
 def process_extracted_text(response, search_coordinates_template):
     """
-    Google Vision APIのレスポンスを使用して、テキストを処理し、
-    指定した座標範囲内で回答を検索します。
+    指定された範囲内で回答を探す処理。
 
     Parameters:
-        response (obj): Google Vision APIのレスポンス
-        search_coordinates_template (list[dict]): 各パラメータごとの座標範囲を指定する辞書のリスト
-        （例: [{"label": "お届け日", "variable_name": "delivery_date", "search_range": [(x_min, y_min), (x_max, y_max)]}]）
+        response (obj): Google Vision APIのレスポンス。
+        search_coordinates_template (list[dict]): ラベル情報と範囲情報を含むテンプレート。
 
     Returns:
-        list[dict]: テキスト、変数名、手書き回答、座標情報をまとめたリスト
+        list[dict]: 各ラベルの回答、ラベル座標、回答座標をまとめた結果。
     """
 
     def extract_text_with_coordinates(response):
         """
-        Google Vision APIのレスポンスからテキストとその座標情報を抽出
+        Google Vision APIのレスポンスからテキストとその座標情報を抽出。
         """
         text_data = []
         for text in response.text_annotations:
-            # テキストとバウンディングボックスの座標を取得
             description = text.description
             vertices = text.bounding_poly.vertices
             coordinates = [(v.x, v.y) for v in vertices]
-            text_data.append({
-                "text": description,
-                "coordinates": coordinates
-            })
+            text_data.append({"text": description, "coordinates": coordinates})
         return text_data
 
     def is_within_coordinates(coords, search_range):
+        """
+        座標が指定された範囲内にあるか判定。
+        """
         x_min, y_min = search_range[0]
         x_max, y_max = search_range[1]
         x, y = coords[0]  # 左上の座標のみ使用
-
-        within = x_min <= x <= x_max and y_min <= y <= y_max
-        print(f"Checking coordinates {coords[0]} in range {search_range}: {within}")  # デバッグ用
-        return within
-
-    def find_text_in_range(label, text_data, search_range):
-        """
-        指定された範囲内でラベルに対応するテキストを検索
-        """
-        result = {"label": label, "answer": "", "label_coordinates": None, "answer_coordinates": None}
-
-        # 指定された範囲内でテキストを検索
-        for item in text_data:
-            if is_within_coordinates(item["coordinates"], search_range):
-                result["answer"] = item["text"]
-                result["answer_coordinates"] = item["coordinates"]
-                break
-
-        return result
+        return x_min <= x <= x_max and y_min <= y <= y_max
 
     def normalize_text(value):
         """
-        OCRで抽出された手書き回答を正規化する
+        OCRで抽出された手書き回答を正規化する。
         """
         if not value:
             return ""
-
-        # 電話番号のフォーマットを整える
         value = re.sub(r"(\d{3})(\d{4})(\d{4})", r"\1-\2-\3", value)
-
-        # 特殊文字を削除
         value = re.sub(r"[^\w\s\(\):\-]", "", value)
-
-        # 不要な空白を削除
         value = value.strip()
-
         return value
 
-    # Google Vision APIレスポンスからデータを抽出
+    # OCRデータを抽出
     text_data = extract_text_with_coordinates(response)
 
     results = []
     for item in search_coordinates_template:
-        label = item.get("label")
-        variable_name = item.get("variable_name")
+        label = item["label"]
+        variable_name = item["variable_name"]
 
-        # ラベルの周辺から回答を探す
-        search_range_offset = (50, 50)  # ラベル座標からのオフセット
-        result = find_text_near_label(label, text_data, search_range_offset)
+        # ラベルの座標を取得
+        label_result = find_text_near_label(label, text_data)
+        label_coords = label_result["label_coordinates"]
 
-        processed_result = {
-            "テキスト": label,
-            "変数名": variable_name,
-            "手書き回答": normalize_text(result["answer"]),
-            "ラベル座標": result["label_coordinates"],
-            "回答座標": result["answer_coordinates"]
-        }
-        results.append(processed_result)
+        if label_coords:
+            # ラベル座標を基に検索範囲を設定
+            offset = item.get("offset", (50, 50))
+            x_min = min(v[0] for v in label_coords) - offset[0]
+            y_min = min(v[1] for v in label_coords) - offset[1]
+            x_max = max(v[0] for v in label_coords) + offset[0]
+            y_max = max(v[1] for v in label_coords) + offset[1]
+            search_range = [(x_min, y_min), (x_max, y_max)]
 
-        # ログ出力
-        print(f"Processed Result for '{label}': {processed_result}")
+            # 検索範囲内で回答を探す
+            answer = ""
+            answer_coords = None
+            for text_item in text_data:
+                if is_within_coordinates(text_item["coordinates"], search_range):
+                    answer = text_item["text"]
+                    answer_coords = text_item["coordinates"]
+                    break
+
+            results.append({
+                "テキスト": label,
+                "変数名": variable_name,
+                "手書き回答": normalize_text(answer),
+                "ラベル座標": label_coords,
+                "回答座標": answer_coords
+            })
+        else:
+            results.append({
+                "テキスト": label,
+                "変数名": variable_name,
+                "手書き回答": "",
+                "ラベル座標": None,
+                "回答座標": None
+            })
 
     return results
 
