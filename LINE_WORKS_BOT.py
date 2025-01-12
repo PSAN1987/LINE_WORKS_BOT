@@ -195,11 +195,23 @@ def initialize_vision_client():
     return vision.ImageAnnotatorClient()
 
 search_coordinates_template = [
-    {"label": "お届け日", "variable_name": "delivery_date", "offset": (50, 50)},
-    {"label": "商品のご使用日", "variable_name": "use_date", "offset": (60, 40)},
-    {"label": "学校名", "variable_name": "school_name", "offset": (70, 50)},
-    {"label": "学校住所", "variable_name": "school_address", "offset": (50, 50)},
+    {
+        "label": "お届け日",
+        "variable_name": "delivery_date",
+        "search_area": {"top": 10, "bottom": 50, "left": 20, "right": 200}
+    },
+    {
+        "label": "商品のご使用日",
+        "variable_name": "use_date",
+        "search_area": {"top": 15, "bottom": 40, "left": 30, "right": 150}
+    },
+    {
+        "label": "学校名",
+        "variable_name": "school_name",
+        "search_area": {"top": 10, "bottom": 50, "left": 10, "right": 300}
+    },
 ]
+
 
 def find_text_near_label(label, text_data):
     """
@@ -220,7 +232,7 @@ def find_text_near_label(label, text_data):
 # OCR処理後のテキスト処理
 def process_extracted_text(response, search_coordinates_template):
     """
-    指定された範囲内で回答を探す処理。
+    OCRレスポンスからラベル周辺の指定範囲で回答を探す処理。
 
     Parameters:
         response (obj): Google Vision APIのレスポンス。
@@ -232,7 +244,7 @@ def process_extracted_text(response, search_coordinates_template):
 
     def extract_text_with_coordinates(response):
         """
-        Google Vision APIのレスポンスからテキストとその座標情報を抽出。
+        OCRレスポンスからテキストと座標情報を抽出。
         """
         text_data = []
         for text in response.text_annotations:
@@ -251,17 +263,6 @@ def process_extracted_text(response, search_coordinates_template):
         x, y = coords[0]  # 左上の座標のみ使用
         return x_min <= x <= x_max and y_min <= y <= y_max
 
-    def normalize_text(value):
-        """
-        OCRで抽出された手書き回答を正規化する。
-        """
-        if not value:
-            return ""
-        value = re.sub(r"(\d{3})(\d{4})(\d{4})", r"\1-\2-\3", value)
-        value = re.sub(r"[^\w\s\(\):\-]", "", value)
-        value = value.strip()
-        return value
-
     # OCRデータを抽出
     text_data = extract_text_with_coordinates(response)
 
@@ -275,12 +276,12 @@ def process_extracted_text(response, search_coordinates_template):
         label_coords = label_result["label_coordinates"]
 
         if label_coords:
-            # ラベル座標を基に検索範囲を設定
-            offset = item.get("offset", (50, 50))
-            x_min = min(v[0] for v in label_coords) - offset[0]
-            y_min = min(v[1] for v in label_coords) - offset[1]
-            x_max = max(v[0] for v in label_coords) + offset[0]
-            y_max = max(v[1] for v in label_coords) + offset[1]
+            # ラベル座標と `search_area` を使って検索範囲を設定
+            search_area = item.get("search_area", {"top": 0, "bottom": 50, "left": 0, "right": 100})
+            x_min = min(v[0] for v in label_coords) + search_area["left"]
+            y_min = min(v[1] for v in label_coords) - search_area["top"]
+            x_max = max(v[0] for v in label_coords) + search_area["right"]
+            y_max = max(v[1] for v in label_coords) + search_area["bottom"]
             search_range = [(x_min, y_min), (x_max, y_max)]
 
             # 検索範囲内で回答を探す
