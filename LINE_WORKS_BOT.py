@@ -395,7 +395,7 @@ def process_extracted_text(response, search_coordinates_template):
         """
         prompt = (
             "以下はOCRで抽出されたテキストブロックと座標のデータです。"
-            "データを整理して、人が理解しやすい形式に変換してください:\n"
+            "データを整理して、人が理解しやすい形式に変換してください、処理は毎実行に完全同一の処理をしてください:\n"
             f"{block_data}"
         )
         try:
@@ -541,30 +541,48 @@ def process_and_send_text_from_image(image_path=None):
     except Exception as e:
         print(f"Error processing images: {e}")
         
+import json
+
 def organize_results_by_variable_name(results):
     """
     `process_extracted_text` の結果を変数名ごとに整理し、ログ出力する関数。
+    入力が文字列形式の場合はJSONとして解釈を試みます。
 
     Parameters:
-        results (list[dict]): `process_extracted_text` の結果。
-                              例: [{'テキスト': '商品名', '変数名': 'product_name', '回答': 'T-shirt', '座標': None}, ...]
+        results (list[dict] or str): `process_extracted_text` の結果。
+                                     例: [{'テキスト': '商品名', '変数名': 'product_name', '回答': 'T-shirt', '座標': None}, ...]
+                                     または JSON文字列。
 
     Returns:
         dict: 変数名をキー、回答を値とする辞書。
               例: {'product_name': 'T-shirt', 'delivery_date': '2023-12-31', ...}
     """
+    # 文字列形式の場合、JSONに変換を試みる
+    if isinstance(results, str):
+        try:
+            results = json.loads(results)
+        except json.JSONDecodeError as e:
+            print(f"Error: Failed to parse input string as JSON. {e}")
+            return {}
+
+    # リスト形式であることを確認
+    if not isinstance(results, list):
+        print("Error: Input data must be a list of dictionaries.")
+        return {}
+
+    # データを変数名ごとに整理
     organized_data = {}
     for result in results:
         variable_name = result.get("変数名")
         answer = result.get("回答")
         if variable_name and answer:  # 変数名と回答が有効である場合のみ保存
             organized_data[variable_name] = answer
-    
+
     # ログ出力
     print("Organized Data (by variable name):")
     for key, value in organized_data.items():
         print(f"  {key}: {value}")
-    
+
     return organized_data
 
 # Webhookエンドポイント
