@@ -225,6 +225,7 @@ def normalize_text(text):
 def process_extracted_text(response, search_coordinates_template):
     """
     OCRレスポンスから指定されたラベルに対応する回答を抽出。
+    各行ごとに区分されたテキストのラベル座標を取得。
 
     Parameters:
         response (obj): Google Vision APIのレスポンス。
@@ -233,40 +234,48 @@ def process_extracted_text(response, search_coordinates_template):
     Returns:
         list[dict]: ラベル、変数名、回答、座標をまとめた結果。
     """
-    def extract_text_with_coordinates(response):
+    def extract_lines_with_coordinates(response):
         """
-        OCRレスポンスからテキストと座標情報を抽出。
+        OCRレスポンスから行単位でテキストと座標情報を抽出。
         """
-        text_data = []
-        print("Extracting text data with coordinates...")
-        for index, text in enumerate(response.text_annotations[1:], start=1):
-            description = text.description
-            vertices = text.bounding_poly.vertices
-            coordinates = [(v.x, v.y) for v in vertices]
-
-            # 各テキストデータのログ出力
-            print(f"[Text {index + 1}] Description: '{description}'")
-            print(f"[Text {index + 1}] Coordinates: {coordinates}")
-
-            text_data.append({"text": description, "coordinates": coordinates})
-        print(f"Total texts extracted: {len(text_data)}")
-        return text_data
-
-    def find_all_texts_for_label(label, text_data):
-        """
-        ラベル名に基づいて、OCRデータから該当するすべてのテキストと座標を探す。
+        line_data = []
+        print("Extracting line data with coordinates...")
         
+        if not response.full_text_annotation:
+            print("No full_text_annotation found in the response.")
+            return []
+
+        for page in response.full_text_annotation.pages:
+            for block in page.blocks:
+                for paragraph in block.paragraphs:
+                    for word in paragraph.words:
+                        line_text = ''.join([symbol.text for symbol in word.symbols])
+                        vertices = word.bounding_box.vertices
+                        coordinates = [(v.x, v.y) for v in vertices]
+
+                        # 各行データのログ出力
+                        print(f"Line Text: '{line_text}'")
+                        print(f"Coordinates: {coordinates}")
+
+                        line_data.append({"text": line_text, "coordinates": coordinates})
+        print(f"Total lines extracted: {len(line_data)}")
+        return line_data
+
+    def find_all_texts_for_label(label, line_data):
+        """
+        ラベル名に基づいて、OCRデータから該当するすべての行テキストと座標を探す。
+
         Parameters:
             label (str): 検索対象のラベル名。
-            text_data (list[dict]): OCRで抽出されたテキストデータ。
+            line_data (list[dict]): OCRで抽出された行単位のテキストデータ。
 
         Returns:
             list[dict]: ラベルの座標情報と対応するテキストのリスト。
         """
         print(f"Searching for all matches for label: '{label}'")
         results = []
-        for item in text_data:
-            print(f"Checking text: '{item['text']}' with coordinates: {item['coordinates']}")
+        for item in line_data:
+            print(f"Checking line: '{item['text']}' with coordinates: {item['coordinates']}")
             if label in item["text"]:  # 部分一致をサポート
                 print(f"Found label '{label}' at coordinates: {item['coordinates']}")
                 results.append({
@@ -277,8 +286,8 @@ def process_extracted_text(response, search_coordinates_template):
             print(f"Label '{label}' not found in the provided text data.")
         return results
 
-    # OCRデータを抽出
-    text_data = extract_text_with_coordinates(response)
+    # 行データを抽出
+    line_data = extract_lines_with_coordinates(response)
 
     # 結果リストの初期化
     results = []
@@ -289,7 +298,7 @@ def process_extracted_text(response, search_coordinates_template):
         variable_name = item["variable_name"]
 
         # ラベルの座標をすべて取得
-        all_label_results = find_all_texts_for_label(label, text_data)
+        all_label_results = find_all_texts_for_label(label, line_data)
 
         # ラベル座標のログ出力
         if all_label_results:
