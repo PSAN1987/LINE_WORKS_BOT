@@ -308,12 +308,12 @@ search_coordinates_template = [
     {
         "label": "小計",
         "variable_name": "sub_total",
-        "prompt_instructions": "以下の整理されたデータから「小計」に該当する情報を抽出してください。回答は数字のみで良いです。"
+        "prompt_instructions": "以下の整理されたデータから「小計」に該当する情報を抽出してください。回答は数字だけにしてください。。"
     },
     {
         "label": "合計",
         "variable_name": "total",
-        "prompt_instructions": "以下の整理されたデータから「合計」に該当する情報を抽出してください。回答は数字のみで良いです。"
+        "prompt_instructions": "以下の整理されたデータから「合計」に該当する情報を抽出してください。回答は数字だけにしてください。"
     },
     {
         "label": "プリントサイズ",
@@ -395,7 +395,7 @@ def process_extracted_text(response, search_coordinates_template):
         """
         prompt = (
             "以下はOCRで抽出されたテキストブロックと座標のデータです。"
-            "データを整理して、人が理解しやすい形式に変換してください:\n"
+            "データを整理して、ラベルと回答検索が簡単な形式に変換してください。この処理は実行精度を一定にするために同じ画像の場合は毎回同一にしてください:\n"
             f"{block_data}"
         )
         try:
