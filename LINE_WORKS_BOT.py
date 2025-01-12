@@ -343,11 +343,14 @@ def process_and_send_text_from_image(image_path=None):
                 # search_coordinates_template を渡す
                 processed_results = process_extracted_text(response, search_coordinates_template)
 
+                # デバッグ用ログ
+                print("Processed results:", processed_results)
+
                 # 結果をLINE Worksユーザーに送信
                 user_id = "9295462e-77df-4410-10a1-05ed80ea849d"  # 実際のユーザーIDに置き換え
                 for result in processed_results:
                     label = result["テキスト"]
-                    answer = result["手書き回答"]
+                    answer = result["回答"]  # 修正
                     if answer.strip():
                         send_message(user_id, f"{label}: {answer}")
                     else:
@@ -358,8 +361,11 @@ def process_and_send_text_from_image(image_path=None):
 
             # 処理済み画像を削除
             if not image_path:
-                os.remove(current_image_path)
-                print(f"Processed and removed {current_image_path}.")
+                try:
+                    os.remove(current_image_path)
+                    print(f"Processed and removed {current_image_path}.")
+                except Exception as remove_error:
+                    print(f"Failed to remove {current_image_path}: {remove_error}")
     except Exception as e:
         print(f"Error processing images: {e}")
 
