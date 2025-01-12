@@ -228,7 +228,7 @@ search_coordinates_template = [
     {
         "label": "学校住所",
         "variable_name": "school_address",
-        "prompt_instructions": "以下の整理されたデータから「学校住所」に該当する情報を抽出してください。回答は〒番号と住所だけで良いです。"
+        "prompt_instructions": "以下の整理されたデータから「学校住所」に該当する情報を抽出してください。回答は〒番号と住所だけで良いです。学校名からGoogle検索した学校住所も記載してください。"
     },
     {
         "label": "学校TEL",
@@ -243,7 +243,7 @@ search_coordinates_template = [
     {
         "label": "ご担任(保護者)携帯",
         "variable_name": "boss_mobile",
-        "prompt_instructions": "以下の整理されたデータから「ご担任(保護者)携帯」に該当する情報を抽出してください。回答はxxx-xxxx-xxxxのような形式の11桁の数字を探してください。"
+        "prompt_instructions": "以下の整理されたデータから「ご担任(保護者)携帯」に該当する情報を抽出してください。回答は「ご担任(保護者)携帯]の近くにあってxxx-xxxx-xxxxのような形式の11桁の数字を探してください。"
     },
     {
         "label": "担任(保護者)メール",
@@ -263,7 +263,7 @@ search_coordinates_template = [
     {
         "label": "代表者携帯",
         "variable_name": "representative_mobile",
-        "prompt_instructions": "以下の整理されたデータから「代表者携帯」に該当する情報を抽出してください。回答はxxx-xxxx-xxxxのような形式の11桁の数字を探してください。"
+        "prompt_instructions": "以下の整理されたデータから「代表者携帯」に該当する情報を抽出してください。回答は「代表者携帯」の右にあってxxx-xxxx-xxxxのような形式の11桁の数字を探してください。"
     },
     {
         "label": "代表者メール",
@@ -356,7 +356,7 @@ def process_extracted_text(response, search_coordinates_template):
         search_coordinates_template (list[dict]): ラベル情報と範囲情報を含むテンプレート。
 
     Returns:
-        list[dict]: ラベル、変数名、回答、座標をまとめた結果。
+        dict: ラベル、変数名、回答をまとめた結果（変数名をキーとした辞書）。
     """
 
     def normalize_text(text):
@@ -391,7 +391,6 @@ def process_extracted_text(response, search_coordinates_template):
     def query_openai_for_analysis(block_data):
         """
         OpenAI APIを使用してブロックデータを整理。
-        ドキュメントに沿って openai.chat.completions.create を用いた実装に修正。
         """
         prompt = (
             "以下はOCRで抽出されたテキストブロックと座標のデータです。"
@@ -405,7 +404,7 @@ def process_extracted_text(response, search_coordinates_template):
                     {"role": "system", "content": "You are a helpful assistant."},
                     {"role": "user", "content": prompt}
                 ],
-                temperature = 0,
+                temperature=0,
             )
             ai_message = response_obj.choices[0].message.content
             return ai_message
@@ -416,61 +415,50 @@ def process_extracted_text(response, search_coordinates_template):
     def find_label_in_organized_text(organized_text, label, custom_prompt=None):
         """
         整理されたテキストからラベルに対応する回答を探す。
-        custom_prompt（独自のプロンプト）を受け取り、なければデフォルト文言を使う。
         """
-
-        # テンプレートで独自のプロンプトが指定されている場合
-        if custom_prompt:
-            prompt = f"{custom_prompt}\n\n{organized_text}"
-        else:
-            # 指定がなければ、従来の文言で検索
-            prompt = (
-                f"以下の整理されたデータから「{label}」に該当する内容を抽出してください:\n"
-                f"{organized_text}"
-            )
+        prompt = f"{custom_prompt or f'以下の整理されたデータから「{label}」に該当する内容を抽出してください:'}\n\n{organized_text}"
 
         try:
             response_obj = openai.chat.completions.create(
-                model="gpt-3.5-turbo",  # 必要に応じて "gpt-4" 等に変更
+                model="gpt-3.5-turbo",
                 messages=[
                     {"role": "system", "content": "You are a helpful assistant."},
                     {"role": "user", "content": prompt}
                 ],
-                temperature = 0,
+                temperature=0,
             )
-            return response_obj.choices[0].message.content
+            return response_obj.choices[0].message.content.strip()
         except Exception as e:
             print(f"OpenAI API Error (label-search): {e}")
             return ""
 
     # --- ここからメイン処理 ---
 
-    # 1. OCR結果のブロックを抽出
+    # OCR結果のブロックを抽出
     block_data = extract_blocks_with_coordinates(response)
 
-    # 2. OpenAI API を使って全ブロックデータを人が理解しやすい形に整理
+    # OpenAI API を使って全ブロックデータを人が理解しやすい形に整理
     organized_text = query_openai_for_analysis(block_data)
 
-    results = []
-    # 3. テンプレートの各要素に対してラベルを検索
+    # 結果を保存する辞書
+    results_dict = {}
+
+    # 各テンプレート項目に対応するデータを抽出
     for template_item in search_coordinates_template:
         label = template_item["label"]
         variable_name = template_item["variable_name"]
-
-        # テンプレートに"prompt_instructions"があれば使う
         custom_prompt = template_item.get("prompt_instructions", None)
 
-        # find_label_in_organized_text に custom_prompt を渡す
-        refined_answer = find_label_in_organized_text(organized_text, label, custom_prompt)
+        # テキストからデータを抽出
+        answer = find_label_in_organized_text(organized_text, label, custom_prompt)
 
-        results.append({
-            "テキスト": label,
-            "変数名": variable_name,
-            "回答": refined_answer,
-            "座標": None  # 必要に応じて座標情報を付与するならここで追加
-        })
+        # 結果を辞書に保存
+        results_dict[variable_name] = {
+            "label": label,
+            "answer": answer
+        }
 
-    return results
+    return results_dict
 
     # OCRレスポンスからブロックデータを抽出
     block_data = extract_blocks_with_coordinates(response)
