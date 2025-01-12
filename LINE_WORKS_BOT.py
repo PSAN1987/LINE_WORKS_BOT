@@ -294,7 +294,7 @@ def process_extracted_text(response, search_coordinates_template):
         variable_name = item["variable_name"]
 
         # ラベルの座標を取得
-        label_result = find_text_near_label(label, text_data)
+        label_result = find_all_label_coordinates(labels, text_data)
         label_coords = label_result["label_coordinates"]
 
         # ラベル座標をログ出力
