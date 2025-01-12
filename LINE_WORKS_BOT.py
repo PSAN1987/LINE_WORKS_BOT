@@ -356,7 +356,7 @@ def process_extracted_text(response, search_coordinates_template):
         search_coordinates_template (list[dict]): ラベル情報と範囲情報を含むテンプレート。
 
     Returns:
-        dict: ラベル、変数名、回答をまとめた結果（変数名をキーとした辞書）。
+        list[dict]: ラベル、変数名、回答、座標をまとめた結果。
     """
 
     def normalize_text(text):
@@ -391,6 +391,7 @@ def process_extracted_text(response, search_coordinates_template):
     def query_openai_for_analysis(block_data):
         """
         OpenAI APIを使用してブロックデータを整理。
+        ドキュメントに沿って openai.chat.completions.create を用いた実装に修正。
         """
         prompt = (
             "以下はOCRで抽出されたテキストブロックと座標のデータです。"
@@ -404,7 +405,7 @@ def process_extracted_text(response, search_coordinates_template):
                     {"role": "system", "content": "You are a helpful assistant."},
                     {"role": "user", "content": prompt}
                 ],
-                temperature=0,
+                temperature = 0,
             )
             ai_message = response_obj.choices[0].message.content
             return ai_message
@@ -415,50 +416,61 @@ def process_extracted_text(response, search_coordinates_template):
     def find_label_in_organized_text(organized_text, label, custom_prompt=None):
         """
         整理されたテキストからラベルに対応する回答を探す。
+        custom_prompt（独自のプロンプト）を受け取り、なければデフォルト文言を使う。
         """
-        prompt = f"{custom_prompt or f'以下の整理されたデータから「{label}」に該当する内容を抽出してください:'}\n\n{organized_text}"
+
+        # テンプレートで独自のプロンプトが指定されている場合
+        if custom_prompt:
+            prompt = f"{custom_prompt}\n\n{organized_text}"
+        else:
+            # 指定がなければ、従来の文言で検索
+            prompt = (
+                f"以下の整理されたデータから「{label}」に該当する内容を抽出してください:\n"
+                f"{organized_text}"
+            )
 
         try:
             response_obj = openai.chat.completions.create(
-                model="gpt-3.5-turbo",
+                model="gpt-3.5-turbo",  # 必要に応じて "gpt-4" 等に変更
                 messages=[
                     {"role": "system", "content": "You are a helpful assistant."},
                     {"role": "user", "content": prompt}
                 ],
-                temperature=0,
+                temperature = 0,
             )
-            return response_obj.choices[0].message.content.strip()
+            return response_obj.choices[0].message.content
         except Exception as e:
             print(f"OpenAI API Error (label-search): {e}")
             return ""
 
     # --- ここからメイン処理 ---
 
-    # OCR結果のブロックを抽出
+    # 1. OCR結果のブロックを抽出
     block_data = extract_blocks_with_coordinates(response)
 
-    # OpenAI API を使って全ブロックデータを人が理解しやすい形に整理
+    # 2. OpenAI API を使って全ブロックデータを人が理解しやすい形に整理
     organized_text = query_openai_for_analysis(block_data)
 
-    # 結果を保存する辞書
-    results_dict = {}
-
-    # 各テンプレート項目に対応するデータを抽出
+    results = []
+    # 3. テンプレートの各要素に対してラベルを検索
     for template_item in search_coordinates_template:
         label = template_item["label"]
         variable_name = template_item["variable_name"]
+
+        # テンプレートに"prompt_instructions"があれば使う
         custom_prompt = template_item.get("prompt_instructions", None)
 
-        # テキストからデータを抽出
-        answer = find_label_in_organized_text(organized_text, label, custom_prompt)
+        # find_label_in_organized_text に custom_prompt を渡す
+        refined_answer = find_label_in_organized_text(organized_text, label, custom_prompt)
 
-        # 結果を辞書に保存
-        results_dict[variable_name] = {
-            "label": label,
-            "answer": answer
-        }
+        results.append({
+            "テキスト": label,
+            "変数名": variable_name,
+            "回答": refined_answer,
+            "座標": None  # 必要に応じて座標情報を付与するならここで追加
+        })
 
-    return results_dict
+    return results
 
     # OCRレスポンスからブロックデータを抽出
     block_data = extract_blocks_with_coordinates(response)
