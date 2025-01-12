@@ -205,8 +205,8 @@ search_coordinates_template = [
     {"label": "商品名", "variable_name": "product_name", "search_range": [(50, 500), (300, 550)]},
     {"label": "商品カラー", "variable_name": "product_color", "search_range": [(350, 500), (600, 550)]},
 ]
-# OCR処理後のテキスト処理
 
+# OCR処理後のテキスト処理
 def process_extracted_text(response, search_coordinates_template):
     """
     Google Vision APIのレスポンスを使用して、テキストを処理し、
@@ -304,6 +304,7 @@ def process_extracted_text(response, search_coordinates_template):
 
     return results
 
+
 def process_and_send_text_from_image(image_path=None):
     """
     Google Vision APIを使用して画像からテキストを抽出し、
@@ -333,8 +334,8 @@ def process_and_send_text_from_image(image_path=None):
                     continue
 
                 print(f"Extracting text from {current_image_path}...")
-                # レスポンス全体を`process_extracted_text`に渡す
-                processed_results = process_extracted_text(response)
+                # search_coordinates_template を渡す
+                processed_results = process_extracted_text(response, search_coordinates_template)
 
                 # 結果をLINE Worksユーザーに送信
                 user_id = "9295462e-77df-4410-10a1-05ed80ea849d"  # 実際のユーザーIDに置き換え
@@ -355,7 +356,6 @@ def process_and_send_text_from_image(image_path=None):
                 print(f"Processed and removed {current_image_path}.")
     except Exception as e:
         print(f"Error processing images: {e}")
-
 
 # Webhookエンドポイント
 @app.route("/webhook", methods=["POST"])
