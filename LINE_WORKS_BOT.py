@@ -347,13 +347,22 @@ def process_and_send_text_from_image(image_path=None):
                 user_id = "9295462e-77df-4410-10a1-05ed80ea849d"  # 実際のユーザーIDに置き換え
                 for result in processed_results:
                     label = result["テキスト"]
-                    answer = result["回答"]  # 修正
+                    answer = result["回答"]
                     variable_name = result["変数名"]
-                    if answer.strip():
-                        send_message(user_id, f"{label}: {variable_name}: {answer}")
+
+                    # `回答`がリストの場合を考慮
+                    if isinstance(answer, list):
+                        # リスト内の要素を結合して1つの文字列にする
+                        answer = " ".join(map(str, answer))
+
+                    # `回答`が文字列であることを確認
+                    if isinstance(answer, str) and answer.strip():
+                        try:
+                            send_message(user_id, f"{label}: {variable_name}: {answer.strip()}")
+                        except Exception as send_error:
+                            print(f"Failed to send message for label '{label}': {send_error}")
                     else:
                         print(f"No meaningful answer found for label '{label}' in {current_image_path}.")
-
             except Exception as e:
                 print(f"Failed to process {current_image_path}: {e}")
 
