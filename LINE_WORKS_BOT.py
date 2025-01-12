@@ -233,6 +233,15 @@ def process_extracted_text(response, search_coordinates_template):
     Returns:
         list[dict]: ラベル、変数名、回答、座標をまとめた結果。
     """
+    import re
+
+    def normalize_text(text):
+        """
+        テキストを正規化して比較可能な形に整える。
+        スペースや特殊文字を削除し、小文字化する。
+        """
+        return re.sub(r"\s+", "", text).lower()
+
     def extract_blocks_with_coordinates(response):
         """
         OCRレスポンスからblock単位でテキストと座標情報を抽出。
@@ -279,10 +288,11 @@ def process_extracted_text(response, search_coordinates_template):
         """
         print(f"Searching for all matches for label: '{label}'")
         results = []
+        normalized_label = normalize_text(label)  # ラベルを正規化
         for item in block_data:
-            print(f"Checking block: '{item['text']}' with coordinates: {item['coordinates']}")
-            # 部分一致をサポート (大文字・小文字を区別せず検索)
-            if label.lower() in item["text"].lower():  # 部分一致
+            normalized_text = normalize_text(item["text"])  # OCRテキストを正規化
+            print(f"Checking block: '{item['text']}' (normalized: '{normalized_text}') with coordinates: {item['coordinates']}")
+            if normalized_label in normalized_text:  # 正規化したテキストで部分一致を比較
                 print(f"Found label '{label}' at coordinates: {item['coordinates']}")
                 results.append({
                     "label_coordinates": item["coordinates"],
@@ -322,7 +332,6 @@ def process_extracted_text(response, search_coordinates_template):
         })
 
     return results
-
 
 def process_and_send_text_from_image(image_path=None):
     """
