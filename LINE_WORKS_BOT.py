@@ -196,15 +196,53 @@ def initialize_vision_client():
 
 search_coordinates_template = [
     {"label": "お届け日", "variable_name": "delivery_date", "search_range": [(50, 30), (250, 80)]},
-    {"label": "商品のご使用日", "variable_name": "use_date", "search_range": [(300, 30), (500, 80)]},
+    {"label": "ご使用日", "variable_name": "use_date", "search_range": [(300, 30), (500, 80)]},
     {"label": "学校名", "variable_name": "school_name", "search_range": [(50, 100), (400, 150)]},
     {"label": "学校住所", "variable_name": "school_address", "search_range": [(50, 180), (500, 230)]},
     {"label": "学校TEL", "variable_name": "school_tel", "search_range": [(550, 180), (750, 230)]},
-    {"label": "代表者 氏名 フリガナ", "variable_name": "representative_furigana", "search_range": [(50, 280), (400, 330)]},
-    {"label": "代表者 携帯", "variable_name": "representative_mobile", "search_range": [(550, 280), (750, 330)]},
+    {"label": "氏名", "variable_name": "representative_furigana", "search_range": [(50, 280), (400, 330)]},
+    {"label": "携帯", "variable_name": "representative_mobile", "search_range": [(550, 280), (750, 330)]},
     {"label": "商品名", "variable_name": "product_name", "search_range": [(50, 380), (400, 430)]},
     {"label": "商品カラー", "variable_name": "product_color", "search_range": [(550, 380), (750, 430)]},
 ]
+
+def find_text_near_label(label, text_data, search_range_offset):
+    """
+    指定されたラベルの座標を取得し、その周辺位置から回答を探す
+
+    Parameters:
+        label (str): ラベルのテキスト (例: "お届け日")
+        text_data (list): OCRで抽出されたテキストデータ
+        search_range_offset (tuple): ラベルの座標からのオフセット範囲 (例: (x_offset, y_offset))
+
+    Returns:
+        dict: 回答とその座標情報
+    """
+    result = {"answer": "", "label_coordinates": None, "answer_coordinates": None}
+
+    # ラベルを探してその座標を取得
+    for item in text_data:
+        if item["text"] == label:
+            label_coords = item["coordinates"]
+            result["label_coordinates"] = label_coords
+
+            # 座標範囲の計算
+            x_min = min(v[0] for v in label_coords) - search_range_offset[0]
+            y_min = min(v[1] for v in label_coords) - search_range_offset[1]
+            x_max = max(v[0] for v in label_coords) + search_range_offset[0]
+            y_max = max(v[1] for v in label_coords) + search_range_offset[1]
+            search_range = [(x_min, y_min), (x_max, y_max)]
+
+            # 指定された範囲内で回答を探す
+            for answer_item in text_data:
+                if is_within_coordinates(answer_item["coordinates"], search_range):
+                    result["answer"] = answer_item["text"]
+                    result["answer_coordinates"] = answer_item["coordinates"]
+                    break
+            break
+
+    return result
+
 
 # OCR処理後のテキスト処理
 def process_extracted_text(response, search_coordinates_template):
@@ -286,13 +324,11 @@ def process_extracted_text(response, search_coordinates_template):
     for item in search_coordinates_template:
         label = item.get("label")
         variable_name = item.get("variable_name")
-        search_range = item.get("search_range")
 
-        if not search_range:
-            print(f"No search range defined for label '{label}'")
-            continue
+        # ラベルの周辺から回答を探す
+        search_range_offset = (50, 50)  # ラベル座標からのオフセット
+        result = find_text_near_label(label, text_data, search_range_offset)
 
-        result = find_text_in_range(label, text_data, search_range)
         processed_result = {
             "テキスト": label,
             "変数名": variable_name,
