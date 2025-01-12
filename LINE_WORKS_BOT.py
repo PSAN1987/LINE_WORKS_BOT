@@ -199,17 +199,17 @@ search_coordinates_template = [
     {
         "label": "お届け日",
         "variable_name": "delivery_date",
-        "search_area": {"top": 1, "bottom": 1, "left": 1, "right": 20}
+        "search_area": {"top": 1, "bottom": 1, "left": 1, "right": 1}
     },
     {
         "label": "ご使用日",
         "variable_name": "use_date",
-        "search_area": {"top": 1, "bottom": 1, "left": 1, "right": 20}
+        "search_area": {"top": 1, "bottom": 1, "left": 1, "right": 1}
     },
     {
         "label": "学校名",
         "variable_name": "school_name",
-        "search_area": {"top": 1, "bottom": 1, "left": 10, "right": 100}
+        "search_area": {"top": 1, "bottom": 1, "left": 10, "right": 1}
     },
 ]
 
@@ -274,6 +274,12 @@ def process_extracted_text(response, search_coordinates_template):
         # ラベルの座標を取得
         label_result = find_text_near_label(label, text_data)
         label_coords = label_result["label_coordinates"]
+
+        # ラベル座標をログ出力
+        if label_coords:
+            print(f"Label '{label}' coordinates: {label_coords}")
+        else:
+            print(f"Label '{label}' coordinates not found.")
 
         if label_coords:
             # ラベル座標と `search_area` を使って検索範囲を設定
