@@ -338,28 +338,40 @@ def process_extracted_text(response, search_coordinates_template):
     Returns:
         list[dict]: ラベル、変数名、回答、座標をまとめた結果。
     """
+
     def normalize_text(text):
+        """全角文字を半角にし、スペースを除去して小文字化する。"""
         text = unicodedata.normalize('NFKC', text)  # 全角→半角
-        text = re.sub(r"\s+", "", text)  # スペース削除
+        text = re.sub(r"\s+", "", text)            # スペース削除
         return text.lower()
 
     def extract_blocks_with_coordinates(response):
-        """OCRレスポンスからblock単位でテキストと座標情報を抽出。"""
+        """OCRレスポンスから block 単位でテキストと座標情報を抽出。"""
         block_data = []
         if not response.full_text_annotation:
             return []
+
         for page in response.full_text_annotation.pages:
             for block in page.blocks:
                 block_text = "".join(
-                    ["".join([symbol.text for symbol in word.symbols]) + " "
-                     for paragraph in block.paragraphs for word in paragraph.words]
+                    [
+                        "".join(symbol.text for symbol in word.symbols) + " "
+                        for paragraph in block.paragraphs
+                        for word in paragraph.words
+                    ]
                 )
                 coordinates = [(v.x, v.y) for v in block.bounding_box.vertices]
-                block_data.append({"text": block_text.strip(), "coordinates": coordinates})
+                block_data.append({
+                    "text": block_text.strip(),
+                    "coordinates": coordinates
+                })
         return block_data
 
     def is_within_search_area(label_coords, block_coords, search_area):
-        """指定された範囲内にblockが存在するかチェック。"""
+        """
+        指定された search_area から計算した矩形範囲内に
+        block_coords が存在するかチェック。
+        """
         x_min = min(v[0] for v in label_coords) + search_area["left"]
         x_max = max(v[0] for v in label_coords) + search_area["right"]
         y_min = min(v[1] for v in label_coords) - search_area["top"]
@@ -370,52 +382,57 @@ def process_extracted_text(response, search_coordinates_template):
         block_y_min = min(v[1] for v in block_coords)
         block_y_max = max(v[1] for v in block_coords)
 
-        return (x_min <= block_x_min <= x_max or x_min <= block_x_max <= x_max) and \
-               (y_min <= block_y_min <= y_max or y_min <= block_y_max <= y_max)
+        return (
+            (x_min <= block_x_min <= x_max or x_min <= block_x_max <= x_max) and
+            (y_min <= block_y_min <= y_max or y_min <= block_y_max <= y_max)
+        )
 
     def query_openai_api(prompt):
-        """OpenAI APIを呼び出して回答を生成。"""
+        """
+        OpenAI APIを呼び出して回答を生成し、文字列を返す。
+        エラー時は空文字列 "" を返す。
+        """
         try:
-            response = openai.ChatCompletion.create(
+            response_obj = openai.ChatCompletion.create(
                 model="gpt-3.5-turbo",  # または "gpt-4"
                 messages=[
                     {"role": "system", "content": "You are a helpful assistant."},
                     {"role": "user", "content": prompt}
                 ],
-                max_tokens=100,
-                n=1,
-                stop=None
             )
-            return response["choices"][0]["message"]["content"].strip()
+            ai_message = response_obj.choices[0].message.content
+            return ai_message
         except Exception as e:
             print(f"OpenAI API Error: {e}")
             return ""
 
+    # block データをまとめて抽出
     block_data = extract_blocks_with_coordinates(response)
     results = []
 
+    # テンプレートに含まれる各ラベルについて探索
     for item in search_coordinates_template:
         label = item["label"]
         variable_name = item["variable_name"]
         search_area = item["search_area"]
 
-        # ラベルを探す
+        # ラベルに一致する block を探す
         label_results = []
         for block in block_data:
             if normalize_text(label) in normalize_text(block["text"]):
                 label_results.append(block)
 
+        # ラベルが見つかった場合、そこから一定範囲内の回答を探す
         if label_results:
             for label_result in label_results:
                 label_coords = label_result["coordinates"]
-                # 検索範囲内の回答を探す
                 answers = []
                 for block in block_data:
                     if is_within_search_area(label_coords, block["coordinates"], search_area):
                         answers.append(block["text"])
 
-                # OpenAI APIを使って回答を精査
-                prompt = f"以下のテキストから{label}に該当する内容を抽出してください:\n{answers}"
+                # OpenAI APIを使って回答テキストを抽出
+                prompt = f"以下のテキストから「{label}」に該当する内容を抽出してください:\n{answers}"
                 refined_answer = query_openai_api(prompt)
 
                 results.append({
@@ -425,6 +442,7 @@ def process_extracted_text(response, search_coordinates_template):
                     "座標": label_coords
                 })
         else:
+            # ラベルが見つからない場合は空の結果を作成
             results.append({
                 "テキスト": label,
                 "変数名": variable_name,
@@ -433,7 +451,6 @@ def process_extracted_text(response, search_coordinates_template):
             })
 
     return results
-
 
 def process_and_send_text_from_image(image_path=None):
     """
