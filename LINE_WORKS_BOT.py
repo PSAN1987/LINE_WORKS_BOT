@@ -203,117 +203,117 @@ search_coordinates_template = [
     {
         "label": "お届け日",
         "variable_name": "delivery_date",
-        "search_area": {"top": 1, "bottom": 10, "left": 0, "right": 100}
+        "prompt_instructions": "以下の整理されたデータから「お届け日」に該当する情報を抽出してください。回答は日付だけで良いです。"
     },
     {
         "label": "ご使用日",
         "variable_name": "use_date",
-        "search_area": {"top": 1, "bottom": 1, "left": 0, "right": 5}
+        "prompt_instructions": "以下の整理されたデータから「ご使用日」に該当する情報を抽出してください。回答は日付だけで良いです。"
     },
     {
         "label": "学校名",
         "variable_name": "school_name",
-        "search_area": {"top": 10, "bottom": 10, "left": 0, "right": 400}
+        "prompt_instructions": "以下の整理されたデータから「学校名」に該当する情報を抽出してください。回答は学校名だけで良いです。"
     },
     {
-        "label": "表示名",
+        "label": "LINEアカウント名",
         "variable_name": "line_name",
-        "search_area": {"top": -10, "bottom": 10, "left": 0, "right": 100}
+        "prompt_instructions": "以下の整理されたデータから「LINEアカウント名」に該当する情報を抽出してください。"
     },
     {
-        "label": "団体名",
+        "label": "クラス団体名",
         "variable_name": "group_name",
-        "search_area": {"top": 5, "bottom": 0, "left": 0, "right": 150}
+        "prompt_instructions": "以下の整理されたデータから「クラス団体名」に該当する情報を抽出してください。"
     },
     {
         "label": "学校住所",
         "variable_name": "school_address",
-        "search_area": {"top": 10, "bottom": 10, "left": 0, "right": 300}
+        "prompt_instructions": "以下の整理されたデータから「学校住所」に該当する情報を抽出してください。回答は〒番号と住所だけで良いです"
     },
     {
         "label": "学校TEL",
         "variable_name": "school_tel",
-        "search_area": {"top": 5, "bottom": 5, "left": 0, "right": 150}
+        "prompt_instructions": "以下の整理されたデータから「学校TEL」に該当する情報を抽出してください。回答はxxxx-xx-xxxxのような10桁の数字だけで良いです"
     },
     {
-        "label": "自 署",
+        "label": "ご担任",
         "variable_name": "boss_furigana",
-        "search_area": {"top": 1, "bottom": 1, "left": 0, "right": 100}
+        "prompt_instructions": "以下の整理されたデータから「ご担任」に該当する情報を抽出してください。回答は漢字の名前とフリガナを期待しています。"
     },
     {
-        "label": "ご 担任 ( 保護 者 ) 携帯",
+        "label": "ご担任(保護者)携帯",
         "variable_name": "boss_mobile",
-        "search_area": {"top": 5, "bottom": 5, "left": 0, "right": 200}
+        "prompt_instructions": "以下の整理されたデータから「ご担任(保護者)携帯」に該当する情報を抽出してください。回答はxxx-xxxx-xxxxのような11桁の数字だけで良いです。"
     },
     {
-        "label": "担任 ( 保護者 ) | メール",
+        "label": "担任(保護者)メール",
         "variable_name": "boss_email",
-        "search_area": {"top": 5, "bottom": 5, "left": 0, "right": 300}
+        "prompt_instructions": "以下の整理されたデータから「担任(保護者)メール」に該当する情報を抽出してください。回答はxxx@xxxのようなemail形式だけで良いです。"
     },
     {
         "label": "デザイン確認方法",
         "variable_name": "design_confirm",
-        "search_area": {"top": 5, "bottom": 5, "left": 0, "right": 200}
+        "prompt_instructions": "以下の整理されたデータから「デザイン確認方法」に該当する情報を抽出してください。回答はLINE代表者 or LINEご担任 or メール代表者 or メールご担任のどれか1つです。"
     },
     {
-        "label": "代表者氏 名",
+        "label": "代表者氏名",
         "variable_name": "representative_furigana",
-        "search_area": {"top": 5, "bottom": 5, "left": 0, "right": 100}
+        "prompt_instructions": "以下の整理されたデータから「代表者指名」に該当する情報を抽出してください。回答は漢字の名前とフリガナを期待しています。"
     },
     {
         "label": "代表者携帯",
         "variable_name": "representative_mobile",
-        "search_area": {"top": 5, "bottom": 5, "left": 0, "right": 200}
+        "prompt_instructions": "以下の整理されたデータから「代表者携帯」に該当する情報を抽出してください。回答はxxx-xxxx-xxxxのような11桁の数字だけで良いです。"
     },
     {
         "label": "代表者メール",
         "variable_name": "representative_email",
-        "search_area": {"top": 5, "bottom": 5, "left": 0, "right": 300}
+        "prompt_instructions": "以下の整理されたデータから「代表者メール」に該当する情報を抽出してください。回答はxxx@xxxのようなemail形式だけで良いです。"
     },
     {
         "label": "商品名",
         "variable_name": "product_name",
-        "search_area": {"top": 5, "bottom": 5, "left": 0, "right": 300}
+        "prompt_instructions": "以下の整理されたデータから「商品名」に該当する情報を抽出してください。回答は商品名座標の直ぐ下にある回答として洋服の種類を期待しています。"
     },
     {
         "label": "商品カラー",
         "variable_name": "product_color",
-        "search_area": {"top": 5, "bottom": 5, "left": 0, "right": 300}
+        "prompt_instructions": "以下の整理されたデータから「商品カラー」に該当する情報を抽出してください。回答は商品カラー座標の直ぐ下にある回答として色に関する情報を期待しています。"
     },
     {
         "label": "S",
         "variable_name": "S",
-        "search_area": {"top": 5, "bottom": 5, "left": 0, "right": 0}
+        "prompt_instructions": "以下の整理されたデータから「S」に該当する情報を抽出してください。回答は商品カラーの近くにあってSの真下の数字を期待しています。"
     },
     {
         "label": "M",
         "variable_name": "M",
-        "search_area": {"top": 5, "bottom": 5, "left": 0, "right": 0}
+        "prompt_instructions": "以下の整理されたデータから「M」に該当する情報を抽出してください。回答は商品カラーの近くにあってMの真下の数字を期待しています。"
     },
     {
         "label": "L(F)",
         "variable_name": "L(F)",
-        "search_area": {"top": 5, "bottom": 5, "left": 0, "right": 0}
+        "prompt_instructions": "以下の整理されたデータから「L(F)」に該当する情報を抽出してください。回答は商品カラーの近くにあってL(F)の真下の数字を期待しています。"
     },
     {
         "label": "LL",
         "variable_name": "LL(XL)",
-        "search_area": {"top": 5, "bottom": 5, "left": 0, "right": 0}
+        "prompt_instructions": "以下の整理されたデータから「LL」に該当する情報を抽出してください。回答は商品カラーの近くにあってLLの真下の数字を期待しています。"
     },
     {
         "label": "3L",
         "variable_name": "3L(XXL)",
-        "search_area": {"top": 5, "bottom": 5, "left": 0, "right": 0}
+        "prompt_instructions": "以下の整理されたデータから「3L」に該当する情報を抽出してください。回答は商品カラーの近くにあって3Lの真下の数字を期待しています。"
     },
     {
         "label": "小計",
         "variable_name": "sub_total",
-        "search_area": {"top": 5, "bottom": 5, "left": 0, "right": 200}
+        "prompt_instructions": "以下の整理されたデータから「小計」に該当する情報を抽出してください。回答は数字のみで良いです。"
     },
     {
         "label": "合計",
         "variable_name": "total",
-        "search_area": {"top": 5, "bottom": 5, "left": 0, "right": 200}
+        "prompt_instructions": "以下の整理されたデータから「合計」に該当する情報を抽出してください。回答は数字のみで良いです。"
     },
 ]
 
@@ -396,15 +396,22 @@ def process_extracted_text(response, search_coordinates_template):
             print(f"OpenAI API Error (analysis): {e}")
             return ""
 
-    def find_label_in_organized_text(organized_text, label):
+    def find_label_in_organized_text(organized_text, label, custom_prompt=None):
         """
         整理されたテキストからラベルに対応する回答を探す。
-        openai.chat.completions.create を利用して実装。
+        custom_prompt（独自のプロンプト）を受け取り、なければデフォルト文言を使う。
         """
-        prompt = (
-            f"以下の整理されたデータから「{label}」に該当する内容を抽出してください:\n"
-            f"{organized_text}"
-        )
+
+        # テンプレートで独自のプロンプトが指定されている場合
+        if custom_prompt:
+            prompt = f"{custom_prompt}\n\n{organized_text}"
+        else:
+            # 指定がなければ、従来の文言で検索
+            prompt = (
+                f"以下の整理されたデータから「{label}」に該当する内容を抽出してください:\n"
+                f"{organized_text}"
+            )
+
         try:
             response_obj = openai.chat.completions.create(
                 model="gpt-3.5-turbo",  # 必要に応じて "gpt-4" 等に変更
@@ -413,8 +420,7 @@ def process_extracted_text(response, search_coordinates_template):
                     {"role": "user", "content": prompt}
                 ],
             )
-            ai_message = response_obj.choices[0].message.content
-            return ai_message
+            return response_obj.choices[0].message.content
         except Exception as e:
             print(f"OpenAI API Error (label-search): {e}")
             return ""
@@ -427,24 +433,26 @@ def process_extracted_text(response, search_coordinates_template):
     # 2. OpenAI API を使って全ブロックデータを人が理解しやすい形に整理
     organized_text = query_openai_for_analysis(block_data)
 
-    # 3. ラベルごとに回答を探索して格納
     results = []
+    # 3. テンプレートの各要素に対してラベルを検索
     for template_item in search_coordinates_template:
         label = template_item["label"]
         variable_name = template_item["variable_name"]
 
-        # OpenAIに問い合わせてラベルに対応する回答を取得
-        refined_answer = find_label_in_organized_text(organized_text, label)
+        # テンプレートに"prompt_instructions"があれば使う
+        custom_prompt = template_item.get("prompt_instructions", None)
+
+        # find_label_in_organized_text に custom_prompt を渡す
+        refined_answer = find_label_in_organized_text(organized_text, label, custom_prompt)
 
         results.append({
             "テキスト": label,
             "変数名": variable_name,
             "回答": refined_answer,
-            "座標": None  # 必要なら座標などを追加
+            "座標": None  # 必要に応じて座標情報を付与するならここで追加
         })
 
     return results
-
 
     # OCRレスポンスからブロックデータを抽出
     block_data = extract_blocks_with_coordinates(response)
