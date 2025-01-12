@@ -226,7 +226,10 @@ def find_text_near_label(label, text_data):
     """
     for item in text_data:
         if item["text"] == label:
-            return {"label_coordinates": item["coordinates"]}
+            label_coords = item["coordinates"]
+            print(f"Label '{label}' found with coordinates: {label_coords}")
+            return {"label_coordinates": label_coords}
+    print(f"Label '{label}' not found in text data.")
     return {"label_coordinates": None}
 
 # OCR処理後のテキスト処理
@@ -274,6 +277,12 @@ def process_extracted_text(response, search_coordinates_template):
         # ラベルの座標を取得
         label_result = find_text_near_label(label, text_data)
         label_coords = label_result["label_coordinates"]
+
+        # ラベルの座標をログ出力
+        if label_coords:
+            print(f"Label '{label}' coordinates: {label_coords}")
+        else:
+            print(f"Label '{label}' coordinates not found.")
 
         if label_coords:
             # ラベル座標と `search_area` を使って検索範囲を設定
