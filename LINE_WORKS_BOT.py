@@ -241,14 +241,14 @@ def find_text_near_label(label, text_data):
 # OCR処理後のテキスト処理
 def process_extracted_text(response, search_coordinates_template):
     """
-    OCRレスポンスからラベル周辺の指定範囲で回答を探す処理。
+    OCRレスポンスから指定されたラベルに対応する回答を抽出。
 
     Parameters:
         response (obj): Google Vision APIのレスポンス。
         search_coordinates_template (list[dict]): ラベル情報と範囲情報を含むテンプレート。
 
     Returns:
-        list[dict]: 各ラベルの回答（テキスト、変数名、回答）をまとめた結果。
+        list[dict]: ラベル、変数名、回答をまとめた結果。
     """
 
     def extract_text_with_coordinates(response):
@@ -276,8 +276,8 @@ def process_extracted_text(response, search_coordinates_template):
         label_coords = label_result["label_coordinates"]
 
         if label_coords:
-            # search_coordinates_template 内の search_area を使用
-            search_area = item.get("search_area", {"top": 0, "bottom": 0, "left": 0, "right": 0})
+            # ラベル座標と `search_area` を使って検索範囲を設定
+            search_area = item.get("search_area", {"top": 0, "bottom": 50, "left": 0, "right": 100})
             x_min = min(v[0] for v in label_coords) + search_area["left"]
             y_min = min(v[1] for v in label_coords) - search_area["top"]
             x_max = max(v[0] for v in label_coords) + search_area["right"]
@@ -286,19 +286,18 @@ def process_extracted_text(response, search_coordinates_template):
             # 検索範囲内で回答を探す
             answer = ""
             for text_item in text_data:
-                # 各テキストの座標を確認して検索範囲内かチェック
                 text_coords = text_item["coordinates"]
                 for x, y in text_coords:
                     if x_min <= x <= x_max and y_min <= y <= y_max:
                         answer = text_item["text"]
                         break
-                if answer:  # 回答が見つかった場合はループを終了
+                if answer:  # 回答が見つかった場合は終了
                     break
 
             results.append({
                 "テキスト": label,
                 "変数名": variable_name,
-                "回答": normalize_text(answer)
+                "回答": answer.strip()
             })
         else:
             results.append({
