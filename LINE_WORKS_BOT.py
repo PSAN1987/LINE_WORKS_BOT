@@ -194,7 +194,7 @@ client = vision.ImageAnnotatorClient()
 def initialize_vision_client():
     return vision.ImageAnnotatorClient()
 
-def search_coordinates_template = [
+search_coordinates_template = [
     {"label": "お届け日", "variable_name": "delivery_date", "search_range": [(50, 100), (200, 150)]},
     {"label": "商品のご使用日", "variable_name": "use_date", "search_range": [(250, 100), (400, 150)]},
     {"label": "学校名", "variable_name": "school_name", "search_range": [(50, 200), (300, 250)]},
@@ -303,8 +303,6 @@ def process_extracted_text(response, search_coordinates_template):
         })
 
     return results
-
-
 
 def process_and_send_text_from_image(image_path=None):
     """
