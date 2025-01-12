@@ -257,17 +257,11 @@ def process_extracted_text(response, search_coordinates_template):
             text_data.append({"text": description, "coordinates": coordinates})
         return text_data
 
-    def is_within_coordinates(coords, search_range):
-        """
-        座標が指定された範囲内にあるか判定。
-        """
-        x_min, y_min = search_range[0]
-        x_max, y_max = search_range[1]
-        x, y = coords[0]  # 左上の座標のみ使用
-        return x_min <= x <= x_max and y_min <= y <= y_max
-
     # OCRデータを抽出
     text_data = extract_text_with_coordinates(response)
+
+    # ここにログ出力を追加
+    print("Extracted text data:", text_data)
 
     results = []
     for item in search_coordinates_template:
