@@ -278,28 +278,17 @@ def process_extracted_text(response, search_coordinates_template):
     def find_all_texts_for_label(label, block_data):
         """
         ラベル名に基づいて、OCRデータから該当するすべてのblockテキストと座標を探す。
-
-        Parameters:
-            label (str): 検索対象のラベル名。
-            block_data (list[dict]): OCRで抽出されたblock単位のテキストデータ。
-
-        Returns:
-            list[dict]: ラベルの座標情報と対応するテキストのリスト。
+        複数のブロックを結合し、回答を1つの文字列としてまとめる。
         """
-        print(f"Searching for all matches for label: '{label}'")
+        normalized_label = normalize_text(label)
         results = []
-        normalized_label = normalize_text(label)  # ラベルを正規化
         for item in block_data:
-            normalized_text = normalize_text(item["text"])  # OCRテキストを正規化
-            print(f"Checking block: '{item['text']}' (normalized: '{normalized_text}') with coordinates: {item['coordinates']}")
-            if normalized_label in normalized_text:  # 正規化したテキストで部分一致を比較
-                print(f"Found label '{label}' at coordinates: {item['coordinates']}")
+            normalized_text = normalize_text(item["text"])
+            if normalized_label in normalized_text:
                 results.append({
                     "label_coordinates": item["coordinates"],
                     "text": item["text"]
                 })
-        if not results:
-            print(f"Label '{label}' not found in the provided block data.")
         return results
 
     # blockデータを抽出
@@ -323,12 +312,15 @@ def process_extracted_text(response, search_coordinates_template):
         else:
             print(f"Label '{label}' not found.")
 
-        # 結果をリストに追加
+        # 結果をリストに追加（回答を1つの文字列にまとめる）
+        answers = " ".join([res["text"] for res in all_label_results])
+        coordinates = [res["label_coordinates"] for res in all_label_results]
+
         results.append({
             "テキスト": label,
             "変数名": variable_name,
-            "回答": [res["text"] for res in all_label_results],
-            "座標": [res["label_coordinates"] for res in all_label_results]
+            "回答": answers,
+            "座標": coordinates
         })
 
     return results
