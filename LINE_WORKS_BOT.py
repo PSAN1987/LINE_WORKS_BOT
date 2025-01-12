@@ -199,7 +199,7 @@ search_coordinates_template = [
     {
         "label": "お届け日",
         "variable_name": "delivery_date",
-        "search_area": {"top": 1, "bottom": 10, "left": 0, "right": 70}
+        "search_area": {"top": 1, "bottom": 1, "left": 0, "right": 70}
     },
     {
         "label": "ご使用日",
@@ -214,15 +214,15 @@ search_coordinates_template = [
     {
         "label": "表示名",
         "variable_name": "line_name",
-        "search_area": {"top": 5, "bottom": 5, "left": 0, "right": 100}
+        "search_area": {"top": -10, "bottom": 10, "left": 0, "right": 100}
     },
     {
         "label": "団体名",
         "variable_name": "group_name",
-        "search_area": {"top": 5, "bottom": 5, "left": 0, "right": 150}
+        "search_area": {"top": 5, "bottom": 0, "left": 0, "right": 150}
     },
     {
-        "label": "(お届け)学校",
+        "label": "お届け学校",
         "variable_name": "school_address",
         "search_area": {"top": 10, "bottom": 10, "left": 0, "right": 300}
     },
@@ -234,7 +234,7 @@ search_coordinates_template = [
     {
         "label": "自 署",
         "variable_name": "boss_furigana",
-        "search_area": {"top": 5, "bottom": 5, "left": 0, "right": 100}
+        "search_area": {"top": 1, "bottom": 1, "left": 0, "right": 100}
     },
     {
         "label": "ご担任(保護者)携帯",
@@ -265,6 +265,51 @@ search_coordinates_template = [
         "label": "代表者メール",
         "variable_name": "representative_email",
         "search_area": {"top": 5, "bottom": 5, "left": 0, "right": 300}
+    },
+    {
+        "label": "商品名",
+        "variable_name": "product_name",
+        "search_area": {"top": 5, "bottom": 5, "left": 0, "right": 300}
+    },
+    {
+        "label": "商品カラー",
+        "variable_name": "product_color",
+        "search_area": {"top": 5, "bottom": 5, "left": 0, "right": 300}
+    },
+    {
+        "label": "S",
+        "variable_name": "S",
+        "search_area": {"top": 5, "bottom": 5, "left": 0, "right": 100}
+    },
+    {
+        "label": "M",
+        "variable_name": "M",
+        "search_area": {"top": 5, "bottom": 5, "left": 0, "right": 100}
+    },
+    {
+        "label": "L(F)",
+        "variable_name": "L(F)",
+        "search_area": {"top": 5, "bottom": 5, "left": 0, "right": 100}
+    },
+    {
+        "label": "LL(XL)",
+        "variable_name": "LL(XL)",
+        "search_area": {"top": 5, "bottom": 5, "left": 0, "right": 100}
+    },
+    {
+        "label": "3L(XXL)",
+        "variable_name": "3L(XXL)",
+        "search_area": {"top": 5, "bottom": 5, "left": 0, "right": 100}
+    },
+    {
+        "label": "小計",
+        "variable_name": "sub_total",
+        "search_area": {"top": 5, "bottom": 5, "left": 0, "right": 200}
+    },
+    {
+        "label": "合計",
+        "variable_name": "total",
+        "search_area": {"top": 5, "bottom": 5, "left": 0, "right": 200}
     },
 ]
 
