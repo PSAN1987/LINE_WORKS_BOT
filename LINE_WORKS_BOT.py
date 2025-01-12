@@ -221,46 +221,7 @@ def normalize_text(text):
     text = text.strip()  # 前後のスペースを削除
     return text
 
-def find_all_label_coordinates(labels, text_data):
-    """
-    全てのラベルに対して座標を取得し、結果をリストで返す。
 
-    Parameters:
-        labels (list[str]): 検索対象のラベルリスト。
-        text_data (list[dict]): OCRで抽出されたテキストデータ。
-
-    Returns:
-        list[dict]: 各ラベルの座標と対応するテキストを含むリスト。
-    """
-    results = []
-    for label in labels:
-        found = False
-        for item in text_data:
-            if label in item["text"]:  # ラベル名に部分一致
-                label_coords = item["coordinates"]
-                text = item["text"]
-                print(f"ラベル '{label}' に対応する座標: {label_coords}")
-
-                # 結果を保存
-                results.append({
-                    "label": label,
-                    "label_coordinates": label_coords,
-                    "text": text
-                })
-                found = True
-                break
-
-        if not found:
-            print(f"警告: ラベル '{label}' に対応するテキストが見つかりませんでした。")
-            results.append({
-                "label": label,
-                "label_coordinates": None,
-                "text": None
-            })
-
-    return results
-
-# OCR処理後のテキスト処理
 def process_extracted_text(response, search_coordinates_template):
     """
     OCRレスポンスから指定されたラベルに対応する回答を抽出。
@@ -293,9 +254,9 @@ def process_extracted_text(response, search_coordinates_template):
         label = item["label"]
         variable_name = item["variable_name"]
 
-        # ラベルの座標を取得
-        label_result = find_all_label_coordinates(labels, text_data)
-        label_coords = label_result["label_coordinates"]
+        # 個別のラベルに対応する座標を取得
+        label_result = find_text_near_label(label, text_data)
+        label_coords = label_result.get("label_coordinates")
 
         # ラベル座標をログ出力
         if label_coords:
@@ -335,6 +296,23 @@ def process_extracted_text(response, search_coordinates_template):
             })
 
     return results
+
+
+def find_text_near_label(label, text_data):
+    """
+    ラベル名に基づいて、OCRデータから該当するテキストの座標を探す。
+    部分一致をサポート。
+    """
+    for item in text_data:
+        if label in item["text"]:  # 部分一致
+            return {
+                "label_coordinates": item["coordinates"],
+                "text": item["text"]
+            }
+    return {
+        "label_coordinates": None,
+        "text": None
+    }
 
 
 
