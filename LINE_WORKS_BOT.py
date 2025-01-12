@@ -222,7 +222,7 @@ search_coordinates_template = [
         "search_area": {"top": 5, "bottom": 0, "left": 0, "right": 150}
     },
     {
-        "label": "お届け学校",
+        "label": "学校 〒",
         "variable_name": "school_address",
         "search_area": {"top": 10, "bottom": 10, "left": 0, "right": 300}
     },
@@ -237,12 +237,12 @@ search_coordinates_template = [
         "search_area": {"top": 1, "bottom": 1, "left": 0, "right": 100}
     },
     {
-        "label": "ご担任(保護者)携帯",
+        "label": "ご 担任 ( 保護 者 ) 携帯",
         "variable_name": "boss_mobile",
         "search_area": {"top": 5, "bottom": 5, "left": 0, "right": 200}
     },
     {
-        "label": "ご担任(保護者)メール",
+        "label": "担任 ( 保護者 ) | メール",
         "variable_name": "boss_email",
         "search_area": {"top": 5, "bottom": 5, "left": 0, "right": 300}
     },
@@ -262,7 +262,7 @@ search_coordinates_template = [
         "search_area": {"top": 5, "bottom": 5, "left": 0, "right": 200}
     },
     {
-        "label": "代表 者 メール",
+        "label": "iCloud アドレス を し て い ます",
         "variable_name": "representative_email",
         "search_area": {"top": 5, "bottom": 5, "left": 0, "right": 300}
     },
@@ -292,12 +292,12 @@ search_coordinates_template = [
         "search_area": {"top": 5, "bottom": 5, "left": 0, "right": 0}
     },
     {
-        "label": "LL(XL)",
+        "label": "LL",
         "variable_name": "LL(XL)",
         "search_area": {"top": 5, "bottom": 5, "left": 0, "right": 0}
     },
     {
-        "label": "3L(XXL)",
+        "label": "3L",
         "variable_name": "3L(XXL)",
         "search_area": {"top": 5, "bottom": 5, "left": 0, "right": 0}
     },
