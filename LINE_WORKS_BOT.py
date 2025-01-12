@@ -329,7 +329,7 @@ def normalize_text(text):
 def process_extracted_text(response, search_coordinates_template):
     """
     OCRレスポンスから指定されたラベルに対応する回答を抽出。
-    各block単位でテキストのラベル座標を取得し、指定範囲内の回答を探す。
+    各block単位でテキストのラベル座標を取得し、OpenAI APIで整理したデータからラベルを探す。
 
     Parameters:
         response (obj): Google Vision APIのレスポンス。
@@ -338,11 +338,14 @@ def process_extracted_text(response, search_coordinates_template):
     Returns:
         list[dict]: ラベル、変数名、回答、座標をまとめた結果。
     """
+    import re
+    import openai
+    from unicodedata import normalize
 
     def normalize_text(text):
         """全角文字を半角にし、スペースを除去して小文字化する。"""
-        text = unicodedata.normalize('NFKC', text)  # 全角→半角
-        text = re.sub(r"\s+", "", text)            # スペース削除
+        text = normalize('NFKC', text)  # 全角→半角
+        text = re.sub(r"\s+", "", text)  # スペース削除
         return text.lower()
 
     def extract_blocks_with_coordinates(response):
@@ -387,27 +390,31 @@ def process_extracted_text(response, search_coordinates_template):
             (y_min <= block_y_min <= y_max or y_min <= block_y_max <= y_max)
         )
 
-    def query_openai_api(prompt):
+    def query_openai_api_for_blocks(block_data):
         """
-        OpenAI APIを呼び出して回答を生成し、文字列を返す。
-        エラー時は空文字列 "" を返す。
+        OpenAI APIを呼び出してブロックデータを整理。
         """
         try:
-            response_obj = openai.chat.completions.create(
-                model="gpt-3.5-turbo",  # または "gpt-4"
+            prompt = "以下のテキストデータを整理してください:\n" + \
+                     "\n".join([f"[{i+1}] {block['text']}" for i, block in enumerate(block_data)])
+            response = openai.chat.completions.create(
+                model="gpt-3.5-turbo",
                 messages=[
                     {"role": "system", "content": "You are a helpful assistant."},
                     {"role": "user", "content": prompt}
-                ],
+                ]
             )
-            ai_message = response_obj.choices[0].message.content
+            ai_message = response.choices[0].message.content
             return ai_message
         except Exception as e:
             print(f"OpenAI API Error: {e}")
             return ""
 
-    # block データをまとめて抽出
     block_data = extract_blocks_with_coordinates(response)
+
+    # OpenAI APIでデータを整理
+    refined_blocks = query_openai_api_for_blocks(block_data)
+
     results = []
 
     # テンプレートに含まれる各ラベルについて探索
@@ -416,7 +423,7 @@ def process_extracted_text(response, search_coordinates_template):
         variable_name = item["variable_name"]
         search_area = item["search_area"]
 
-        # ラベルに一致する block を探す
+        # ラベルを探す
         label_results = []
         for block in block_data:
             if normalize_text(label) in normalize_text(block["text"]):
@@ -431,9 +438,9 @@ def process_extracted_text(response, search_coordinates_template):
                     if is_within_search_area(label_coords, block["coordinates"], search_area):
                         answers.append(block["text"])
 
-                # OpenAI APIを使って回答テキストを抽出
-                prompt = f"以下のテキストから「{label}」に該当する内容を抽出してください:\n{answers}"
-                refined_answer = query_openai_api(prompt)
+                # 整理済みデータから回答テキストを抽出
+                prompt = f"以下の整理されたデータから「{label}」に該当する内容を抽出してください:\n{refined_blocks}"
+                refined_answer = query_openai_api_for_blocks(answers)
 
                 results.append({
                     "テキスト": label,
