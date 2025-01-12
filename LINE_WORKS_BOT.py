@@ -209,7 +209,7 @@ search_coordinates_template = [
     {
         "label": "学校名",
         "variable_name": "school_name",
-        "search_area": {"top": 20, "bottom": 20, "left": 0, "right": 200}
+        "search_area": {"top": 10, "bottom": 10, "left": 5, "right": 400}
     },
 ]
 
