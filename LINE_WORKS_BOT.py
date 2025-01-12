@@ -341,30 +341,36 @@ def process_and_send_text_from_image(image_path=None):
         for image_file in image_files:
             current_image_path = image_path if image_path else os.path.join(IMAGE_SAVE_PATH, image_file)
             try:
+                # 画像ファイルを読み込む
                 with open(current_image_path, "rb") as image_file:
                     content = image_file.read()
 
+                # Google Vision APIのリクエストを準備
                 image = vision.Image(content=content)
                 response = client.text_detection(image=image)
 
+                # APIレスポンスのエラーチェック
                 if response.error.message:
                     raise Exception(f"Vision API Error: {response.error.message}")
 
-                texts = response.text_annotations
-                text = texts[0].description if texts else ""
+                # レスポンスからテキストを抽出
+                if not response.text_annotations:
+                    print(f"No text found in {current_image_path}.")
+                    continue
 
-                print(f"Extracted text from {current_image_path}: {text}")
+                print(f"Extracting text from {current_image_path}...")
+                # レスポンス全体を`process_extracted_text`に渡す
+                processed_results = process_extracted_text(response)
 
-                # 抽出テキストを処理
-                processed_result = process_extracted_text(text)
-                cleaned_text = processed_result["cleaned_text"]
-                
-                # LINE Worksユーザーに送信
+                # 結果をLINE Worksユーザーに送信
                 user_id = "9295462e-77df-4410-10a1-05ed80ea849d"  # 実際のユーザーIDに置き換え
-                if cleaned_text.strip():
-                    send_message(user_id, f"Processed Text: {cleaned_text}")
-                else:
-                    print(f"No meaningful text found in {current_image_path}.")
+                for result in processed_results:
+                    label = result["テキスト"]
+                    answer = result["手書き回答"]
+                    if answer.strip():
+                        send_message(user_id, f"{label}: {answer}")
+                    else:
+                        print(f"No meaningful answer found for label '{label}' in {current_image_path}.")
 
             except Exception as e:
                 print(f"Failed to process {current_image_path}: {e}")
@@ -375,6 +381,7 @@ def process_and_send_text_from_image(image_path=None):
                 print(f"Processed and removed {current_image_path}.")
     except Exception as e:
         print(f"Error processing images: {e}")
+
 
 # Webhookエンドポイント
 @app.route("/webhook", methods=["POST"])
