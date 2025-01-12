@@ -395,7 +395,7 @@ def process_extracted_text(response, search_coordinates_template):
         """
         prompt = (
             "以下はOCRで抽出されたテキストブロックと座標のデータです。"
-            "データを整理して、search_coordinates_templateで定義されたラベルと回答が探しやすいようにテキストと座標データを再構築してください。:\n"
+            "データを整理して、人が理解しやすい形式に変換してください:\n"
             f"{block_data}"
         )
         try:
