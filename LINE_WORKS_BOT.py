@@ -9,6 +9,8 @@ from flask import Flask, request, jsonify
 from dotenv import load_dotenv
 import re
 import unicodedata
+import openai
+
 
 # Flaskアプリケーションの初期化
 app = Flask(__name__)
@@ -29,6 +31,8 @@ SCOPE = "bot"
 load_dotenv()
 # 環境変数の取得
 google_credentials_path = os.getenv("GOOGLE_APPLICATION_CREDENTIALS")
+OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
+openai.api_key = OPENAI_API_KEY
 # Google Cloud Vision APIの認証設定
 os.environ["GOOGLE_APPLICATION_CREDENTIALS"] = google_credentials_path
 
@@ -222,7 +226,7 @@ search_coordinates_template = [
         "search_area": {"top": 5, "bottom": 0, "left": 0, "right": 150}
     },
     {
-        "label": "学校 〒",
+        "label": "学校住所",
         "variable_name": "school_address",
         "search_area": {"top": 10, "bottom": 10, "left": 0, "right": 300}
     },
@@ -252,17 +256,17 @@ search_coordinates_template = [
         "search_area": {"top": 5, "bottom": 5, "left": 0, "right": 200}
     },
     {
-        "label": "代表 者 文 内容 ・ 氏 名",
+        "label": "代表者氏 名",
         "variable_name": "representative_furigana",
         "search_area": {"top": 5, "bottom": 5, "left": 0, "right": 100}
     },
     {
-        "label": "携帯",
+        "label": "代表者携帯",
         "variable_name": "representative_mobile",
         "search_area": {"top": 5, "bottom": 5, "left": 0, "right": 200}
     },
     {
-        "label": "iCloud アドレス を し て い ます",
+        "label": "代表者メール",
         "variable_name": "representative_email",
         "search_area": {"top": 5, "bottom": 5, "left": 0, "right": 300}
     },
@@ -334,8 +338,6 @@ def process_extracted_text(response, search_coordinates_template):
     Returns:
         list[dict]: ラベル、変数名、回答、座標をまとめた結果。
     """
-    import re
-
     def normalize_text(text):
         text = unicodedata.normalize('NFKC', text)  # 全角→半角
         text = re.sub(r"\s+", "", text)  # スペース削除
@@ -371,6 +373,21 @@ def process_extracted_text(response, search_coordinates_template):
         return (x_min <= block_x_min <= x_max or x_min <= block_x_max <= x_max) and \
                (y_min <= block_y_min <= y_max or y_min <= block_y_max <= y_max)
 
+    def query_openai_api(prompt):
+        """OpenAI APIを呼び出して回答を生成。"""
+        try:
+            response = openai.Completion.create(
+                engine="text-davinci-003",
+                prompt=prompt,
+                max_tokens=100,
+                n=1,
+                stop=None
+            )
+            return response.choices[0].text.strip()
+        except Exception as e:
+            print(f"OpenAI API Error: {e}")
+            return ""
+
     block_data = extract_blocks_with_coordinates(response)
     results = []
 
@@ -393,10 +410,15 @@ def process_extracted_text(response, search_coordinates_template):
                 for block in block_data:
                     if is_within_search_area(label_coords, block["coordinates"], search_area):
                         answers.append(block["text"])
+
+                # OpenAI APIを使って回答を精査
+                prompt = f"以下のテキストから{label}に該当する内容を抽出してください:\n{answers}"
+                refined_answer = query_openai_api(prompt)
+
                 results.append({
                     "テキスト": label,
                     "変数名": variable_name,
-                    "回答": " ".join(answers),
+                    "回答": refined_answer,
                     "座標": label_coords
                 })
         else:
@@ -408,6 +430,7 @@ def process_extracted_text(response, search_coordinates_template):
             })
 
     return results
+
 
 def process_and_send_text_from_image(image_path=None):
     """
