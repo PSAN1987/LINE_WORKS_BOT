@@ -203,12 +203,12 @@ search_coordinates_template = [
     {
         "label": "お届け日",
         "variable_name": "delivery_date",
-        "prompt_instructions": "以下の整理されたデータから「お届け日」に該当する情報を抽出してください。回答は日付だけで良いです。"
+        "prompt_instructions": "以下の整理されたデータから「お届け日」に該当する情報を抽出してください。回答は日付だけにしてください。"
     },
     {
         "label": "ご使用日",
         "variable_name": "use_date",
-        "prompt_instructions": "以下の整理されたデータから「ご使用日」に該当する情報を抽出してください。回答は日付だけで良いです。"
+        "prompt_instructions": "以下の整理されたデータから「ご使用日」に該当する情報を抽出してください。回答は日付だけにしてください。。"
     },
     {
         "label": "学校名",
@@ -223,12 +223,12 @@ search_coordinates_template = [
     {
         "label": "クラス団体名",
         "variable_name": "group_name",
-        "prompt_instructions": "以下の整理されたデータから「クラス団体名」に該当する情報を抽出してください。回答は団体名の右にある手紙文字だけで良いです。"
+        "prompt_instructions": "以下の整理されたデータから「クラス団体名」に該当する情報を抽出してください。回答は団体名の右の座標にある文字です。例:2-2など"
     },
     {
         "label": "学校住所",
         "variable_name": "school_address",
-        "prompt_instructions": "以下の整理されたデータから「学校住所」に該当する情報を抽出してください。回答は〒番号と住所だけで良いです"
+        "prompt_instructions": "以下の整理されたデータから「学校住所」に該当する情報を抽出してください。回答は〒番号と住所だけで良いです。"
     },
     {
         "label": "学校TEL",
@@ -243,7 +243,7 @@ search_coordinates_template = [
     {
         "label": "ご担任(保護者)携帯",
         "variable_name": "boss_mobile",
-        "prompt_instructions": "以下の整理されたデータから「ご担任(保護者)携帯」に該当する情報を抽出してください。回答はxxx-xxxx-xxxxのような11桁の数字だけで良いです。"
+        "prompt_instructions": "以下の整理されたデータから「ご担任(保護者)携帯」に該当する情報を抽出してください。回答はxxx-xxxx-xxxxのような形式の11桁の数字を探してください。"
     },
     {
         "label": "担任(保護者)メール",
@@ -253,7 +253,7 @@ search_coordinates_template = [
     {
         "label": "デザイン確認方法",
         "variable_name": "design_confirm",
-        "prompt_instructions": "以下の整理されたデータから「デザイン確認方法」に該当する情報を抽出してください。回答はLINE代表者 or LINEご担任 or メール代表者 or メールご担任のどれか1つです。"
+        "prompt_instructions": "以下の整理されたデータから「デザイン確認方法」に該当する情報を抽出してください。回答はLINE代表者 or LINEご担任 or メール代表者 or メールご担任のどれか1つのみで可能性の高いものを選択してください。。"
     },
     {
         "label": "代表者氏名",
@@ -263,7 +263,7 @@ search_coordinates_template = [
     {
         "label": "代表者携帯",
         "variable_name": "representative_mobile",
-        "prompt_instructions": "以下の整理されたデータから「代表者携帯」に該当する情報を抽出してください。回答はxxx-xxxx-xxxxのような11桁の数字だけで良いです。"
+        "prompt_instructions": "以下の整理されたデータから「代表者携帯」に該当する情報を抽出してください。回答はxxx-xxxx-xxxxのような形式の11桁の数字を探してください。"
     },
     {
         "label": "代表者メール",
