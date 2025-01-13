@@ -755,10 +755,10 @@ def create_flex_message(organized_data):
 
 def send_flex_message_for_edit(user_id, organized_data):
     """
-    Quick Replyの代わりに、Flex Message (Carousel) で修正可能な項目を提示。
+    LINE WORKS向けに、カルーセル形式で項目を表示する例。
     """
 
-    # 1バブル = 1項目 でカルーセルに格納
+    # バブルを配列にまとめる
     bubbles = []
     for key, value in organized_data.items():
         bubble = {
@@ -788,32 +788,44 @@ def send_flex_message_for_edit(user_id, organized_data):
                     {
                         "type": "button",
                         "action": {
-                            "type": "message",     # ボタン押下でユーザーからテキストメッセージが届く
+                            "type": "message",
                             "label": f"{key}を修正",
-                            "text": f"{key}を修正"  # Botが受け取って「を修正」ロジックを実行
+                            "text": f"{key}を修正"
                         },
                         "style": "primary",
-                        "color": "#4CAF50"  # 任意の色
+                        "color": "#4CAF50"
                     }
                 ]
             }
         }
         bubbles.append(bubble)
 
-    # Flex Message全体（カルーセル形式）
+    # "type": "carousel" としてまとめる
     flex_payload = {
         "content": {
-            "type": "flex",
+            "type": "carousel",        # LINE WORKSではここが"carousel"または"bubble"となる
             "altText": "修正したい項目を選択してください。",
-            "contents": {
-                "type": "carousel",
-                "contents": bubbles
-            }
+            "contents": bubbles        # 配列で複数バブル
         }
     }
 
-    # Flexメッセージ送信
-    send_flex_message(user_id, flex_payload)
+    # あとは通常通り、アクセストークンを取得してPOST
+    try:
+        token_data = get_access_token()
+        if token_data and "access_token" in token_data:
+            access_token = token_data["access_token"]
+            url = f"https://www.worksapis.com/v1.0/bots/{BOT_NO}/users/{user_id}/messages"
+            headers = {
+                "Authorization": f"Bearer {access_token}",
+                "Content-Type": "application/json"
+            }
+            response = requests.post(url, json=flex_payload, headers=headers)
+            if response.status_code == 201:
+                print("Carousel Message sent successfully!")
+            else:
+                print(f"Failed to send Carousel. Status Code: {response.status_code}, Response: {response.text}")
+    except Exception as e:
+        print(f"Error sending Carousel Message: {e}")
 
 
 def send_flex_message(user_id, flex_message):
