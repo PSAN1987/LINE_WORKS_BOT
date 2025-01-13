@@ -258,7 +258,7 @@ search_coordinates_template = [
     {
         "label": "ご担任(保護者)携帯",
         "variable_name": "boss_mobile",
-        "prompt_instructions": "以下の整理されたデータから「ご担任(保護者)携帯」に該当する情報を抽出してください。回答は「ご担任(保護者)携帯]の近くにあってxxx-xxxx-xxxxのような形式の11桁の数字を探してください。"
+        "prompt_instructions": "以下の整理されたデータから「ご担任(保護者)携帯」に該当する情報を抽出してください。回答は50文字以内で「ご担任(保護者)携帯」の右にあってxxx-xxxx-xxxxのような形式の11桁の数字のみを提供してください。"
     },
     {
         "label": "担任(保護者)メール",
@@ -268,7 +268,7 @@ search_coordinates_template = [
     {
         "label": "デザイン確認方法",
         "variable_name": "design_confirm",
-        "prompt_instructions": "以下の整理されたデータから「デザイン確認方法」に該当する情報を抽出してください。回答はLINE代表者 or LINEご担任 or メール代表者 or メールご担任のどれか1つのみで可能性の高いものを選択してください。。"
+        "prompt_instructions": "以下の整理されたデータから「デザイン確認方法」に該当する情報を抽出してください。回答は50文字以内でLINE代表者 or LINEご担任 or メール代表者 or メールご担任のどれか1つのみで可能性の高いものを選択して、結果だけを返してください"
     },
     {
         "label": "代表者氏名",
@@ -278,7 +278,7 @@ search_coordinates_template = [
     {
         "label": "代表者携帯",
         "variable_name": "representative_mobile",
-        "prompt_instructions": "以下の整理されたデータから「代表者携帯」に該当する情報を抽出してください。回答は「代表者携帯」の右にあってxxx-xxxx-xxxxのような形式の11桁の数字を探してください。"
+        "prompt_instructions": "以下の整理されたデータから「代表者携帯」に該当する情報を抽出してください。回答は50文字以内で「代表者携帯」の右にあってxxx-xxxx-xxxxのような形式の11桁の数字のみを提供してください"
     },
     {
         "label": "代表者メール",
