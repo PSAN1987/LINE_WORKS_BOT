@@ -695,6 +695,46 @@ def create_quick_reply(organized_data):
     ]
     return {"items": quick_reply_items}
 
+import requests
+
+def send_flex_message(user_id, flex_message):
+    """
+    Flex MessageをLINE WORKSユーザーに送信する関数。
+
+    Parameters:
+        user_id (str): メッセージを送信するユーザーのID。
+        flex_message (dict): Flex Messageのデータ構造。
+
+    Returns:
+        None
+    """
+    try:
+        # アクセストークンを取得
+        token_data = get_access_token()
+        if token_data and "access_token" in token_data:
+            access_token = token_data["access_token"]
+            url = f"https://www.worksapis.com/v1.0/bots/{BOT_NO}/users/{user_id}/messages"
+            headers = {
+                "Authorization": f"Bearer {access_token}",
+                "Content-Type": "application/json"
+            }
+            payload = {
+                "content": {
+                    "type": "flex",
+                    "contents": flex_message
+                }
+            }
+            response = requests.post(url, json=payload, headers=headers)
+            if response.status_code == 201:
+                print("Flex Message sent successfully!")
+            else:
+                print(f"Failed to send Flex Message. Status Code: {response.status_code}, Response: {response.text}")
+        else:
+            print("Failed to fetch access token.")
+    except Exception as e:
+        print(f"Error sending Flex Message: {e}")
+
+
 
 # Webhookエンドポイント
 @app.route("/webhook", methods=["POST"])
