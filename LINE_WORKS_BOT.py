@@ -822,6 +822,14 @@ def webhook():
     try:
         data = request.json
         print(f"Received webhook data: {data}")
+        
+        # 初期化
+        organized_data = None
+        user_id = data.get("source", {}).get("userId", None)
+
+        if not user_id:
+            print("エラー: userId がリクエストデータに含まれていません。")
+            return jsonify({"status": "error", "message": "Missing userId"}), 400
 
         if "content" in data:
             content_type = data["content"].get("type", "")
