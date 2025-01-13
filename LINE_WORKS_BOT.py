@@ -243,7 +243,7 @@ search_coordinates_template = [
     {
         "label": "学校住所",
         "variable_name": "school_address",
-        "prompt_instructions": "以下の整理されたデータから「学校住所」に該当する情報を抽出してください。回答は〒番号と住所だけで良いです。学校名からGoogle検索した学校住所も記載してください。"
+        "prompt_instructions": "以下の整理されたデータから「学校住所」として「学校名」からGoogle検索した学校住所のみを記載してください。"
     },
     {
         "label": "学校TEL",
