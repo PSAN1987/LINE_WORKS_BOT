@@ -356,7 +356,7 @@ def process_extracted_text(response, search_coordinates_template):
         search_coordinates_template (list[dict]): ラベル情報と範囲情報を含むテンプレート。
 
     Returns:
-        dict: 整理された結果を変数名ごとの辞書形式で返す。
+        list[dict]: ラベル、変数名、回答、座標をまとめた結果。
     """
 
     def normalize_text(text):
@@ -391,20 +391,21 @@ def process_extracted_text(response, search_coordinates_template):
     def query_openai_for_analysis(block_data):
         """
         OpenAI APIを使用してブロックデータを整理。
+        ドキュメントに沿って openai.chat.completions.create を用いた実装に修正。
         """
         prompt = (
             "以下はOCRで抽出されたテキストブロックと座標のデータです。"
-            "データを整理して、人が理解しやすい形式に変換してください、処理は毎実行に完全同一の処理をしてください:\n"
+            "データを整理して、人が理解しやすい形式に変換してください:\n"
             f"{block_data}"
         )
         try:
             response_obj = openai.chat.completions.create(
-                model="gpt-3.5-turbo",
+                model="gpt-3.5-turbo",  # 必要に応じて "gpt-4" 等に変更
                 messages=[
                     {"role": "system", "content": "You are a helpful assistant."},
                     {"role": "user", "content": prompt}
                 ],
-                temperature=0,
+                temperature = 0,
             )
             ai_message = response_obj.choices[0].message.content
             return ai_message
@@ -415,40 +416,36 @@ def process_extracted_text(response, search_coordinates_template):
     def find_label_in_organized_text(organized_text, label, custom_prompt=None):
         """
         整理されたテキストからラベルに対応する回答を探す。
+        custom_prompt（独自のプロンプト）を受け取り、なければデフォルト文言を使う。
         """
+
+        # テンプレートで独自のプロンプトが指定されている場合
         if custom_prompt:
             prompt = f"{custom_prompt}\n\n{organized_text}"
         else:
+            # 指定がなければ、従来の文言で検索
             prompt = (
                 f"以下の整理されたデータから「{label}」に該当する内容を抽出してください:\n"
                 f"{organized_text}"
             )
+
         try:
             response_obj = openai.chat.completions.create(
-                model="gpt-3.5-turbo",
+                model="gpt-3.5-turbo",  # 必要に応じて "gpt-4" 等に変更
                 messages=[
                     {"role": "system", "content": "You are a helpful assistant."},
                     {"role": "user", "content": prompt}
                 ],
-                temperature=0,
+                temperature = 0,
             )
             return response_obj.choices[0].message.content
         except Exception as e:
             print(f"OpenAI API Error (label-search): {e}")
             return ""
 
-    # --- メイン処理 ---
+    # --- ここからメイン処理 ---
 
     # 1. OCR結果のブロックを抽出
-    if isinstance(response, str):
-        try:
-            # 文字列形式の場合、JSONデコードを試みる
-            response = json.loads(response)
-            print("Response successfully decoded from JSON string.")
-        except json.JSONDecodeError as e:
-            print(f"Error decoding response string as JSON: {e}")
-            return {}
-
     block_data = extract_blocks_with_coordinates(response)
 
     # 2. OpenAI API を使って全ブロックデータを人が理解しやすい形に整理
@@ -459,6 +456,8 @@ def process_extracted_text(response, search_coordinates_template):
     for template_item in search_coordinates_template:
         label = template_item["label"]
         variable_name = template_item["variable_name"]
+
+        # テンプレートに"prompt_instructions"があれば使う
         custom_prompt = template_item.get("prompt_instructions", None)
 
         # find_label_in_organized_text に custom_prompt を渡す
@@ -468,19 +467,10 @@ def process_extracted_text(response, search_coordinates_template):
             "テキスト": label,
             "変数名": variable_name,
             "回答": refined_answer,
-            "座標": None
+            "座標": None  # 必要に応じて座標情報を付与するならここで追加
         })
 
-    # 4. 変数名ごとに整理
-    organized_data = {result["変数名"]: result["回答"] for result in results if result.get("変数名") and result.get("回答")}
-
-    # 整理されたデータをログ出力
-    print("Organized Data:")
-    for key, value in organized_data.items():
-        print(f"{key}: {value}")
-
-    # 辞書形式のデータを返す
-    return organized_data
+    return results
 
 
 def process_and_send_text_from_image(image_path=None):
@@ -490,6 +480,10 @@ def process_and_send_text_from_image(image_path=None):
     """
     print("Processing images with Google Vision API...")
     image_files = [image_path] if image_path else sorted(os.listdir(IMAGE_SAVE_PATH))
+    
+    # 変数名ごとの回答を保存する辞書
+    organized_data = {}
+
     try:
         for image_file in image_files:
             current_image_path = image_path if image_path else os.path.join(IMAGE_SAVE_PATH, image_file)
@@ -532,6 +526,8 @@ def process_and_send_text_from_image(image_path=None):
 
                     # `回答`が文字列であることを確認
                     if isinstance(answer, str) and answer.strip():
+                        # 結果を保存
+                        organized_data[variable_name] = answer.strip()
                         try:
                             send_message(user_id, f"{label}: {variable_name}: {answer.strip()}")
                         except Exception as send_error:
@@ -550,68 +546,15 @@ def process_and_send_text_from_image(image_path=None):
                     print(f"Failed to remove {current_image_path}: {remove_error}")
     except Exception as e:
         print(f"Error processing images: {e}")
-        
-import json
-
-import json
-
-def organize_results_by_variable_name(results):
-    """
-    `process_extracted_text` の結果を変数名ごとに整理し、ログ出力する関数。
-    入力が文字列形式の場合はJSONとして解釈を試みます。
-
-    Parameters:
-        results (list[dict] or str): `process_extracted_text` の結果。
-                                     例: [{'テキスト': '商品名', '変数名': 'product_name', '回答': 'T-shirt', '座標': None}, ...]
-                                     または JSON文字列。
-
-    Returns:
-        dict: 変数名をキー、回答を値とする辞書。
-              例: {'product_name': 'T-shirt', 'delivery_date': '2023-12-31', ...}
-    """
-    # デバッグ用ログ
-    print(f"Received results: {results}")
-    print(f"Type of results: {type(results)}")
-
-    # 文字列形式の場合、JSONに変換を試みる
-    if isinstance(results, str):
-        try:
-            results = json.loads(results)
-            print("Successfully parsed JSON string into a list.")
-        except json.JSONDecodeError as e:
-            print(f"Error: Failed to parse input string as JSON. {e}")
-            return {}
-
-    # リスト形式であることを確認
-    if not isinstance(results, list):
-        print(f"Error: Expected a list of dictionaries, but got {type(results)}.")
-        print("Content of results:", results)
-        return {}
-
-    # リスト内の各要素が辞書形式であることを確認
-    if not all(isinstance(item, dict) for item in results):
-        print("Error: Each item in the list must be a dictionary.")
-        return {}
-
-    # データを変数名ごとに整理
-    organized_data = {}
-    for result in results:
-        variable_name = result.get("変数名")
-        answer = result.get("回答")
-        if variable_name and answer:  # 変数名と回答が有効である場合のみ保存
-            organized_data[variable_name] = answer
-
-    # ログ出力
-    print("Organized Data (by variable name):")
+    
+    # 結果の保存を確認
+    print("Organized data:")
     for key, value in organized_data.items():
-        print(f"  {key}: {value}")
+        print(f"{key}: {value}")
 
     return organized_data
 
-
 # Webhookエンドポイント
-@app.route("/webhook", methods=["POST"])
-@app.route("/webhook", methods=["POST"])
 @app.route("/webhook", methods=["POST"])
 def webhook():
     print("Webhook called.")
@@ -651,49 +594,21 @@ def webhook():
                             if downloaded_file:
                                 print(f"Downloaded file saved at {downloaded_file}")
 
-                                # 保存した画像を処理して結果を取得
-                                try:
-                                    results = process_and_send_text_from_image(downloaded_file)
-
-                                    # 結果が空または不正の場合の処理
-                                    if not results or not isinstance(results, list):
-                                        print(f"Error: Results from process_and_send_text_from_image are invalid: {results}")
-                                        return jsonify({"status": "error", "message": "Failed to process image"}), 400
-
-                                    # 結果を変数名ごとに整理
-                                    organized_data = organize_results_by_variable_name(results)
-
-                                    # 整理済みデータをユーザーに送信
-                                    user_id = data["source"]["userId"]
-                                    for variable_name, answer in organized_data.items():
-                                        message = f"{variable_name}: {answer}"
-                                        send_message(user_id, message)
-
-                                except Exception as e:
-                                    print(f"Error during text processing: {e}")
-                                    return jsonify({"status": "error", "message": "Text processing failed"}), 500
+                                # 保存した画像を処理
+                                process_and_send_text_from_image(downloaded_file)
                             else:
                                 print("画像のダウンロードに失敗しました。")
-                                return jsonify({"status": "error", "message": "Failed to download image"}), 400
                         else:
                             print("アクセストークンを取得できませんでした。")
-                            return jsonify({"status": "error", "message": "Failed to fetch access token"}), 400
                     else:
                         print("fileUrlを取得できませんでした。")
-                        return jsonify({"status": "error", "message": "Failed to fetch file URL"}), 400
                 else:
                     print("画像の 'fileId' が見つかりません。")
-                    return jsonify({"status": "error", "message": "File ID not found"}), 400
         else:
             print("Webhookデータに 'content' フィールドが含まれていません。")
-            return jsonify({"status": "error", "message": "Invalid webhook content"}), 400
     except Exception as e:
         print(f"Webhook処理中のエラー: {e}")
-        return jsonify({"status": "error", "message": "Internal server error"}), 500
-
     return jsonify({"status": "ok"}), 200
-
-
 
 # アプリケーション起動
 @app.route("/", methods=["GET"])
