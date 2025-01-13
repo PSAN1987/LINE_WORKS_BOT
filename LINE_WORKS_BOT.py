@@ -564,6 +564,10 @@ def normalize_product_name(product_name):
     """
     return product_name.replace(" ", "").strip()
 
+# 正規化関数（仮実装）
+def normalize_product_name(name):
+    return name.replace(" ", "").strip()
+
 def calculate_invoice(user_id, organized_data, price_table, user_data_store):
     """
     organized_dataから請求金額を計算し、結果をuser_data_storeに保存する関数。
@@ -626,8 +630,6 @@ def calculate_invoice(user_id, organized_data, price_table, user_data_store):
         return organized_data
 
 
-
-
 # 使用例
 price_table = {
     "フードスウェット": 5000,  # 商品名: 価格（円）
@@ -641,14 +643,25 @@ organized_data_example = {
     "S": "2",
     "M": "1",
     "L": "3",
-    "LL": "0"
+    "LL(XL)": "0",
+    "3L(XXL)": "0"
 }
 
+# ユーザーデータ管理用の辞書
+user_data_store = {}
+
+# サンプルユーザーID
+user_id = "sample_user"
+
 # 請求金額を計算
-updated_data = calculate_invoice(organized_data_example, price_table)
+updated_data = calculate_invoice(user_id, organized_data_example, price_table, user_data_store)
 
 # organized_data の内容を確認
 print(updated_data)
+
+# user_data_store の内容を確認
+print(user_data_store)
+
 
 def create_flex_message(organized_data):
     """
@@ -886,7 +899,7 @@ def webhook():
                                         "Tシャツ": 2000,
                                         "パーカー": 4000
                                     }
-                                    updated_data = calculate_invoice(organized_data, price_table)
+                                    updated_data = calculate_invoice(user_id, organized_data, price_table, user_data_store)
 
                                     if "total_amount" in updated_data:
                                         total_amount = updated_data["total_amount"]
