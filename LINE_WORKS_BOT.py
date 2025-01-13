@@ -699,6 +699,60 @@ print(updated_data)
 print(user_data_store)
 
 
+def create_flex_message(organized_data):
+    """
+    organized_dataをFlex Message形式で整形する関数。
+    """
+    flex_message = {
+        "type": "bubble",
+        "body": {
+            "type": "box",
+            "layout": "vertical",
+            "contents": [
+                {
+                    "type": "text",
+                    "text": "注文内容確認",
+                    "weight": "bold",
+                    "size": "lg",
+                    "margin": "md"
+                },
+                {
+                    "type": "separator",
+                    "margin": "md"
+                }
+            ] + [
+                {
+                    "type": "box",
+                    "layout": "horizontal",
+                    "contents": [
+                        {"type": "text", "text": f"{key}:", "flex": 2, "weight": "bold"},
+                        {"type": "text", "text": str(value), "flex": 4}
+                    ]
+                }
+                for key, value in organized_data.items()
+            ]
+        },
+        "footer": {
+            "type": "box",
+            "layout": "horizontal",
+            "contents": [
+                {
+                    "type": "button",
+                    "action": {"type": "message", "label": "修正", "text": "修正を開始"},
+                    "style": "primary",
+                    "color": "#FF6F61"
+                },
+                {
+                    "type": "button",
+                    "action": {"type": "message", "label": "確定", "text": "注文を確定する"},
+                    "style": "primary",
+                    "color": "#4CAF50"
+                }
+            ]
+        }
+    }
+    return flex_message
+
 def send_carousel_for_edit(user_id, organized_data):
     """
     LINE WORKS向けにカルーセルメッセージを送信する関数。
