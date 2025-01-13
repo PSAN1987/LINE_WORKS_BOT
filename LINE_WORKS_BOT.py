@@ -268,7 +268,7 @@ search_coordinates_template = [
     {
         "label": "デザイン確認方法",
         "variable_name": "design_confirm",
-        "prompt_instructions": "以下の整理されたデータから「デザイン確認方法」に該当する情報を抽出してください。回答は50文字以内でLINE代表者 or LINEご担任 or メール代表者 or メールご担任のどれか1つのみで可能性の高いものを選択して、結果だけを返してください"
+        "prompt_instructions": "以下の整理されたデータから「デザイン確認方法」に該当する情報を抽出してください。回答は20文字以内にしてください。LINE代表者 or LINEご担任 or メール代表者 or メールご担任のどれか1つのみを選択して、結果だけを返してください"
     },
     {
         "label": "代表者氏名",
