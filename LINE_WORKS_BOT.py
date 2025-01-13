@@ -15,6 +15,9 @@ import openai
 # Flaskアプリケーションの初期化
 app = Flask(__name__)
 
+# グローバル変数として user_data_store を定義
+user_data_store = {}
+
 # LINE Works Bot API設定
 CLIENT_ID = "FAKUIs1_C7TzbMG9ZoCp"  # 管理画面で取得
 CLIENT_SECRET = "n6ugyKvfCf"  # 管理画面で取得
@@ -863,6 +866,14 @@ def webhook():
 
                                 # 保存した画像を処理
                                 organized_data = process_and_send_text_from_image(downloaded_file)
+                                
+                                # Webhook関数内で画像処理が完了した後
+                                if organized_data:
+                                    # user_data_storeにorganized_dataを保存
+                                    user_data_store[user_id] = organized_data
+                                    send_message(user_id, "データが保存されました。修正を開始できます。")
+                                else:
+                                    send_message(user_id, "データの保存に失敗しました。")
 
                                 # 請求金額を計算
                                 if organized_data:
