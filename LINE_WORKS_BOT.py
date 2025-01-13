@@ -238,12 +238,12 @@ search_coordinates_template = [
     {
         "label": "クラス団体名",
         "variable_name": "group_name",
-        "prompt_instructions": "以下の整理されたデータから「クラス団体名」に該当する情報を抽出してください。回答は団体名の右の座標にある文字です。例:2-2など"
+        "prompt_instructions": "以下の整理されたデータから「クラス団体名」に該当する情報を抽出してください。回答は団体名の右の座標にある文字です。例:2-2など。50文字以内で記載してください。"
     },
     {
         "label": "学校住所",
         "variable_name": "school_address",
-        "prompt_instructions": "以下の整理されたデータから「学校住所」として「学校名」からGoogle検索した学校住所のみを記載してください。"
+        "prompt_instructions": "以下の整理されたデータから「学校住所」として「学校名」からGoogle検索した学校住所のみを50文字以内で記載してください。"
     },
     {
         "label": "学校TEL",
