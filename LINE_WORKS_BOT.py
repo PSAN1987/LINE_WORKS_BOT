@@ -634,7 +634,6 @@ def calculate_invoice(user_id, price_table, user_data_store):
 
         # 結果を organized_data に保存
         organized_data["total_amount"] = total_amount
-        user_data_store[user_id] = organized_data
 
         print(f"Invoice calculated and updated in user_data_store: {product_name} x {total_quantity} = {total_amount}円")
         return organized_data
