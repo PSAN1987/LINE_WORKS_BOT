@@ -395,7 +395,7 @@ def process_extracted_text(response, search_coordinates_template):
         """
         prompt = (
             "以下はOCRで抽出されたテキストブロックと座標のデータです。"
-            "データを整理して、人が理解しやすい形式に変換してください:\n"
+            "データを整理して、人が理解しやすい形式に変換してください。毎回固定処理にしてください。:\n"
             f"{block_data}"
         )
         try:
@@ -553,6 +553,12 @@ def process_and_send_text_from_image(image_path=None):
         print(f"{key}: {value}")
 
     return organized_data
+
+def normalize_product_name(product_name):
+    """
+    商品名を正規化して不要な文字列や空白を除去する関数。
+    """
+    return product_name.replace("-", "").replace(" ", "").strip()
 
 def calculate_invoice(organized_data, price_table):
     """
