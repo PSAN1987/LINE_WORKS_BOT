@@ -651,7 +651,7 @@ organized_data_example = {
 user_data_store = {}
 
 # サンプルユーザーID
-user_id = "sample_user"
+user_id = "9295462e-77df-4410-10a1-05ed80ea849d"  # 実際のユーザーIDに置き換え
 
 # 請求金額を計算
 updated_data = calculate_invoice(user_id, organized_data_example, price_table, user_data_store)
