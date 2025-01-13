@@ -912,6 +912,8 @@ def webhook():
 
                                 if organized_data:
                                     user_data_store[user_id] = organized_data
+                                     # 保存内容をログ出力
+                                    print(f"Updated user_data_store for user_id {user_id}: {user_data_store[user_id]}")
                                     send_message(user_id, "データが保存されました。修正を開始できます。")
 
                                     # 請求金額を計算
