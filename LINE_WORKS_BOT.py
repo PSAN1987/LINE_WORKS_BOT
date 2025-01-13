@@ -631,6 +631,71 @@ updated_data = calculate_invoice(organized_data_example, price_table)
 # organized_data の内容を確認
 print(updated_data)
 
+def create_flex_message(organized_data):
+    """
+    organized_dataをFlex Message形式で整形する関数。
+    """
+    flex_message = {
+        "type": "bubble",
+        "body": {
+            "type": "box",
+            "layout": "vertical",
+            "contents": [
+                {
+                    "type": "text",
+                    "text": "注文内容確認",
+                    "weight": "bold",
+                    "size": "lg",
+                    "margin": "md"
+                },
+                {
+                    "type": "separator",
+                    "margin": "md"
+                }
+            ] + [
+                {
+                    "type": "box",
+                    "layout": "horizontal",
+                    "contents": [
+                        {"type": "text", "text": f"{key}:", "flex": 2, "weight": "bold"},
+                        {"type": "text", "text": str(value), "flex": 4}
+                    ]
+                }
+                for key, value in organized_data.items()
+            ]
+        },
+        "footer": {
+            "type": "box",
+            "layout": "horizontal",
+            "contents": [
+                {
+                    "type": "button",
+                    "action": {"type": "message", "label": "修正", "text": "修正を開始"},
+                    "style": "primary",
+                    "color": "#FF6F61"
+                },
+                {
+                    "type": "button",
+                    "action": {"type": "message", "label": "確定", "text": "注文を確定する"},
+                    "style": "primary",
+                    "color": "#4CAF50"
+                }
+            ]
+        }
+    }
+    return flex_message
+
+def create_quick_reply(organized_data):
+    """
+    修正箇所の選択肢をQuick Replyとして生成する。
+    """
+    quick_reply_items = [
+        {"type": "action", "action": {"type": "message", "label": key, "text": f"{key}を修正"}}
+        for key in organized_data.keys()
+    ]
+    return {"items": quick_reply_items}
+
+
 # Webhookエンドポイント
 @app.route("/webhook", methods=["POST"])
 def webhook():
@@ -645,14 +710,37 @@ def webhook():
             # テキストメッセージを処理
             if content_type == "text":
                 user_message = data["content"]["text"]
-                reply_message = user_message  # メッセージをそのまま返信
-                print(f"User message: {user_message}, Reply message: {reply_message}")
+                user_id = data["source"].get("userId", "")
 
-                if "source" in data and "userId" in data["source"]:
-                    user_id = data["source"]["userId"]
-                    send_message(user_id, reply_message)
+                # 注文内容確認フロー
+                if user_message == "注文を確認":
+                    # organized_dataのサンプルを作成
+                    organized_data = {
+                        "product_name": "フードスウェット",
+                        "product_color": "青",
+                        "S": 34,
+                        "M": 34,
+                        "L": 34,
+                        "LL(XL)": 34,
+                        "total_amount": 5000 * (34 + 34 + 34 + 34)  # 仮の計算
+                    }
+
+                    # Flex Messageで確認メッセージを送信
+                    flex_message = create_flex_message(organized_data)
+                    send_flex_message(user_id, flex_message)
+
+                # 修正プロセス
+                elif "を修正" in user_message:
+                    key_to_edit = user_message.replace("を修正", "").strip()
+                    send_message(user_id, f"新しい{key_to_edit}を入力してください。")
+
+                # 注文確定
+                elif user_message == "注文を確定する":
+                    send_message(user_id, "注文が確定されました。ありがとうございます！")
+
                 else:
-                    print("エラー: 'userId' が 'source' データにありません。")
+                    # その他のテキストメッセージ
+                    send_message(user_id, "注文を確認したい場合は『注文を確認』と送信してください。")
 
             # 画像メッセージを処理
             elif content_type == "image":
@@ -687,7 +775,7 @@ def webhook():
                                     if "total_amount" in updated_data:
                                         total_amount = updated_data["total_amount"]
                                         product_name = updated_data.get("product_name", "不明")
-                                        user_id = data["source"]["userId"]
+                                        user_id = data["source"].get("userId", "")
                                         send_message(user_id, f"請求金額: {product_name} の合計は {total_amount}円です。")
                                 else:
                                     print("Error: organized_data is empty or invalid.")
