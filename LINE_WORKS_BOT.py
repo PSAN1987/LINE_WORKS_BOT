@@ -654,12 +654,33 @@ price_table = {
 # ユーザーデータ管理用の辞書
 user_data_store = {
     "9295462e-77df-4410-10a1-05ed80ea849d": {
+        "delivery_date": "10月29日",
+        "use_date": "10月29日（火）",
+        "school_name": "栃木県立鹿沼商工高等学校",
+        "line_name": "抽出された情報は、[ LINE ]です。",
+        "group_name": "クラス団体名は「グラフィティーズ」です。座標は「34」です。",
+        "school_address": "〒322-0049 栃木県鹿沼市花岡町180-1",
+        "school_tel": "0289-62-4148",
+        "boss_furigana": "廣澤史子（ひろさわ ふみこ）",
+        "boss_mobile": "090-6478-4514",
+        "boss_email": "hirosama-f01@tochigi-edu.ed.jp",
+        "design_confirm": "メール代表者",
+        "representative_furigana": "廣澤史子（ヒロサワ フミコ）",
+        "representative_mobile": "090-6478-4514",
+        "representative_email": "r9470774@gmail.com",
         "product_name": "フードスウェット",
-        "S": "2",
-        "M": "1",
-        "L": "3",
-        "LL(XL)": "0",
-        "3L(XXL)": "0"
+        "product_color": "ダークチョコレート",
+        "S": "34",
+        "M": "34",
+        "L": "34",
+        "LL(XL)": "34",
+        "3L(XXL)": "34",
+        "sub_total": "42",
+        "total": "42",
+        "print_size": "X=8cm, Y=1.5cm",
+        "print_colorl": "青、白、赤、金, 計=4色",
+        "print_design": "D-352"
+        "total_amount": 30000
     }
 }
 
