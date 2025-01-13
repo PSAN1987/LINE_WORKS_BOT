@@ -755,54 +755,61 @@ def create_flex_message(organized_data):
 
 def send_carousel_for_edit(user_id, organized_data):
     """
-    LINE WORKS向けにカルーセルメッセージを送信する関数。
-    'columns' 形式で複数の項目を表示し、各項目の修正ボタンを設置。
+    カラム数上限(例:10)を超える場合は複数回に分けて送信。
     """
 
-    # カラムを作る (1項目 = 1 column)
-    columns = []
-    for key, value in organized_data.items():
-        # 1 column の構造
-        column = {
-            "title": f"{key}",          # カードのタイトル
-            "text": f"現在の値: {value}",  # カードの本文
-            # "thumbnail": {...}       # 必要に応じて画像を入れられる
-            "actions": [
-                {
-                    "type": "message",       # ボタンを押すとBotにメッセージ送信
-                    "label": f"{key}を修正",  # ボタン表示テキスト
-                    "text": f"{key}を修正"    # 実際に送信されるメッセージ
-                }
-            ]
-        }
-        columns.append(column)
+    MAX_COLUMNS = 10  # LINE WORKSは10が上限の可能性が高い
 
-    # カルーセル全体のpayload
-    carousel_payload = {
-        "content": {
-            "type": "carousel",           # LINE WORKS でカルーセルと指定
-            "altText": "修正したい項目を選択してください。",
-            "columns": columns            # 必須: columns フィールド
-        }
-    }
+    # 辞書をリスト化 (key,value)ペアで扱う
+    items = list(organized_data.items())
 
-    # アクセストークン取得 & POST送信
-    try:
-        token_data = get_access_token()
-        if token_data and "access_token" in token_data:
-            access_token = token_data["access_token"]
-            url = f"https://www.worksapis.com/v1.0/bots/{BOT_NO}/users/{user_id}/messages"
-            headers = {
-                "Authorization": f"Bearer {access_token}",
-                "Content-Type": "application/json"
+    def chunker(seq, size):
+        """リストseqをsize個ずつに分割するジェネレータ。"""
+        for i in range(0, len(seq), size):
+            yield seq[i:i+size]
+
+    # items を 10個ずつに分割してカルーセルを作成・送信
+    for chunk in chunker(items, MAX_COLUMNS):
+        columns = []
+        for key, value in chunk:
+            column = {
+                "title": key,
+                "text": f"現在の値: {value}",
+                "actions": [
+                    {
+                        "type": "message",
+                        "label": f"{key}を修正",
+                        "text": f"{key}を修正"
+                    }
+                ]
             }
-            response = requests.post(url, json=carousel_payload, headers=headers)
-            if response.status_code == 201:
-                print("Carousel Message sent successfully!")
-            else:
-                print(f"Failed to send Carousel. Status Code: {response.status_code}, Response: {response.text}")
-    except Exception as e:
-        print(f"Error sending Carousel Message: {e}")
+            columns.append(column)
+
+        carousel_payload = {
+            "content": {
+                "type": "carousel",
+                "altText": "修正したい項目を選択してください。",
+                "columns": columns
+            }
+        }
+
+        # 1回のPOSTで 10 カラム以内のCarouselを送信
+        try:
+            token_data = get_access_token()
+            if token_data and "access_token" in token_data:
+                access_token = token_data["access_token"]
+                url = f"https://www.worksapis.com/v1.0/bots/{BOT_NO}/users/{user_id}/messages"
+                headers = {
+                    "Authorization": f"Bearer {access_token}",
+                    "Content-Type": "application/json"
+                }
+                response = requests.post(url, json=carousel_payload, headers=headers)
+                if response.status_code == 201:
+                    print("Carousel Message sent successfully!")
+                else:
+                    print(f"Failed to send Carousel. Status Code: {response.status_code}, Response: {response.text}")
+        except Exception as e:
+            print(f"Error sending Carousel Message: {e}")
 
 
 def send_flex_message(user_id, flex_message):
