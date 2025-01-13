@@ -699,117 +699,40 @@ print(updated_data)
 print(user_data_store)
 
 
-def create_flex_message(organized_data):
+def send_carousel_for_edit(user_id, organized_data):
     """
-    organized_dataをFlex Message形式で整形する関数。
-    """
-    flex_message = {
-        "type": "bubble",
-        "body": {
-            "type": "box",
-            "layout": "vertical",
-            "contents": [
-                {
-                    "type": "text",
-                    "text": "注文内容確認",
-                    "weight": "bold",
-                    "size": "lg",
-                    "margin": "md"
-                },
-                {
-                    "type": "separator",
-                    "margin": "md"
-                }
-            ] + [
-                {
-                    "type": "box",
-                    "layout": "horizontal",
-                    "contents": [
-                        {"type": "text", "text": f"{key}:", "flex": 2, "weight": "bold"},
-                        {"type": "text", "text": str(value), "flex": 4}
-                    ]
-                }
-                for key, value in organized_data.items()
-            ]
-        },
-        "footer": {
-            "type": "box",
-            "layout": "horizontal",
-            "contents": [
-                {
-                    "type": "button",
-                    "action": {"type": "message", "label": "修正", "text": "修正を開始"},
-                    "style": "primary",
-                    "color": "#FF6F61"
-                },
-                {
-                    "type": "button",
-                    "action": {"type": "message", "label": "確定", "text": "注文を確定する"},
-                    "style": "primary",
-                    "color": "#4CAF50"
-                }
-            ]
-        }
-    }
-    return flex_message
-
-def send_flex_message_for_edit(user_id, organized_data):
-    """
-    LINE WORKS向けに、カルーセル形式で項目を表示する例。
+    LINE WORKS向けにカルーセルメッセージを送信する関数。
+    'columns' 形式で複数の項目を表示し、各項目の修正ボタンを設置。
     """
 
-    # バブルを配列にまとめる
-    bubbles = []
+    # カラムを作る (1項目 = 1 column)
+    columns = []
     for key, value in organized_data.items():
-        bubble = {
-            "type": "bubble",
-            "body": {
-                "type": "box",
-                "layout": "vertical",
-                "contents": [
-                    {
-                        "type": "text",
-                        "text": f"修正項目: {key}",
-                        "weight": "bold",
-                        "size": "md"
-                    },
-                    {
-                        "type": "text",
-                        "text": f"現在の値: {value}",
-                        "size": "sm",
-                        "wrap": True
-                    }
-                ]
-            },
-            "footer": {
-                "type": "box",
-                "layout": "vertical",
-                "contents": [
-                    {
-                        "type": "button",
-                        "action": {
-                            "type": "message",
-                            "label": f"{key}を修正",
-                            "text": f"{key}を修正"
-                        },
-                        "style": "primary",
-                        "color": "#4CAF50"
-                    }
-                ]
-            }
+        # 1 column の構造
+        column = {
+            "title": f"{key}",          # カードのタイトル
+            "text": f"現在の値: {value}",  # カードの本文
+            # "thumbnail": {...}       # 必要に応じて画像を入れられる
+            "actions": [
+                {
+                    "type": "message",       # ボタンを押すとBotにメッセージ送信
+                    "label": f"{key}を修正",  # ボタン表示テキスト
+                    "text": f"{key}を修正"    # 実際に送信されるメッセージ
+                }
+            ]
         }
-        bubbles.append(bubble)
+        columns.append(column)
 
-    # "type": "carousel" としてまとめる
-    flex_payload = {
+    # カルーセル全体のpayload
+    carousel_payload = {
         "content": {
-            "type": "carousel",        # LINE WORKSではここが"carousel"または"bubble"となる
+            "type": "carousel",           # LINE WORKS でカルーセルと指定
             "altText": "修正したい項目を選択してください。",
-            "contents": bubbles        # 配列で複数バブル
+            "columns": columns            # 必須: columns フィールド
         }
     }
 
-    # あとは通常通り、アクセストークンを取得してPOST
+    # アクセストークン取得 & POST送信
     try:
         token_data = get_access_token()
         if token_data and "access_token" in token_data:
@@ -819,7 +742,7 @@ def send_flex_message_for_edit(user_id, organized_data):
                 "Authorization": f"Bearer {access_token}",
                 "Content-Type": "application/json"
             }
-            response = requests.post(url, json=flex_payload, headers=headers)
+            response = requests.post(url, json=carousel_payload, headers=headers)
             if response.status_code == 201:
                 print("Carousel Message sent successfully!")
             else:
@@ -910,8 +833,8 @@ def webhook():
                 elif user_message == "修正を開始":
                     if user_id in user_data_store:
                         organized_data = user_data_store[user_id]
-                        # Quick Replyの代わりにFlex Messageで項目を提示
-                        send_flex_message_for_edit(user_id, organized_data)
+                        # Quick Replyの代わりに カルーセルを送る
+                        send_carousel_for_edit(user_id, organized_data)
                     else:
                         send_message(user_id, "修正可能なデータが見つかりません。")
 
