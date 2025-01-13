@@ -914,45 +914,52 @@ def webhook():
                     flex_message = create_flex_message(organized_data)  # 既存の関数を想定
                     send_flex_message(user_id, flex_message)
 
-                # 修正プロセス
-                # 1) 「修正を開始」
                 if user_message == "修正を開始":
                     # user_state にページ=0 を設定
                     user_state[user_id] = {"action": "edit_carousel", "page": 0}
                     page = 0
                     send_carousel_for_edit_with_next_button(user_id, page)
 
-                # 2) 「次へ」ボタン
                 elif user_message == "次へ":
                     state = user_state.get(user_id, {})
                     if state.get("action") == "edit_carousel":
                         current_page = state.get("page", 0)
-                        new_page = current_page + 1
-                        user_state[user_id]["page"] = new_page
-                        send_carousel_for_edit_with_next_button(user_id, new_page)
+                        max_page = len(user_data_store.get(user_id, {})) - 1  # 最大ページ数
+                        if current_page < max_page:
+                            new_page = current_page + 1
+                            user_state[user_id]["page"] = new_page
+                            send_carousel_for_edit_with_next_button(user_id, new_page)
+                        else:
+                            send_message(user_id, "これ以上次の項目はありません。")
                     else:
                         send_message(user_id, "修正項目の選択モードではありません。")
 
-                # 3) 「xxxを修正」
                 elif "を修正" in user_message:
                     key_to_edit = user_message.replace("を修正", "").strip()
-                    # すでに edit_carousel 状態かどうかは問わず、とりあえず編集フェーズに移行
                     if user_id in user_data_store and key_to_edit in user_data_store[user_id]:
                         send_message(user_id, f"新しい {key_to_edit} を入力してください。")
-                        user_state[user_id] = {"action": "edit", "key": key_to_edit}
+                        user_state[user_id] = {
+                            **user_state.get(user_id, {}),
+                            "action": "edit",
+                            "key": key_to_edit,
+                        }  # 状態を更新しつつ、他の情報は維持
                     else:
                         send_message(user_id, f"'{key_to_edit}' は修正できる項目ではありません。")
 
-                # 4) ユーザーが新しい値を入力 (「action」が "edit" なら)
                 elif user_id in user_state and user_state[user_id].get("action") == "edit":
                     key_to_edit = user_state[user_id]["key"]
-                    # ここで user_message がユーザーの新しい値
                     organized_data = user_data_store.get(user_id, {})
                     organized_data[key_to_edit] = user_message  # 値を更新
-                    user_data_store[user_id] = organized_data   # 上書き保存
+                    user_data_store[user_id] = organized_data  # 上書き保存
                     send_message(user_id, f"{key_to_edit} を {user_message} に更新しました。")
-                    # 状態をリセット or 再度「edit_carousel」に戻すなどは要件次第
-                    del user_state[user_id]
+
+                    # 状態を保持しつつ、actionを "edit_carousel" に戻す
+                    user_state[user_id] = {
+                        **user_state[user_id],
+                        "action": "edit_carousel",
+                    }
+                    current_page = user_state[user_id].get("page", 0)
+                    send_carousel_for_edit_with_next_button(user_id, current_page)
 
                 # 注文確定
                 elif user_message == "注文を確定する":
