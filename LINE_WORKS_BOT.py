@@ -564,13 +564,15 @@ def normalize_product_name(product_name):
     """
     return product_name.replace(" ", "").strip()
 
-def calculate_invoice(organized_data, price_table):
+def calculate_invoice(user_id, organized_data, price_table, user_data_store):
     """
-    organized_dataから請求金額を計算し、結果をorganized_dataに保存する関数。
+    organized_dataから請求金額を計算し、結果をuser_data_storeに保存する関数。
 
     Parameters:
+        user_id (str): ユーザーID。
         organized_data (dict): 抽出・整理されたデータ。
         price_table (dict): 商品名をキー、価格を値とする価格表。
+        user_data_store (dict): ユーザーごとのデータを保存する辞書。
 
     Returns:
         dict: 請求金額を追加したorganized_data。
@@ -613,12 +615,16 @@ def calculate_invoice(organized_data, price_table):
         # 結果をorganized_dataに保存
         organized_data["total_amount"] = total_amount
 
-        print(f"Invoice calculated: {product_name} x {total_quantity} = {total_amount}円")
+        # user_data_storeを更新
+        user_data_store[user_id] = organized_data
+
+        print(f"Invoice calculated and updated in user_data_store: {product_name} x {total_quantity} = {total_amount}円")
         return organized_data
 
     except Exception as e:
         print(f"Error calculating invoice: {e}")
         return organized_data
+
 
 
 
