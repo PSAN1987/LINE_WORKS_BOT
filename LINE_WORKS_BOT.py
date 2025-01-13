@@ -554,6 +554,78 @@ def process_and_send_text_from_image(image_path=None):
 
     return organized_data
 
+def calculate_invoice(organized_data, price_table):
+    """
+    organized_dataから請求金額を計算し、結果をorganized_dataに保存する関数。
+
+    Parameters:
+        organized_data (dict): 抽出・整理されたデータ。
+        price_table (dict): 商品名をキー、価格を値とする価格表。
+
+    Returns:
+        dict: 請求金額を追加したorganized_data。
+    """
+    try:
+        # 商品名を取得
+        product_name = organized_data.get("product_name", "")
+        if not product_name:
+            print("Error: 'product_name' is missing in organized_data.")
+            return organized_data
+
+        # 部分一致で商品の価格を取得
+        product_price = None
+        for key in price_table.keys():
+            if key in product_name:
+                product_price = price_table[key]
+                break
+
+        if product_price is None:
+            print(f"Error: No matching product found for '{product_name}' in price table.")
+            return organized_data
+
+        # 数量を取得
+        quantities = {size: int(organized_data.get(size, 0)) for size in ["S", "M", "L", "LL"]}
+        total_quantity = sum(quantities.values())
+        if total_quantity == 0:
+            print(f"Error: No quantities found for product '{product_name}'.")
+            return organized_data
+
+        # 合計金額を計算
+        total_amount = product_price * total_quantity
+
+        # 結果をorganized_dataに保存
+        organized_data["total_amount"] = total_amount
+
+        print(f"Invoice calculated: {product_name} x {total_quantity} = {total_amount}円")
+        return organized_data
+
+    except Exception as e:
+        print(f"Error calculating invoice: {e}")
+        return organized_data
+
+
+# 使用例
+price_table = {
+    "フードスウェット": 5000,  # 商品名: 価格（円）
+    "Tシャツ": 2000,
+    "パーカー": 4000
+}
+
+# サンプル organized_data
+organized_data_example = {
+    "product_name": "フードスウェット",
+    "S": "2",
+    "M": "1",
+    "L": "3",
+    "LL": "0"
+}
+
+# 請求金額を計算
+updated_data = calculate_invoice(organized_data_example, price_table)
+
+# organized_data の内容を確認
+print(updated_data)
+
 # Webhookエンドポイント
 @app.route("/webhook", methods=["POST"])
 def webhook():
@@ -595,7 +667,25 @@ def webhook():
                                 print(f"Downloaded file saved at {downloaded_file}")
 
                                 # 保存した画像を処理
-                                process_and_send_text_from_image(downloaded_file)
+                                organized_data = process_and_send_text_from_image(downloaded_file)
+
+                                # 請求金額を計算
+                                if organized_data:
+                                    price_table = {
+                                        "フードスウェット": 5000,  # 商品名: 価格（円）
+                                        "Tシャツ": 2000,
+                                        "パーカー": 4000
+                                    }
+                                    updated_data = calculate_invoice(organized_data, price_table)
+
+                                    # ユーザーに請求金額を送信
+                                    if "total_amount" in updated_data:
+                                        total_amount = updated_data["total_amount"]
+                                        product_name = updated_data.get("product_name", "不明")
+                                        user_id = data["source"]["userId"]
+                                        send_message(user_id, f"請求金額: {product_name} の合計は {total_amount}円です。")
+                                else:
+                                    print("Error: organized_data is empty or invalid.")
                             else:
                                 print("画像のダウンロードに失敗しました。")
                         else:
