@@ -17,6 +17,7 @@ app = Flask(__name__)
 
 # グローバル変数として user_data_store を定義
 user_data_store = {}
+user_state = {}
 
 # LINE Works Bot API設定
 CLIENT_ID = "FAKUIs1_C7TzbMG9ZoCp"  # 管理画面で取得
@@ -795,8 +796,12 @@ def webhook():
 
             # テキストメッセージを処理
             if content_type == "text":
-                user_message = data["content"]["text"]
-                user_id = data["source"].get("userId", "")
+                user_message = data["content"].get("text", "").strip()
+                user_id = data.get("source", {}).get("userId", None)
+
+                if not user_id:
+                    print("エラー: userId がリクエストデータに含まれていません。")
+                    return jsonify({"status": "error", "message": "Missing userId"}), 400
 
                 # 注文内容確認フロー
                 if user_message == "注文を確認":
@@ -817,25 +822,27 @@ def webhook():
 
                 # 修正プロセス
                 elif user_message == "修正を開始":
-                    # 修正可能な項目をQuick Replyで送信
-                    send_quick_reply_for_edit(user_id, organized_data)
+                    if user_id in user_data_store:
+                        organized_data = user_data_store[user_id]
+                        send_quick_reply_for_edit(user_id, organized_data)
+                    else:
+                        send_message(user_id, "修正可能なデータが見つかりません。")
 
                 elif "を修正" in user_message:
                     # 修正対象の項目を取得
                     key_to_edit = user_message.replace("を修正", "").strip()
-                    if key_to_edit in organized_data:
-                        # 修正対象の項目について、新しい値を入力させる
+                    if user_id in user_data_store and key_to_edit in user_data_store[user_id]:
                         send_message(user_id, f"新しい{key_to_edit}を入力してください。")
-                        # 次の入力を反映する処理を準備（例: 状態管理）
                         user_state[user_id] = {"action": "edit", "key": key_to_edit}
                     else:
-                        # 不正な項目が選択された場合のエラーメッセージ
                         send_message(user_id, f"'{key_to_edit}' は修正できる項目ではありません。")
 
                 elif user_id in user_state and user_state[user_id].get("action") == "edit":
                     # ユーザーが新しい値を入力した場合の処理
                     key_to_edit = user_state[user_id]["key"]
+                    organized_data = user_data_store.get(user_id, {})
                     organized_data[key_to_edit] = user_message  # 新しい値を保存
+                    user_data_store[user_id] = organized_data  # データを更新
                     send_message(user_id, f"{key_to_edit} を {user_message} に更新しました。")
                     del user_state[user_id]  # 状態をリセット
 
@@ -844,7 +851,6 @@ def webhook():
                     send_message(user_id, "注文が確定されました。ありがとうございます！")
 
                 else:
-                    # その他のテキストメッセージ
                     send_message(user_id, "注文を確認したい場合は『注文を確認』と送信してください。")
 
             # 画像メッセージを処理
@@ -852,59 +858,50 @@ def webhook():
                 print("画像メッセージを受信しました。")
                 file_id = data["content"].get("fileId")
                 if file_id:
-                    # fileIdを使ってfileUrlを取得
                     file_url = get_file_url(file_id)
                     if file_url:
-                        # アクセストークンを取得
                         token_data = get_access_token()
                         if token_data and "access_token" in token_data:
                             access_token = token_data["access_token"]
-                            # 添付ファイルをダウンロード
                             downloaded_file = download_attachment(file_url, access_token)
                             if downloaded_file:
                                 print(f"Downloaded file saved at {downloaded_file}")
 
                                 # 保存した画像を処理
                                 organized_data = process_and_send_text_from_image(downloaded_file)
-                                
-                                # Webhook関数内で画像処理が完了した後
+
                                 if organized_data:
-                                    # user_data_storeにorganized_dataを保存
                                     user_data_store[user_id] = organized_data
                                     send_message(user_id, "データが保存されました。修正を開始できます。")
-                                else:
-                                    send_message(user_id, "データの保存に失敗しました。")
 
-                                # 請求金額を計算
-                                if organized_data:
+                                    # 請求金額を計算
                                     price_table = {
-                                        "フードスウェット": 5000,  # 商品名: 価格（円）
+                                        "フードスウェット": 5000,
                                         "Tシャツ": 2000,
                                         "パーカー": 4000
                                     }
                                     updated_data = calculate_invoice(organized_data, price_table)
 
-                                    # ユーザーに請求金額を送信
                                     if "total_amount" in updated_data:
                                         total_amount = updated_data["total_amount"]
                                         product_name = updated_data.get("product_name", "不明")
-                                        user_id = data["source"].get("userId", "")
                                         send_message(user_id, f"請求金額: {product_name} の合計は {total_amount}円です。")
                                 else:
-                                    print("Error: organized_data is empty or invalid.")
+                                    send_message(user_id, "データの保存に失敗しました。")
                             else:
-                                print("画像のダウンロードに失敗しました。")
+                                send_message(user_id, "画像のダウンロードに失敗しました。")
                         else:
-                            print("アクセストークンを取得できませんでした。")
+                            send_message(user_id, "アクセストークンを取得できませんでした。")
                     else:
-                        print("fileUrlを取得できませんでした。")
+                        send_message(user_id, "fileUrlを取得できませんでした。")
                 else:
-                    print("画像の 'fileId' が見つかりません。")
+                    send_message(user_id, "画像の 'fileId' が見つかりません。")
         else:
             print("Webhookデータに 'content' フィールドが含まれていません。")
     except Exception as e:
         print(f"Webhook処理中のエラー: {e}")
     return jsonify({"status": "ok"}), 200
+
 
 # アプリケーション起動
 @app.route("/", methods=["GET"])
