@@ -861,13 +861,6 @@ def webhook():
             if content_type == "text":
                 user_message = data["content"].get("text", "").strip()
                 user_id = data.get("source", {}).get("userId", None)
-                if user_id:
-                    user_data_store[user_id] = organized_data
-                    print(f"Updated user_data_store for user_id {user_id}: {organized_data}")
-
-                if not user_id:
-                    print("エラー: userId がリクエストデータに含まれていません。")
-                    return jsonify({"status": "error", "message": "Missing userId"}), 400
 
                 # 注文内容確認フロー
                 if user_message == "注文を確認":
