@@ -695,7 +695,6 @@ print(f"updated_data {user_id}: {user_data_store[user_id]}")
 # organized_data の内容を確認
 print(updated_data)
 
-
 # user_data_store の内容を確認
 print(user_data_store)
 
@@ -849,6 +848,7 @@ def webhook():
 
         # 初期化
         organized_data = None
+        user_id = data.get("source", {}).get("userId", None)
 
         if not user_id:
             print("エラー: userId がリクエストデータに含まれていません。")
