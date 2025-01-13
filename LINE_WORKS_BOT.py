@@ -602,6 +602,7 @@ def calculate_invoice(organized_data, price_table):
         return organized_data
 
 
+
 # 使用例
 price_table = {
     "フードスウェット": 5000,  # 商品名: 価格（円）
@@ -609,6 +610,14 @@ price_table = {
     "パーカー": 4000
 }
 
+# サンプル organized_data
+organized_data_example = {
+    "product_name": "フードスウェット",
+    "S": "2",
+    "M": "1",
+    "L": "3",
+    "LL": "0"
+}
 
 # 請求金額を計算
 updated_data = calculate_invoice(organized_data_example, price_table)
