@@ -543,6 +543,8 @@ def process_and_send_text_from_image(image_path=None):
         
 import json
 
+import json
+
 def organize_results_by_variable_name(results):
     """
     `process_extracted_text` の結果を変数名ごとに整理し、ログ出力する関数。
@@ -557,17 +559,28 @@ def organize_results_by_variable_name(results):
         dict: 変数名をキー、回答を値とする辞書。
               例: {'product_name': 'T-shirt', 'delivery_date': '2023-12-31', ...}
     """
+    # デバッグ用ログ
+    print(f"Received results: {results}")
+    print(f"Type of results: {type(results)}")
+
     # 文字列形式の場合、JSONに変換を試みる
     if isinstance(results, str):
         try:
             results = json.loads(results)
+            print("Successfully parsed JSON string into a list.")
         except json.JSONDecodeError as e:
             print(f"Error: Failed to parse input string as JSON. {e}")
             return {}
 
     # リスト形式であることを確認
     if not isinstance(results, list):
-        print("Error: Input data must be a list of dictionaries.")
+        print(f"Error: Expected a list of dictionaries, but got {type(results)}.")
+        print("Content of results:", results)
+        return {}
+
+    # リスト内の各要素が辞書形式であることを確認
+    if not all(isinstance(item, dict) for item in results):
+        print("Error: Each item in the list must be a dictionary.")
         return {}
 
     # データを変数名ごとに整理
@@ -584,6 +597,7 @@ def organize_results_by_variable_name(results):
         print(f"  {key}: {value}")
 
     return organized_data
+
 
 # Webhookエンドポイント
 @app.route("/webhook", methods=["POST"])
