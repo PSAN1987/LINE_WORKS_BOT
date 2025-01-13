@@ -575,26 +575,31 @@ def normalize_product_name(product_name):
     """
     return product_name.replace(" ", "").strip()
 
-# 正規化関数（仮実装）
-def normalize_product_name(name):
-    return name.replace(" ", "").strip()
-
-def calculate_invoice(user_id, organized_data, price_table, user_data_store):
+def calculate_invoice(user_id, price_table, user_data_store):
     """
-    organized_dataから請求金額を計算し、結果をuser_data_storeに保存する関数。
+    user_data_store に保存された organized_data から請求金額を計算し、結果を保存する関数。
 
     Parameters:
         user_id (str): ユーザーID。
-        organized_data (dict): 抽出・整理されたデータ。
         price_table (dict): 商品名をキー、価格を値とする価格表。
         user_data_store (dict): ユーザーごとのデータを保存する辞書。
 
     Returns:
-        dict: 請求金額を追加したorganized_data。
+        dict: 請求金額を追加した organized_data。
     """
     try:
-        # 商品名を正規化して取得
-        product_name = organized_data.get("product_name", "").replace("商品名: 商品カラー", "").strip()
+        # organized_data を取得
+        organized_data = user_data_store.get(user_id, None)
+        if not organized_data:
+            print(f"Error: No organized_data found for user_id {user_id}.")
+            return None
+
+        # 商品名を取得
+        product_name = organized_data.get("product_name", "").strip()
+        if not product_name:
+            print(f"Error: No product_name found in organized_data for user_id {user_id}.")
+            return organized_data
+
         normalized_product_name = normalize_product_name(product_name)
 
         # 部分一致で商品の価格を取得
@@ -627,10 +632,8 @@ def calculate_invoice(user_id, organized_data, price_table, user_data_store):
         # 合計金額を計算
         total_amount = product_price * total_quantity
 
-        # 結果をorganized_dataに保存
+        # 結果を organized_data に保存
         organized_data["total_amount"] = total_amount
-
-        # user_data_storeを更新
         user_data_store[user_id] = organized_data
 
         print(f"Invoice calculated and updated in user_data_store: {product_name} x {total_quantity} = {total_amount}円")
@@ -638,7 +641,40 @@ def calculate_invoice(user_id, organized_data, price_table, user_data_store):
 
     except Exception as e:
         print(f"Error calculating invoice: {e}")
-        return organized_data
+        return None
+
+
+# 使用例
+price_table = {
+    "フードスウェット": 5000,
+    "Tシャツ": 2000,
+    "パーカー": 4000
+}
+
+# ユーザーデータ管理用の辞書
+user_data_store = {
+    "9295462e-77df-4410-10a1-05ed80ea849d": {
+        "product_name": "フードスウェット",
+        "S": "2",
+        "M": "1",
+        "L": "3",
+        "LL(XL)": "0",
+        "3L(XXL)": "0"
+    }
+}
+
+# サンプルユーザーID
+user_id = "9295462e-77df-4410-10a1-05ed80ea849d"
+
+# 請求金額を計算
+updated_data = calculate_invoice(user_id, price_table, user_data_store)
+
+# organized_data の内容を確認
+print(updated_data)
+
+# user_data_store の内容を確認
+print(user_data_store)
+
 
 
 # 使用例
@@ -662,7 +698,7 @@ organized_data_example = {
 user_data_store = {}
 
 # サンプルユーザーID
-user_id = "9295462e-77df-4410-10a1-05ed80ea849d"  # 実際のユーザーIDに置き換え
+user_id = get_user_id_from_request(data)
 
 # 請求金額を計算
 updated_data = calculate_invoice(user_id, organized_data_example, price_table, user_data_store)
@@ -913,7 +949,7 @@ def webhook():
                                         "Tシャツ": 2000,
                                         "パーカー": 4000
                                     }
-                                    updated_data = calculate_invoice(user_id, organized_data, price_table, user_data_store)
+                                    updated_data = calculate_invoice(user_id, price_table, user_data_store)
 
                                     if "total_amount" in updated_data:
                                         total_amount = updated_data["total_amount"]
