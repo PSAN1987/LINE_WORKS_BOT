@@ -90,6 +90,17 @@ def get_access_token():
         print(f"Error during token request: {e}")
         return None
 
+# ユーザーIDを安全に取得する関数
+def get_user_id_from_request(data):
+    try:
+        user_id = data.get("source", {}).get("userId", None)
+        if not user_id:
+            raise ValueError("userId is missing in the request data.")
+        return user_id
+    except Exception as e:
+        print(f"Error retrieving user_id: {e}")
+        return None
+
 # メッセージを送信する関数
 def send_message(account_id, text):
     print(f"Preparing to send message to userId: {account_id}")
@@ -817,6 +828,9 @@ def webhook():
             if content_type == "text":
                 user_message = data["content"].get("text", "").strip()
                 user_id = data.get("source", {}).get("userId", None)
+                if user_id:
+                    user_data_store[user_id] = organized_data
+                    print(f"Updated user_data_store for user_id {user_id}: {organized_data}")
 
                 if not user_id:
                     print("エラー: userId がリクエストデータに含まれていません。")
