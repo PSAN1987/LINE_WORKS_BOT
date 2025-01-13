@@ -566,16 +566,14 @@ def calculate_invoice(organized_data, price_table):
         dict: 請求金額を追加したorganized_data。
     """
     try:
-        # 商品名を取得
+        # 商品名を正規化して取得
         product_name = organized_data.get("product_name", "")
-        if not product_name:
-            print("Error: 'product_name' is missing in organized_data.")
-            return organized_data
+        product_name = normalize_product_name(product_name)
 
         # 部分一致で商品の価格を取得
         product_price = None
         for key in price_table.keys():
-            if key in product_name:
+            if normalize_product_name(key) in product_name:
                 product_price = price_table[key]
                 break
 
@@ -584,7 +582,7 @@ def calculate_invoice(organized_data, price_table):
             return organized_data
 
         # 数量を取得
-        quantities = {size: int(organized_data.get(size, 0)) for size in ["S", "M", "L", "LL"]}
+        quantities = {size: int(organized_data.get(size, 0)) for size in ["S", "M", "L", "LL(XL)"]}
         total_quantity = sum(quantities.values())
         if total_quantity == 0:
             print(f"Error: No quantities found for product '{product_name}'.")
@@ -611,14 +609,6 @@ price_table = {
     "パーカー": 4000
 }
 
-# サンプル organized_data
-organized_data_example = {
-    "product_name": "フードスウェット",
-    "S": "2",
-    "M": "1",
-    "L": "3",
-    "LL": "0"
-}
 
 # 請求金額を計算
 updated_data = calculate_invoice(organized_data_example, price_table)
