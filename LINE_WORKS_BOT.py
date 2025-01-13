@@ -753,49 +753,67 @@ def create_flex_message(organized_data):
     }
     return flex_message
 
-def send_quick_reply_for_edit(user_id, organized_data):
+def send_flex_message_for_edit(user_id, organized_data):
     """
-    修正可能な項目をQuick Reply形式でユーザーに提示する。
+    Quick Replyの代わりに、Flex Message (Carousel) で修正可能な項目を提示。
     """
-    quick_reply_items = [
-        {
-            "type": "action",
-            "action": {
-                "type": "message",
-                "label": key,
-                "text": f"{key}を修正"
+
+    # 1バブル = 1項目 でカルーセルに格納
+    bubbles = []
+    for key, value in organized_data.items():
+        bubble = {
+            "type": "bubble",
+            "body": {
+                "type": "box",
+                "layout": "vertical",
+                "contents": [
+                    {
+                        "type": "text",
+                        "text": f"修正項目: {key}",
+                        "weight": "bold",
+                        "size": "md"
+                    },
+                    {
+                        "type": "text",
+                        "text": f"現在の値: {value}",
+                        "size": "sm",
+                        "wrap": True
+                    }
+                ]
+            },
+            "footer": {
+                "type": "box",
+                "layout": "vertical",
+                "contents": [
+                    {
+                        "type": "button",
+                        "action": {
+                            "type": "message",     # ボタン押下でユーザーからテキストメッセージが届く
+                            "label": f"{key}を修正",
+                            "text": f"{key}を修正"  # Botが受け取って「を修正」ロジックを実行
+                        },
+                        "style": "primary",
+                        "color": "#4CAF50"  # 任意の色
+                    }
+                ]
             }
         }
-        for key in organized_data.keys()
-    ]
+        bubbles.append(bubble)
 
-    payload = {
+    # Flex Message全体（カルーセル形式）
+    flex_payload = {
         "content": {
-            "type": "text",
-            "text": "修正したい項目を選択してください。",
-            "quickReply": {
-                "items": quick_reply_items
+            "type": "flex",
+            "altText": "修正したい項目を選択してください。",
+            "contents": {
+                "type": "carousel",
+                "contents": bubbles
             }
         }
     }
 
-    # アクセストークンを使ってメッセージを送信
-    try:
-        token_data = get_access_token()
-        if token_data and "access_token" in token_data:
-            access_token = token_data["access_token"]
-            url = f"https://www.worksapis.com/v1.0/bots/{BOT_NO}/users/{user_id}/messages"
-            headers = {
-                "Authorization": f"Bearer {access_token}",
-                "Content-Type": "application/json"
-            }
-            response = requests.post(url, json=payload, headers=headers)
-            if response.status_code == 201:
-                print("Quick Reply sent successfully!")
-            else:
-                print(f"Failed to send Quick Reply. Status Code: {response.status_code}, Response: {response.text}")
-    except Exception as e:
-        print(f"Error sending Quick Reply: {e}")
+    # Flexメッセージ送信
+    send_flex_message(user_id, flex_payload)
 
 
 def send_flex_message(user_id, flex_message):
@@ -864,7 +882,6 @@ def webhook():
 
                 # 注文内容確認フロー
                 if user_message == "注文を確認":
-                    # user_data_store から organized_data を取得
                     organized_data = user_data_store.get(user_id, None)
                     if not organized_data:
                         send_message(user_id, "注文データが見つかりません。")
@@ -874,13 +891,15 @@ def webhook():
                     print(f"Organized data for user {user_id}: {organized_data}")
 
                     # Flex Messageで確認メッセージを送信
-                    flex_message = create_flex_message(organized_data)
+                    flex_message = create_flex_message(organized_data)  # 既存の関数を想定
                     send_flex_message(user_id, flex_message)
+
                 # 修正プロセス
                 elif user_message == "修正を開始":
                     if user_id in user_data_store:
                         organized_data = user_data_store[user_id]
-                        send_quick_reply_for_edit(user_id, organized_data)
+                        # Quick Replyの代わりにFlex Messageで項目を提示
+                        send_flex_message_for_edit(user_id, organized_data)
                     else:
                         send_message(user_id, "修正可能なデータが見つかりません。")
 
@@ -888,7 +907,7 @@ def webhook():
                     # 修正対象の項目を取得
                     key_to_edit = user_message.replace("を修正", "").strip()
                     if user_id in user_data_store and key_to_edit in user_data_store[user_id]:
-                        send_message(user_id, f"新しい{key_to_edit}を入力してください。")
+                        send_message(user_id, f"新しい {key_to_edit} を入力してください。")
                         user_state[user_id] = {"action": "edit", "key": key_to_edit}
                     else:
                         send_message(user_id, f"'{key_to_edit}' は修正できる項目ではありません。")
@@ -928,8 +947,7 @@ def webhook():
 
                                 if organized_data:
                                     user_data_store[user_id] = organized_data
-                                     # 保存内容をログ出力
-                                    print(f"Updated user_data_store for user_id {user_id}: {user_data_store[user_id]}")
+                                    print(f"Updated user_data_store for user_id {user_id}: {organized_data}")
                                     send_message(user_id, "データが保存されました。修正を開始できます。")
 
                                     # 請求金額を計算
@@ -959,7 +977,6 @@ def webhook():
     except Exception as e:
         print(f"Webhook処理中のエラー: {e}")
     return jsonify({"status": "ok"}), 200
-
 
 # アプリケーション起動
 @app.route("/", methods=["GET"])
