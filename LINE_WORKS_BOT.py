@@ -573,13 +573,12 @@ def calculate_invoice(organized_data, price_table):
     """
     try:
         # 商品名を正規化して取得
-        product_name = organized_data.get("product_name", "")
-        product_name = normalize_product_name(product_name)
+        product_name = organized_data.get("product_name", "").replace("商品名: 商品カラー", "").strip()
 
         # 部分一致で商品の価格を取得
         product_price = None
         for key in price_table.keys():
-            if normalize_product_name(key) in product_name:
+            if key in product_name:
                 product_price = price_table[key]
                 break
 
@@ -588,10 +587,20 @@ def calculate_invoice(organized_data, price_table):
             return organized_data
 
         # 数量を取得
-        quantities = {size: int(organized_data.get(size, 0)) for size in ["S", "M", "L", "LL(XL)"]}
+        quantities = {}
+        for size in ["S", "M", "L", "LL(XL)", "3L(XXL)"]:
+            value = organized_data.get(size, "0")
+            try:
+                quantities[size] = int(value)
+            except ValueError:
+                # 不正なデータは無視し、0に設定
+                print(f"Warning: Invalid quantity value '{value}' for size '{size}'. Setting it to 0.")
+                quantities[size] = 0
+
+        # 合計数量を計算
         total_quantity = sum(quantities.values())
         if total_quantity == 0:
-            print(f"Error: No quantities found for product '{product_name}'.")
+            print(f"Error: No valid quantities found for product '{product_name}'.")
             return organized_data
 
         # 合計金額を計算
@@ -606,6 +615,7 @@ def calculate_invoice(organized_data, price_table):
     except Exception as e:
         print(f"Error calculating invoice: {e}")
         return organized_data
+
 
 
 
