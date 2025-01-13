@@ -696,7 +696,7 @@ def create_flex_message(organized_data):
 
 def send_quick_reply_for_edit(user_id, organized_data):
     """
-    修正可能な項目をQuick Reply形式でユーザーに提示する関数。
+    修正可能な項目をQuick Reply形式でユーザーに提示する。
     """
     quick_reply_items = [
         {
@@ -720,6 +720,7 @@ def send_quick_reply_for_edit(user_id, organized_data):
         }
     }
 
+    # アクセストークンを使ってメッセージを送信
     try:
         token_data = get_access_token()
         if token_data and "access_token" in token_data:
@@ -812,9 +813,28 @@ def webhook():
                     send_flex_message(user_id, flex_message)
 
                 # 修正プロセス
+                elif user_message == "修正を開始":
+                    # 修正可能な項目をQuick Replyで送信
+                    send_quick_reply_for_edit(user_id, organized_data)
+
                 elif "を修正" in user_message:
+                    # 修正対象の項目を取得
                     key_to_edit = user_message.replace("を修正", "").strip()
-                    send_message(user_id, f"新しい{key_to_edit}を入力してください。")
+                    if key_to_edit in organized_data:
+                        # 修正対象の項目について、新しい値を入力させる
+                        send_message(user_id, f"新しい{key_to_edit}を入力してください。")
+                        # 次の入力を反映する処理を準備（例: 状態管理）
+                        user_state[user_id] = {"action": "edit", "key": key_to_edit}
+                    else:
+                        # 不正な項目が選択された場合のエラーメッセージ
+                        send_message(user_id, f"'{key_to_edit}' は修正できる項目ではありません。")
+
+                elif user_id in user_state and user_state[user_id].get("action") == "edit":
+                    # ユーザーが新しい値を入力した場合の処理
+                    key_to_edit = user_state[user_id]["key"]
+                    organized_data[key_to_edit] = user_message  # 新しい値を保存
+                    send_message(user_id, f"{key_to_edit} を {user_message} に更新しました。")
+                    del user_state[user_id]  # 状態をリセット
 
                 # 注文確定
                 elif user_message == "注文を確定する":
