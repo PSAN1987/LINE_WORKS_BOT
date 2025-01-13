@@ -679,8 +679,8 @@ user_data_store = {
         "total": "42",
         "print_size": "X=8cm, Y=1.5cm",
         "print_colorl": "青、白、赤、金, 計=4色",
-        "print_design": "D-352"
-        "total_amount": 30000
+        "print_design": "D-352",
+        "total_amount": "30000"
     }
 }
 
