@@ -556,9 +556,9 @@ def process_and_send_text_from_image(image_path=None):
 
 def normalize_product_name(product_name):
     """
-    商品名を正規化して不要な文字列や空白を除去する関数。
+    商品名を正規化して不要なスペースや文字を除去する関数。
     """
-    return product_name.replace("-", "").replace(" ", "").strip()
+    return product_name.replace(" ", "").strip()
 
 def calculate_invoice(organized_data, price_table):
     """
@@ -574,11 +574,12 @@ def calculate_invoice(organized_data, price_table):
     try:
         # 商品名を正規化して取得
         product_name = organized_data.get("product_name", "").replace("商品名: 商品カラー", "").strip()
+        normalized_product_name = normalize_product_name(product_name)
 
         # 部分一致で商品の価格を取得
         product_price = None
         for key in price_table.keys():
-            if key in product_name:
+            if normalize_product_name(key) in normalized_product_name:
                 product_price = price_table[key]
                 break
 
@@ -593,7 +594,6 @@ def calculate_invoice(organized_data, price_table):
             try:
                 quantities[size] = int(value)
             except ValueError:
-                # 不正なデータは無視し、0に設定
                 print(f"Warning: Invalid quantity value '{value}' for size '{size}'. Setting it to 0.")
                 quantities[size] = 0
 
@@ -615,7 +615,6 @@ def calculate_invoice(organized_data, price_table):
     except Exception as e:
         print(f"Error calculating invoice: {e}")
         return organized_data
-
 
 
 
