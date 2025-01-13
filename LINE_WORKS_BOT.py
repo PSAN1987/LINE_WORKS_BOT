@@ -822,7 +822,7 @@ def webhook():
     try:
         data = request.json
         print(f"Received webhook data: {data}")
-        
+
         # 初期化
         organized_data = None
         user_id = data.get("source", {}).get("userId", None)
@@ -848,21 +848,18 @@ def webhook():
 
                 # 注文内容確認フロー
                 if user_message == "注文を確認":
-                    # organized_dataのサンプルを作成
-                    organized_data = {
-                        "product_name": "フードスウェット",
-                        "product_color": "青",
-                        "S": 34,
-                        "M": 34,
-                        "L": 34,
-                        "LL(XL)": 34,
-                        "total_amount": 5000 * (34 + 34 + 34 + 34)  # 仮の計算
-                    }
+                    # user_data_store から organized_data を取得
+                    organized_data = user_data_store.get(user_id, None)
+                    if not organized_data:
+                        send_message(user_id, "注文データが見つかりません。")
+                        return
+
+                    # organized_data の全ての変数を確認してログに出力
+                    print(f"Organized data for user {user_id}: {organized_data}")
 
                     # Flex Messageで確認メッセージを送信
                     flex_message = create_flex_message(organized_data)
                     send_flex_message(user_id, flex_message)
-
                 # 修正プロセス
                 elif user_message == "修正を開始":
                     if user_id in user_data_store:
