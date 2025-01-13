@@ -917,60 +917,53 @@ def webhook():
                     flex_message = create_flex_message(organized_data)  # 既存の関数を想定
                     send_flex_message(user_id, flex_message)
 
+                # 1) 「修正を開始」
                 if user_message == "修正を開始":
-                    # 初期状態を設定
+                    # user_state にページ=0 を設定
                     user_state[user_id] = {"action": "edit_carousel", "page": 0}
                     page = 0
                     send_carousel_for_edit_with_next_button(user_id, page)
 
+                # 2) 「次へ」ボタン
                 elif user_message == "次へ":
-                    # 現在の状態を取得
                     state = user_state.get(user_id, {})
                     if state.get("action") == "edit_carousel":
                         current_page = state.get("page", 0)
-
-                        # 最大ページ数を計算
-                        organized_data = user_data_store.get(user_id, {})
-                        max_page = (len(organized_data) + MAX_DATA_COLUMNS - 1) // MAX_DATA_COLUMNS - 1
-
-                        # ページが範囲内なら次のページに進む
-                        if current_page < max_page:
-                            new_page = current_page + 1
-                            user_state[user_id]["page"] = new_page
-                            send_carousel_for_edit_with_next_button(user_id, new_page)
-                        else:
-                            send_message(user_id, "これ以上次の項目はありません。")
+                        new_page = current_page + 1
+                        user_state[user_id]["page"] = new_page
+                        send_carousel_for_edit_with_next_button(user_id, new_page)
                     else:
                         send_message(user_id, "修正項目の選択モードではありません。")
 
+                # 3) 「xxxを修正」
                 elif "を修正" in user_message:
-                    # 修正対象キーを取得
                     key_to_edit = user_message.replace("を修正", "").strip()
-                    organized_data = user_data_store.get(user_id, {})
-                    if key_to_edit in organized_data:
+                    # すでに edit_carousel 状態かどうかは問わず、とりあえず編集フェーズに移行
+                    if user_id in user_data_store and key_to_edit in user_data_store[user_id]:
                         send_message(user_id, f"新しい {key_to_edit} を入力してください。")
-                        user_state[user_id] = {
-                            **user_state.get(user_id, {}),
-                            "action": "edit",
-                            "key": key_to_edit,
-                        }
+                        user_state[user_id] = {"action": "edit", "key": key_to_edit}
                     else:
                         send_message(user_id, f"'{key_to_edit}' は修正できる項目ではありません。")
 
+                # 4) ユーザーが新しい値を入力 (「action」が "edit" なら)
                 elif user_id in user_state and user_state[user_id].get("action") == "edit":
-                    # ユーザーが新しい値を入力した場合
                     key_to_edit = user_state[user_id]["key"]
                     organized_data = user_data_store.get(user_id, {})
-                    organized_data[key_to_edit] = user_message  # 新しい値を保存
+                    organized_data[key_to_edit] = user_message  # 値を更新
                     user_data_store[user_id] = organized_data  # 上書き保存
 
                     send_message(user_id, f"{key_to_edit} を {user_message} に更新しました。")
 
-                    # 状態を「edit_carousel」に戻す
-                    user_state[user_id]["action"] = "edit_carousel"
+                    # 状態を保持しつつ、actionを "edit_carousel" に戻す
+                    user_state[user_id]["action"] = "edit_carousel"  # 状態を直接更新
                     current_page = user_state[user_id].get("page", 0)
-                    send_carousel_for_edit_with_next_button(user_id, current_page)
 
+                    # デバッグ用に状態を出力
+                    print(f"DEBUG: Updated user_state: {user_state[user_id]}")
+
+                    # Carouselを再送信
+                    send_carousel_for_edit_with_next_button(user_id, current_page)
+                    
                 # 注文確定
                 elif user_message == "注文を確定する":
                     send_message(user_id, "注文が確定されました。ありがとうございます！")
