@@ -755,33 +755,36 @@ def create_flex_message(organized_data):
 
 def send_carousel_for_edit_with_next_button(user_id, page=0):
     """
-    1ページに最大9個のデータカラム + (まだ続きがあれば)「次へ」用カラム1個、合計10カラム以内。
-    ユーザーが「次へ」ボタンを押すと page を+1 して再表示。
+    1ページに最大9個のデータカラム + 「次へ」用カラムを含むカルーセルを送信。
     """
-    MAX_DATA_COLUMNS = 9
+    MAX_DATA_COLUMNS = 9  # 1ページあたりの最大項目数
 
-    # user_data_store から取得
+    # user_data_storeからデータ取得
     organized_data = user_data_store.get(user_id, {})
-    items = list(organized_data.items())  # [(key, value), (key, value), ...]
+    items = list(organized_data.items())  # データをリスト化
 
+    # データの範囲を計算
     start_index = page * MAX_DATA_COLUMNS
     end_index = start_index + MAX_DATA_COLUMNS
     chunk = items[start_index:end_index]
 
+    # デバッグ用: 現在のページとデータ範囲
+    print(f"DEBUG: Page={page}, Start={start_index}, End={end_index}, Chunk={chunk}")
+
+    # データがなければメッセージ送信して終了
     if not chunk:
         send_message(user_id, "これ以上修正できる項目はありません。")
         return
 
+    # カルーセルのカラムを構築
     columns = []
-    # 1. データ分 (最大9個)
     for key, value in chunk:
-        # 【タイトル・本文の文字数制限を回避するためのトリミング例】
         truncated_key = (key[:30] + "...") if len(key) > 30 else key
         text_value = f"現在の値: {value}"
         if len(text_value) > 60:
             text_value = text_value[:57] + "..."
 
-        column = {
+        columns.append({
             "title": truncated_key,
             "text": text_value,
             "actions": [
@@ -791,10 +794,9 @@ def send_carousel_for_edit_with_next_button(user_id, page=0):
                     "text": f"{key}を修正"
                 }
             ]
-        }
-        columns.append(column)
+        })
 
-    # 2. 次ページがあるなら「次へ」カラムを追加
+    # 次ページがある場合は「次へ」ボタンを追加
     if end_index < len(items):
         columns.append({
             "title": "次の項目を表示",
@@ -808,7 +810,7 @@ def send_carousel_for_edit_with_next_button(user_id, page=0):
             ]
         })
 
-    # カルーセルpayload
+    # カルーセルのペイロード作成
     carousel_payload = {
         "content": {
             "type": "carousel",
@@ -817,7 +819,7 @@ def send_carousel_for_edit_with_next_button(user_id, page=0):
         }
     }
 
-    # AccessToken取得 & POST送信
+    # AccessToken取得と送信
     try:
         token_data = get_access_token()
         if token_data and "access_token" in token_data:
@@ -834,6 +836,7 @@ def send_carousel_for_edit_with_next_button(user_id, page=0):
                 print(f"Failed to send Carousel. Status: {response.status_code}, Body: {response.text}")
     except Exception as e:
         print(f"Error sending Carousel Message: {e}")
+
 
 
 def send_flex_message(user_id, flex_message):
@@ -914,52 +917,59 @@ def webhook():
                     flex_message = create_flex_message(organized_data)  # 既存の関数を想定
                     send_flex_message(user_id, flex_message)
 
-                if user_message == "修正を開始":
-                    # user_state にページ=0 を設定
-                    user_state[user_id] = {"action": "edit_carousel", "page": 0}
-                    page = 0
-                    send_carousel_for_edit_with_next_button(user_id, page)
+            if user_message == "修正を開始":
+                # 初期状態を設定
+                user_state[user_id] = {"action": "edit_carousel", "page": 0}
+                page = 0
+                send_carousel_for_edit_with_next_button(user_id, page)
 
-                elif user_message == "次へ":
-                    state = user_state.get(user_id, {})
-                    if state.get("action") == "edit_carousel":
-                        current_page = state.get("page", 0)
-                        max_page = len(user_data_store.get(user_id, {})) - 1  # 最大ページ数
-                        if current_page < max_page:
-                            new_page = current_page + 1
-                            user_state[user_id]["page"] = new_page
-                            send_carousel_for_edit_with_next_button(user_id, new_page)
-                        else:
-                            send_message(user_id, "これ以上次の項目はありません。")
-                    else:
-                        send_message(user_id, "修正項目の選択モードではありません。")
+            elif user_message == "次へ":
+                # 現在の状態を取得
+                state = user_state.get(user_id, {})
+                if state.get("action") == "edit_carousel":
+                    current_page = state.get("page", 0)
 
-                elif "を修正" in user_message:
-                    key_to_edit = user_message.replace("を修正", "").strip()
-                    if user_id in user_data_store and key_to_edit in user_data_store[user_id]:
-                        send_message(user_id, f"新しい {key_to_edit} を入力してください。")
-                        user_state[user_id] = {
-                            **user_state.get(user_id, {}),
-                            "action": "edit",
-                            "key": key_to_edit,
-                        }  # 状態を更新しつつ、他の情報は維持
-                    else:
-                        send_message(user_id, f"'{key_to_edit}' は修正できる項目ではありません。")
-
-                elif user_id in user_state and user_state[user_id].get("action") == "edit":
-                    key_to_edit = user_state[user_id]["key"]
+                    # 最大ページ数を計算
                     organized_data = user_data_store.get(user_id, {})
-                    organized_data[key_to_edit] = user_message  # 値を更新
-                    user_data_store[user_id] = organized_data  # 上書き保存
-                    send_message(user_id, f"{key_to_edit} を {user_message} に更新しました。")
+                    max_page = (len(organized_data) + MAX_DATA_COLUMNS - 1) // MAX_DATA_COLUMNS - 1
 
-                    # 状態を保持しつつ、actionを "edit_carousel" に戻す
+                    # ページが範囲内なら次のページに進む
+                    if current_page < max_page:
+                        new_page = current_page + 1
+                        user_state[user_id]["page"] = new_page
+                        send_carousel_for_edit_with_next_button(user_id, new_page)
+                    else:
+                        send_message(user_id, "これ以上次の項目はありません。")
+                else:
+                    send_message(user_id, "修正項目の選択モードではありません。")
+
+            elif "を修正" in user_message:
+                # 修正対象キーを取得
+                key_to_edit = user_message.replace("を修正", "").strip()
+                organized_data = user_data_store.get(user_id, {})
+                if key_to_edit in organized_data:
+                    send_message(user_id, f"新しい {key_to_edit} を入力してください。")
                     user_state[user_id] = {
-                        **user_state[user_id],
-                        "action": "edit_carousel",
+                        **user_state.get(user_id, {}),
+                        "action": "edit",
+                        "key": key_to_edit,
                     }
-                    current_page = user_state[user_id].get("page", 0)
-                    send_carousel_for_edit_with_next_button(user_id, current_page)
+                else:
+                    send_message(user_id, f"'{key_to_edit}' は修正できる項目ではありません。")
+
+            elif user_id in user_state and user_state[user_id].get("action") == "edit":
+                # ユーザーが新しい値を入力した場合
+                key_to_edit = user_state[user_id]["key"]
+                organized_data = user_data_store.get(user_id, {})
+                organized_data[key_to_edit] = user_message  # 新しい値を保存
+                user_data_store[user_id] = organized_data  # 上書き保存
+
+                send_message(user_id, f"{key_to_edit} を {user_message} に更新しました。")
+
+                # 状態を「edit_carousel」に戻す
+                user_state[user_id]["action"] = "edit_carousel"
+                current_page = user_state[user_id].get("page", 0)
+                send_carousel_for_edit_with_next_button(user_id, current_page)
 
                 # 注文確定
                 elif user_message == "注文を確定する":
