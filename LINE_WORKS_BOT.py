@@ -753,63 +753,85 @@ def create_flex_message(organized_data):
     }
     return flex_message
 
-def send_carousel_for_edit(user_id, organized_data):
+def send_carousel_for_edit_with_next_button(user_id, page=0):
     """
-    カラム数上限(例:10)を超える場合は複数回に分けて送信。
+    カルーセルで1ページあたり9項目 + 1つの「次へ」カラムを表示。
+    ユーザーが「次へ」ボタンを押すと次ページを送るUIを実現。
     """
-
-    MAX_COLUMNS = 10  # LINE WORKSは10が上限の可能性が高い
-
-    # 辞書をリスト化 (key,value)ペアで扱う
+    MAX_DATA_COLUMNS = 9  # データ用カラムの最大数
+    # user_data_storeからデータを取得
+    organized_data = user_data_store.get(user_id, {})
+    # (key, value)のリスト化
     items = list(organized_data.items())
 
-    def chunker(seq, size):
-        """リストseqをsize個ずつに分割するジェネレータ。"""
-        for i in range(0, len(seq), size):
-            yield seq[i:i+size]
+    # 今回のスタート・エンドインデックス
+    start_index = page * MAX_DATA_COLUMNS
+    end_index = start_index + MAX_DATA_COLUMNS
+    chunk = items[start_index:end_index]
 
-    # items を 10個ずつに分割してカルーセルを作成・送信
-    for chunk in chunker(items, MAX_COLUMNS):
-        columns = []
-        for key, value in chunk:
-            column = {
-                "title": key,
-                "text": f"現在の値: {value}",
-                "actions": [
-                    {
-                        "type": "message",
-                        "label": f"{key}を修正",
-                        "text": f"{key}を修正"
-                    }
-                ]
-            }
-            columns.append(column)
+    if not chunk:
+        # これ以上データがなければ通知して終了
+        send_message(user_id, "これ以上修正できる項目はありません。")
+        return
 
-        carousel_payload = {
-            "content": {
-                "type": "carousel",
-                "altText": "修正したい項目を選択してください。",
-                "columns": columns
-            }
-        }
-
-        # 1回のPOSTで 10 カラム以内のCarouselを送信
-        try:
-            token_data = get_access_token()
-            if token_data and "access_token" in token_data:
-                access_token = token_data["access_token"]
-                url = f"https://www.worksapis.com/v1.0/bots/{BOT_NO}/users/{user_id}/messages"
-                headers = {
-                    "Authorization": f"Bearer {access_token}",
-                    "Content-Type": "application/json"
+    # カルーセル(columns) を組み立てる
+    columns = []
+    
+    # 1. 今回のデータ分 (最大9個)
+    for key, value in chunk:
+        columns.append({
+            "title": key,
+            "text": f"現在の値: {value}",
+            "actions": [
+                {
+                    "type": "message",
+                    "label": f"{key}を修正",
+                    "text": f"{key}を修正"
                 }
-                response = requests.post(url, json=carousel_payload, headers=headers)
-                if response.status_code == 201:
-                    print("Carousel Message sent successfully!")
-                else:
-                    print(f"Failed to send Carousel. Status Code: {response.status_code}, Response: {response.text}")
-        except Exception as e:
-            print(f"Error sending Carousel Message: {e}")
+            ]
+        })
+
+    # 2. まだ次のページがあるなら、「次へ」ボタン用のカラムを追加
+    #    end_index 以降にもアイテムが残っていれば次ページあり
+    if end_index < len(items):
+        columns.append({
+            "title": "次の10件を表示",
+            "text": "次へ",
+            "actions": [
+                {
+                    "type": "message",
+                    "label": "次へ",
+                    "text": "次へ"
+                }
+            ]
+        })
+
+    # カルーセルpayload
+    carousel_payload = {
+        "content": {
+            "type": "carousel",
+            "altText": "修正したい項目を選択してください。",
+            "columns": columns
+        }
+    }
+
+    # AccessToken取得 & POST
+    try:
+        token_data = get_access_token()
+        if token_data and "access_token" in token_data:
+            access_token = token_data["access_token"]
+            url = f"https://www.worksapis.com/v1.0/bots/{BOT_NO}/users/{user_id}/messages"
+            headers = {
+                "Authorization": f"Bearer {access_token}",
+                "Content-Type": "application/json"
+            }
+            response = requests.post(url, json=carousel_payload, headers=headers)
+            if response.status_code == 201:
+                print(f"Carousel (page={page}) sent successfully!")
+            else:
+                print(f"Failed to send Carousel. Status Code: {response.status_code}, Response: {response.text}")
+    except Exception as e:
+        print(f"Error sending Carousel Message: {e}")
 
 
 def send_flex_message(user_id, flex_message):
@@ -891,31 +913,31 @@ def webhook():
                     send_flex_message(user_id, flex_message)
 
                 # 修正プロセス
-                elif user_message == "修正を開始":
-                    if user_id in user_data_store:
-                        organized_data = user_data_store[user_id]
-                        # Quick Replyの代わりに カルーセルを送る
-                        send_carousel_for_edit(user_id, organized_data)
+                # 1) 最初に「修正を開始」でページを0に初期化し、表示
+                if user_message == "修正を開始":
+                    user_state[user_id] = {"action": "edit_carousel", "page": 0}
+                    page = user_state[user_id]["page"]
+                    send_carousel_for_edit_with_next_button(user_id, page=page)
+                
+                # 2) ユーザーが「次へ」をタップしたらページを+1して再度表示
+                elif user_message == "次へ":
+                    state = user_state.get(user_id, {})
+                    if state.get("action") == "edit_carousel":
+                        current_page = state.get("page", 0)
+                        new_page = current_page + 1
+                        user_state[user_id]["page"] = new_page
+                        send_carousel_for_edit_with_next_button(user_id, page=new_page)
                     else:
-                        send_message(user_id, "修正可能なデータが見つかりません。")
+                        send_message(user_id, "修正項目の選択モードではありません。")
 
+                # 3) 「xxxを修正」の処理
                 elif "を修正" in user_message:
-                    # 修正対象の項目を取得
                     key_to_edit = user_message.replace("を修正", "").strip()
                     if user_id in user_data_store and key_to_edit in user_data_store[user_id]:
                         send_message(user_id, f"新しい {key_to_edit} を入力してください。")
                         user_state[user_id] = {"action": "edit", "key": key_to_edit}
                     else:
                         send_message(user_id, f"'{key_to_edit}' は修正できる項目ではありません。")
-
-                elif user_id in user_state and user_state[user_id].get("action") == "edit":
-                    # ユーザーが新しい値を入力した場合の処理
-                    key_to_edit = user_state[user_id]["key"]
-                    organized_data = user_data_store.get(user_id, {})
-                    organized_data[key_to_edit] = user_message  # 新しい値を保存
-                    user_data_store[user_id] = organized_data  # データを更新
-                    send_message(user_id, f"{key_to_edit} を {user_message} に更新しました。")
-                    del user_state[user_id]  # 状態をリセット
 
                 # 注文確定
                 elif user_message == "注文を確定する":
