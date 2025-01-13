@@ -685,17 +685,49 @@ def create_flex_message(organized_data):
     }
     return flex_message
 
-def create_quick_reply(organized_data):
+def send_quick_reply_for_edit(user_id, organized_data):
     """
-    修正箇所の選択肢をQuick Replyとして生成する。
+    修正可能な項目をQuick Reply形式でユーザーに提示する関数。
     """
     quick_reply_items = [
-        {"type": "action", "action": {"type": "message", "label": key, "text": f"{key}を修正"}}
+        {
+            "type": "action",
+            "action": {
+                "type": "message",
+                "label": key,
+                "text": f"{key}を修正"
+            }
+        }
         for key in organized_data.keys()
     ]
-    return {"items": quick_reply_items}
 
-import requests
+    payload = {
+        "content": {
+            "type": "text",
+            "text": "修正したい項目を選択してください。",
+            "quickReply": {
+                "items": quick_reply_items
+            }
+        }
+    }
+
+    try:
+        token_data = get_access_token()
+        if token_data and "access_token" in token_data:
+            access_token = token_data["access_token"]
+            url = f"https://www.worksapis.com/v1.0/bots/{BOT_NO}/users/{user_id}/messages"
+            headers = {
+                "Authorization": f"Bearer {access_token}",
+                "Content-Type": "application/json"
+            }
+            response = requests.post(url, json=payload, headers=headers)
+            if response.status_code == 201:
+                print("Quick Reply sent successfully!")
+            else:
+                print(f"Failed to send Quick Reply. Status Code: {response.status_code}, Response: {response.text}")
+    except Exception as e:
+        print(f"Error sending Quick Reply: {e}")
+
 
 def send_flex_message(user_id, flex_message):
     """
