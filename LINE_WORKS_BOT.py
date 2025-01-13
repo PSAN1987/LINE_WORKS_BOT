@@ -721,6 +721,7 @@ def send_flex_message(user_id, flex_message):
             payload = {
                 "content": {
                     "type": "flex",
+                    "altText": "注文内容の確認",  # 必須のaltTextパラメータを追加
                     "contents": flex_message
                 }
             }
