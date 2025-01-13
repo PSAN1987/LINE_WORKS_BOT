@@ -676,40 +676,6 @@ print(updated_data)
 print(user_data_store)
 
 
-
-# 使用例
-price_table = {
-    "フードスウェット": 5000,  # 商品名: 価格（円）
-    "Tシャツ": 2000,
-    "パーカー": 4000
-}
-
-# サンプル organized_data
-organized_data_example = {
-    "product_name": "フードスウェット",
-    "S": "2",
-    "M": "1",
-    "L": "3",
-    "LL(XL)": "0",
-    "3L(XXL)": "0"
-}
-
-# ユーザーデータ管理用の辞書
-user_data_store = {}
-
-# サンプルユーザーID
-user_id = get_user_id_from_request(data)
-
-# 請求金額を計算
-updated_data = calculate_invoice(user_id, organized_data_example, price_table, user_data_store)
-
-# organized_data の内容を確認
-print(updated_data)
-
-# user_data_store の内容を確認
-print(user_data_store)
-
-
 def create_flex_message(organized_data):
     """
     organized_dataをFlex Message形式で整形する関数。
