@@ -273,7 +273,7 @@ search_coordinates_template = [
     {
         "label": "代表者氏名",
         "variable_name": "owner_name",
-        "prompt_instructions": "以下の整理されたデータから「代表者指名」に該当する情報を抽出してください。回答は漢字の名前とフリガナだけで良いです"
+        "prompt_instructions": "以下の整理されたデータから「代表者指名」に該当する情報を抽出してください。回答は20文字以内で漢字の名前だけで良いです"
     },
     {
         "label": "代表者携帯",
@@ -992,19 +992,33 @@ def webhook():
                                     user_data_store[user_id] = organized_data
                                     print(f"Updated user_data_store for user_id {user_id}: {organized_data}")
                                     send_message(user_id, "データが保存されました。修正を開始できます。")
+                                    send_message(user_id, "注文を確認したい場合は『注文を確認』と送信してください。")
+                                    
+                                    if user_message == "請求金額を確認":
+                                        organized_data = user_data_store.get(user_id, None)
+                                        if not organized_data:
+                                            send_message(user_id, "注文データが見つかりません。")
+                                            return
 
-                                    # 請求金額を計算
-                                    price_table = {
-                                        "フードスウェット": 5000,
-                                        "Tシャツ": 2000,
-                                        "パーカー": 4000
-                                    }
-                                    updated_data = calculate_invoice(user_id, price_table, user_data_store)
+                                        # organized_data の全ての変数を確認してログに出力
+                                        print(f"Organized data for user {user_id}: {organized_data}")
 
-                                    if "total_amount" in updated_data:
-                                        total_amount = updated_data["total_amount"]
-                                        product_name = updated_data.get("product_name", "不明")
-                                        send_message(user_id, f"請求金額: {product_name} の合計は {total_amount}円です。")
+                                        # Flex Messageで確認メッセージを送信 (お好みで)
+                                        flex_message = create_flex_message(organized_data)
+                                        send_flex_message(user_id, flex_message)
+
+                                        # ここで請求金額を計算する
+                                        price_table = {
+                                            "フードスウェット": 5000,
+                                            "Tシャツ": 2000,
+                                            "パーカー": 4000
+                                        }
+                                        updated_data = calculate_invoice(user_id, price_table, user_data_store)
+
+                                        if "total_amount" in updated_data:
+                                            total_amount = updated_data["total_amount"]
+                                            product_name = updated_data.get("product_name", "不明")
+                                            send_message(user_id, f"請求金額: {product_name} の合計は {total_amount}円です。")                                
                                 else:
                                     send_message(user_id, "データの保存に失敗しました。")
                             else:
