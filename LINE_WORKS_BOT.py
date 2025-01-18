@@ -288,7 +288,7 @@ search_coordinates_template = [
     {
         "label": "商品名",
         "variable_name": "product_name",
-        "prompt_instructions": "以下の整理されたデータから「商品名」に該当する情報を抽出してください。回答は商品名座標の直ぐ下にある回答として洋服の種類を期待しています。記載する内容は抽出された商品名だけで良いです。"
+        "prompt_instructions": "以下の整理されたデータから「商品名」に該当する情報を抽出してください。回答は商品名座標の直ぐ下にある回答として洋服の種類を期待しています。記載する内容は抽出された商品名だけで良いです。- グラフィ ティーズ 2024は商品名ではありません。 "
     },
     {
         "label": "商品カラー",
@@ -701,7 +701,7 @@ print(user_data_store)
 
 def create_flex_message(organized_data):
     """
-    organized_dataをFlex Message形式で整形する関数。
+    organized_dataをFlex Message形式で整形し、横幅を広く見せる調整を追加。
     """
     flex_message = {
         "type": "bubble",
@@ -714,7 +714,8 @@ def create_flex_message(organized_data):
                     "text": "注文内容確認",
                     "weight": "bold",
                     "size": "lg",
-                    "margin": "md"
+                    "margin": "md",
+                    "align": "center"
                 },
                 {
                     "type": "separator",
@@ -723,10 +724,21 @@ def create_flex_message(organized_data):
             ] + [
                 {
                     "type": "box",
-                    "layout": "horizontal",
+                    "layout": "horizontal",  # 横並び
                     "contents": [
-                        {"type": "text", "text": f"{key}:", "flex": 2, "weight": "bold"},
-                        {"type": "text", "text": str(value), "flex": 4}
+                        {
+                            "type": "text",
+                            "text": f"{LABEL_MAPPING.get(key, key)}:",  # ラベル名を表示
+                            "flex": 3,  # 横幅を調整
+                            "weight": "bold",
+                            "wrap": True  # テキストの折り返し
+                        },
+                        {
+                            "type": "text",
+                            "text": str(value),
+                            "flex": 7,  # 値の横幅を拡大
+                            "wrap": True  # テキストの折り返し
+                        }
                     ]
                 }
                 for key, value in organized_data.items()
@@ -744,13 +756,13 @@ def create_flex_message(organized_data):
                 },
                 {
                     "type": "button",
-                    "action": {"type": "message", "label": "確定", "text": "注文を確定する"},
+                    "action": {"type": "message", "label": "金額", "text": "請求金額を確認"},
                     "style": "primary",
-                    "color": "#4CAF50"
+                    "color": "#FFD700"
                 },
-               {
+                {
                     "type": "button",
-                    "action": {"type": "message", "label": "金額", "text": "請求銀額を確認"},
+                    "action": {"type": "message", "label": "確定", "text": "注文を確定する"},
                     "style": "primary",
                     "color": "#4CAF50"
                 }
@@ -944,10 +956,19 @@ def webhook():
                 # 3) 「xxxを修正」
                 elif "を修正" in user_message:
                     key_to_edit = user_message.replace("を修正", "").strip()
-                    # すでに edit_carousel 状態かどうかは問わず、とりあえず編集フェーズに移行
+                    # state を一時的に取得
+                    state = user_state.get(user_id, {})
+                    current_page = state.get("page", 0)  # ここで今のページを取り出す
+
                     if user_id in user_data_store and key_to_edit in user_data_store[user_id]:
                         send_message(user_id, f"新しい {key_to_edit} を入力してください。")
-                        user_state[user_id] = {"action": "edit", "key": key_to_edit}
+        
+                        # action=edit とともに、page も保持しておく
+                        user_state[user_id] = {
+                            "action": "edit",
+                            "key": key_to_edit,
+                            "page": current_page
+                        }
                     else:
                         send_message(user_id, f"'{key_to_edit}' は修正できる項目ではありません。")
 
@@ -956,19 +977,22 @@ def webhook():
                     key_to_edit = user_state[user_id]["key"]
                     organized_data = user_data_store.get(user_id, {})
                     organized_data[key_to_edit] = user_message  # 値を更新
-                    user_data_store[user_id] = organized_data  # 上書き保存
+                    user_data_store[user_id] = organized_data   # 上書き保存
 
                     send_message(user_id, f"{key_to_edit} を {user_message} に更新しました。")
 
-                    # 状態を保持しつつ、actionを "edit_carousel" に戻す
-                    user_state[user_id]["action"] = "edit_carousel"  # 状態を直接更新
-                    current_page = user_state[user_id].get("page", 0)
+                    # 直前まで保持していた page を復元
+                    page_before_edit = user_state[user_id].get("page", 0)
 
-                    # デバッグ用に状態を出力
+                    # 状態を "edit_carousel" に戻す
+                    user_state[user_id]["action"] = "edit_carousel"
+                    # ここで page も再度セットしてあげる
+                    user_state[user_id]["page"] = page_before_edit
+
                     print(f"DEBUG: Updated user_state: {user_state[user_id]}")
 
-                    # Carouselを再送信
-                    send_carousel_for_edit_with_next_button(user_id, current_page)
+                    # Carouselを再送信 (page_before_edit)
+                    send_carousel_for_edit_with_next_button(user_id, page_before_edit)
 
                 # 請求金額を確認
                 elif user_message == "請求金額を確認":
