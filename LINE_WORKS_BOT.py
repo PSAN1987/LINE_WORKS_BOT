@@ -746,19 +746,19 @@ def create_flex_message(organized_data):
                     "type": "button",
                     "action": {"type": "message", "label": "金額", "text": "請求金額を確認"},
                     "style": "primary",
-                    "color": "#FFD700"  // 黄色のカラーコード
-                }
-                {,
+                    "color": "#FFD700"  # 黄色のカラーコード
+                },
+                {
                     "type": "button",
                     "action": {"type": "message", "label": "確定", "text": "注文を確定する"},
                     "style": "primary",
                     "color": "#4CAF50"
                 }
-
             ]
         }
     }
     return flex_message
+
 
 def send_carousel_for_edit_with_next_button(user_id, page=0):
     """
