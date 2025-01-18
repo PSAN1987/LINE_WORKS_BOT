@@ -701,7 +701,7 @@ print(user_data_store)
 
 def create_flex_message(organized_data):
     """
-    organized_dataをFlex Message形式で整形し、横幅を広く見せる調整を追加。
+    organized_dataをFlex Message形式で整形する関数。
     """
     flex_message = {
         "type": "bubble",
@@ -714,8 +714,7 @@ def create_flex_message(organized_data):
                     "text": "注文内容確認",
                     "weight": "bold",
                     "size": "lg",
-                    "margin": "md",
-                    "align": "center"
+                    "margin": "md"
                 },
                 {
                     "type": "separator",
@@ -724,21 +723,10 @@ def create_flex_message(organized_data):
             ] + [
                 {
                     "type": "box",
-                    "layout": "horizontal",  # 横並び
+                    "layout": "horizontal",
                     "contents": [
-                        {
-                            "type": "text",
-                            "text": f"{LABEL_MAPPING.get(key, key)}:",  # ラベル名を表示
-                            "flex": 3,  # 横幅を調整
-                            "weight": "bold",
-                            "wrap": True  # テキストの折り返し
-                        },
-                        {
-                            "type": "text",
-                            "text": str(value),
-                            "flex": 7,  # 値の横幅を拡大
-                            "wrap": True  # テキストの折り返し
-                        }
+                        {"type": "text", "text": f"{key}:", "flex": 3, "weight": "bold"},
+                        {"type": "text", "text": str(value), "flex": 7}
                     ]
                 }
                 for key, value in organized_data.items()
@@ -758,14 +746,15 @@ def create_flex_message(organized_data):
                     "type": "button",
                     "action": {"type": "message", "label": "金額", "text": "請求金額を確認"},
                     "style": "primary",
-                    "color": "#FFD700"
-                },
-                {
+                    "color": "#FFD700"  // 黄色のカラーコード
+                }
+                {,
                     "type": "button",
                     "action": {"type": "message", "label": "確定", "text": "注文を確定する"},
                     "style": "primary",
                     "color": "#4CAF50"
                 }
+
             ]
         }
     }
