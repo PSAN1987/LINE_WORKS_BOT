@@ -747,6 +747,12 @@ def create_flex_message(organized_data):
                     "action": {"type": "message", "label": "確定", "text": "注文を確定する"},
                     "style": "primary",
                     "color": "#4CAF50"
+                },
+               {
+                    "type": "button",
+                    "action": {"type": "message", "label": "金額", "text": "請求銀額を確認"},
+                    "style": "primary",
+                    "color": "#4CAF50"
                 }
             ]
         }
@@ -963,7 +969,33 @@ def webhook():
 
                     # Carouselを再送信
                     send_carousel_for_edit_with_next_button(user_id, current_page)
-                    
+
+                # 請求金額を確認
+                elif user_message == "請求金額を確認":
+                    organized_data = user_data_store.get(user_id, None)
+                    if not organized_data:
+                        send_message(user_id, "注文データが見つかりません。")
+                        return
+
+                    # organized_data の全ての変数を確認してログに出力
+                    print(f"Organized data for user {user_id}: {organized_data}")
+
+                    # 請求金額を計算
+                    price_table = {
+                        "フードスウェット": 5000,
+                        "Tシャツ": 2000,
+                        "パーカー": 4000
+                    }
+                    updated_data = calculate_invoice(user_id, price_table, user_data_store)
+
+                    # ユーザーに請求金額を送信
+                    if "total_amount" in updated_data:
+                        total_amount = updated_data["total_amount"]
+                        product_name = updated_data.get("product_name", "不明")
+                        send_message(user_id, f"請求金額: {product_name} の合計は {total_amount}円です。")
+                    else:
+                        send_message(user_id, "請求金額の計算に失敗しました。")
+                        
                 # 注文確定
                 elif user_message == "注文を確定する":
                     send_message(user_id, "注文が確定されました。ありがとうございます！")
@@ -992,33 +1024,7 @@ def webhook():
                                     user_data_store[user_id] = organized_data
                                     print(f"Updated user_data_store for user_id {user_id}: {organized_data}")
                                     send_message(user_id, "データが保存されました。修正を開始できます。")
-                                    send_message(user_id, "注文を確認したい場合は『注文を確認』と送信してください。")
-                                    
-                                    if user_message == "請求金額を確認":
-                                        organized_data = user_data_store.get(user_id, None)
-                                        if not organized_data:
-                                            send_message(user_id, "注文データが見つかりません。")
-                                            return
-
-                                        # organized_data の全ての変数を確認してログに出力
-                                        print(f"Organized data for user {user_id}: {organized_data}")
-
-                                        # Flex Messageで確認メッセージを送信 (お好みで)
-                                        flex_message = create_flex_message(organized_data)
-                                        send_flex_message(user_id, flex_message)
-
-                                        # ここで請求金額を計算する
-                                        price_table = {
-                                            "フードスウェット": 5000,
-                                            "Tシャツ": 2000,
-                                            "パーカー": 4000
-                                        }
-                                        updated_data = calculate_invoice(user_id, price_table, user_data_store)
-
-                                        if "total_amount" in updated_data:
-                                            total_amount = updated_data["total_amount"]
-                                            product_name = updated_data.get("product_name", "不明")
-                                            send_message(user_id, f"請求金額: {product_name} の合計は {total_amount}円です。")                                
+                                    send_message(user_id, "注文を確認したい場合は『注文を確認』と送信してください。")                              
                                 else:
                                     send_message(user_id, "データの保存に失敗しました。")
                             else:
