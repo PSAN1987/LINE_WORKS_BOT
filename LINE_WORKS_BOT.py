@@ -243,7 +243,7 @@ search_coordinates_template = [
     {
         "label": "学校住所",
         "variable_name": "school_address",
-        "prompt_instructions": "以下の整理されたデータから「学校住所」として「学校名」からGoogle検索した学校住所のみを50文字以内で記載してください。"
+        "prompt_instructions": "以下の整理されたデータから「学校住所」として「学校名」からGoogle検索した学校住所のみを50文字以内で記載してください。TELやFAX番号は不要です。"
     },
     {
         "label": "学校TEL",
@@ -440,7 +440,7 @@ def process_extracted_text(response, search_coordinates_template):
         else:
             # 指定がなければ、従来の文言で検索
             prompt = (
-                f"以下の整理されたデータから「{label}」に該当する内容を抽出してください:\n"
+                f"以下の整理されたデータから「{label}」に該当する内容を50文字以内で抽出してください:\n"
                 f"{organized_text}"
             )
 
