@@ -885,6 +885,77 @@ def send_flex_message(user_id, flex_message):
         print(f"Error sending Flex Message: {e}")
 
 
+def final_confirmation(user_id):
+    """
+    注文最終確認を行う関数。
+    """
+    # organized_dataを取得
+    organized_data = user_data_store.get(user_id, {})
+    if not organized_data:
+        send_message(user_id, "注文データが見つかりません。")
+        return
+
+    # Flex Messageを作成
+    flex_message = {
+        "type": "bubble",
+        "body": {
+            "type": "box",
+            "layout": "vertical",
+            "contents": [
+                {
+                    "type": "text",
+                    "text": "注文最終確認",
+                    "weight": "bold",
+                    "size": "lg",
+                    "margin": "md"
+                },
+                {
+                    "type": "separator",
+                    "margin": "md"
+                }
+            ] + [
+                {
+                    "type": "box",
+                    "layout": "horizontal",
+                    "contents": [
+                        {"type": "text", "text": f"{key}:", "flex": 3, "weight": "bold"},
+                        {"type": "text", "text": str(value), "flex": 7}
+                    ]
+                }
+                for key, value in organized_data.items()
+            ]
+        },
+        "footer": {
+            "type": "box",
+            "layout": "vertical",
+            "contents": [
+                {
+                    "type": "button",
+                    "action": {
+                        "type": "uri",
+                        "label": "約款を確認する",
+                        "uri": "https://www.google.co.jp/"  # 実際のURLに置き換えてください
+                    },
+                    "style": "primary",
+                    "color": "#4CAF50"
+                },
+                {
+                    "type": "button",
+                    "action": {
+                        "type": "message",
+                        "label": "注文を確定する",
+                        "text": "注文最終確定"
+                    },
+                    "style": "primary",
+                    "color": "#FF6F61"
+                }
+            ]
+        }
+    }
+
+    # Flex Messageを送信
+    send_flex_message(user_id, flex_message)
+    
 
 # Webhookエンドポイント
 @app.route("/webhook", methods=["POST"])
@@ -1011,14 +1082,15 @@ def webhook():
                         
                 # 注文確定
                 elif user_message == "注文を確定する":
-                    send_message(user_id, "注文が確定されました。ありがとうございます！")
+                    final_confirmation(user_id)
 
-                else:
-                    send_message(user_id, "注文を確認したい場合は『注文を確認』と送信してください。")
+                elif user_message == "注文最終確定":
+                    send_message(user_id, "注文が確定されました。ありがとうございます！")
 
             # 画像メッセージを処理
             elif content_type == "image":
                 print("画像メッセージを受信しました。")
+                send_message(user_id, "注文を受けました。注文を確認するので1分程度お待ちください。")
                 file_id = data["content"].get("fileId")
                 if file_id:
                     file_url = get_file_url(file_id)
