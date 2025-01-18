@@ -272,17 +272,17 @@ search_coordinates_template = [
     },
     {
         "label": "代表者氏名",
-        "variable_name": "representative_furigana",
+        "variable_name": "owner_name",
         "prompt_instructions": "以下の整理されたデータから「代表者指名」に該当する情報を抽出してください。回答は漢字の名前とフリガナだけで良いです"
     },
     {
         "label": "代表者携帯",
-        "variable_name": "representative_mobile",
+        "variable_name": "owner_mobile",
         "prompt_instructions": "以下の整理されたデータから「代表者携帯」に該当する情報を抽出してください。回答は50文字以内で「代表者携帯」の右にあってxxx-xxxx-xxxxのような形式の11桁の数字のみを提供してください"
     },
     {
         "label": "代表者メール",
-        "variable_name": "representative_email",
+        "variable_name": "owner_email",
         "prompt_instructions": "以下の整理されたデータから「代表者メール」に該当する情報を抽出してください。回答はxxx@xxxのようなemail形式を期待しています。回答は抽出されたemail情報だけで良いです。"
     },
     {
@@ -440,7 +440,7 @@ def process_extracted_text(response, search_coordinates_template):
         else:
             # 指定がなければ、従来の文言で検索
             prompt = (
-                f"以下の整理されたデータから「{label}」に該当する内容を50文字以内で抽出してください:\n"
+                f"以下の整理されたデータから「{label}」に該当する内容を6抽出してください:\n"
                 f"{organized_text}"
             )
 
@@ -666,9 +666,9 @@ user_data_store = {
         "boss_mobile": "090-6478-4514",
         "boss_email": "hirosama-f01@tochigi-edu.ed.jp",
         "design_confirm": "メール代表者",
-        "representative_furigana": "廣澤史子（ヒロサワ フミコ）",
-        "representative_mobile": "090-6478-4514",
-        "representative_email": "r9470774@gmail.com",
+        "owner_name": "廣澤史子（ヒロサワ フミコ）",
+        "owner_mobile": "090-6478-4514",
+        "owner_email": "r9470774@gmail.com",
         "product_name": "フードスウェット",
         "product_color": "ダークチョコレート",
         "S": "34",
