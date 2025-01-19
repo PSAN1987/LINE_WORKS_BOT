@@ -283,7 +283,7 @@ search_coordinates_template = [
     {
         "label": "代表者メール",
         "variable_name": "owner_email",
-        "prompt_instructions": "以下の整理されたデータから「代表者メール」に該当する情報を抽出してください。回答はxxx@xxxのようなemail形式です。。回答は抽出されたemail情報だけで良いです。"
+        "prompt_instructions": "以下の整理されたデータから「代表者メール」に該当する情報を抽出してください。回答はxxx@xxxのようなemail形式です。回答は抽出されたemail情報だけで良いです。"
     },
     {
         "label": "商品名",
@@ -1089,8 +1089,67 @@ def final_confirmation(user_id):
     # Flex Messageを送信
     send_flex_message(user_id, flex_message)
 
-
-    # Flex Messageを送信
+def send_mode_selection_message(user_id):
+    flex_message = {
+        "type": "bubble",
+        "body": {
+            "type": "box",
+            "layout": "vertical",
+            "contents": [
+                {
+                    "type": "text",
+                    "text": "Bot動作モードを選択してください",
+                    "weight": "bold",
+                    "size": "lg",
+                    "margin": "md"
+                },
+                {
+                    "type": "separator",
+                    "margin": "md"
+                },
+                {
+                    "type": "button",
+                    "action": {
+                        "type": "message",
+                        "label": "①簡易見積",
+                        "text": "モード:簡易見積"
+                    },
+                    "style": "primary",
+                    "margin": "sm"
+                },
+                {
+                    "type": "button",
+                    "action": {
+                        "type": "message",
+                        "label": "②注文用紙",
+                        "text": "モード:注文用紙"
+                    },
+                    "style": "primary",
+                    "margin": "sm"
+                },
+                {
+                    "type": "button",
+                    "action": {
+                        "type": "message",
+                        "label": "③チャット注文",
+                        "text": "モード:チャット注文"
+                    },
+                    "style": "primary",
+                    "margin": "sm"
+                },
+                {
+                    "type": "button",
+                    "action": {
+                        "type": "message",
+                        "label": "④WEB注文",
+                        "text": "モード:WEB注文"
+                    },
+                    "style": "primary",
+                    "margin": "sm"
+                }
+            ]
+        }
+    }
     send_flex_message(user_id, flex_message)
     
 
@@ -1117,7 +1176,10 @@ def webhook():
             if content_type == "text":
                 user_message = data["content"].get("text", "").strip()
                 user_id = data.get("source", {}).get("userId", None)
-
+                
+                # モード選択
+                if user_message == "モード選択":
+                    send_mode_selection_message(user_id)
                 # 注文内容確認フロー
                 if user_message == "注文を確認":
                     organized_data = user_data_store.get(user_id, None)
