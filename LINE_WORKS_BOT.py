@@ -677,8 +677,8 @@ user_data_store = {
         "owner_email": "r9470774@gmail.com",
         "product_name": "フードスウェット",
         "product_color": "ダークチョコレート",
-        "SS":"3"
-        "S": "3",
+        "SS":"3",
+        "S":"3",
         "M": "3",
         "L": "3",
         "LL(XL)": "3",
@@ -724,9 +724,9 @@ def create_flex_message(organized_data):
         "boss_email": "担任メール",
         "design_confirm":"デザイン確認",
         "product_name": "商品名",
-        "owner_name": "代表者"
+        "owner_name": "代表者",
         "owner_mobile": "代表者TEL",
-        "owner_email":"代表者メール"
+        "owner_email":"代表者メール",
         "product_color": "商品カラー",
         "SS": "サイズ(SS)",
         "S": "サイズ(S)",
