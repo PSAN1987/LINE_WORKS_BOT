@@ -233,7 +233,7 @@ search_coordinates_template = [
     {
         "label": "LINEアカウント名",
         "variable_name": "line_name",
-        "prompt_instructions": "以下の整理されたデータから「LINEアカウント名」に該当する情報を抽出してください。回答は表示名をご記入くださいの近くの[]の中の文字です。"
+        "prompt_instructions": "以下の整理されたデータから「LINEアカウント名」に該当する情報を抽出してください。回答は表示名をご記入くださいの近くの[]の中の文字です。回答だけを抽出してください。"
     },
     {
         "label": "クラス団体名",
@@ -253,7 +253,7 @@ search_coordinates_template = [
     {
         "label": "ご担任",
         "variable_name": "boss_furigana",
-        "prompt_instructions": "以下の整理されたデータから「ご担任」に該当する情報を抽出してください。回答は漢字の名前とフリガナだけで良いです。。"
+        "prompt_instructions": "以下の整理されたデータから「ご担任」に該当する情報を抽出してください。回答は漢字の名前だけで良いです。。"
     },
     {
         "label": "ご担任(保護者)携帯",
@@ -273,7 +273,7 @@ search_coordinates_template = [
     {
         "label": "代表者氏名",
         "variable_name": "owner_name",
-        "prompt_instructions": "以下の整理されたデータから「代表者指名」に該当する情報を抽出してください。回答は20文字以内で漢字の名前だけで良いです"
+        "prompt_instructions": "以下の整理されたデータから「代表者指名」に該当する情報を抽出してください。回答は20文字以内で漢字の名前だけで良いです。代表者氏名の右隣りにあります。"
     },
     {
         "label": "代表者携帯",
@@ -701,8 +701,35 @@ print(user_data_store)
 
 def create_flex_message(organized_data):
     """
-    organized_dataをFlex Message形式で整形し、テキストをコピー可能にする関数。
+    organized_dataをFlex Message形式で整形し、テキストラベルと回答を表示する関数。
     """
+    # 変数名を日本語のラベルに変換するマッピング
+    label_mapping = {
+        "delivery_date": "注文日",
+        "use_date": "使用日",
+        "school_name": "学校名",
+        "line_name": "LINE名",
+        "group_name": "クラス・団体名",
+        "school_address": "学校住所",
+        "school_tel": "学校電話番号",
+        "boss_furigana": "担任名",
+        "boss_mobile": "担任携帯番号",
+        "boss_email": "担任メールアドレス",
+        "product_name": "商品名",
+        "product_color": "商品カラー",
+        "S": "サイズ(S)",
+        "M": "サイズ(M)",
+        "L": "サイズ(L)",
+        "LL(XL)": "サイズ(LL)",
+        "3L(XXL)": "サイズ(3L)",
+        "sub_total": "小計",
+        "total": "合計",
+        "print_size": "プリントサイズ",
+        "print_colorl": "プリントカラー",
+        "print_design": "デザインサンプル",
+        "total_amount": "合計金額"
+    }
+
     flex_message = {
         "type": "bubble",
         "body": {
@@ -715,8 +742,8 @@ def create_flex_message(organized_data):
                     "weight": "bold",
                     "size": "lg",
                     "margin": "md",
-                    "selectable": True,    # ← 選択可能にする
-                    "wrap": True           # 長めのテキストに折り返しを付けたい場合
+                    "selectable": True,  # テキストを選択可能に
+                    "wrap": True         # 長いテキストを折り返し可能に
                 },
                 {
                     "type": "separator",
@@ -729,17 +756,17 @@ def create_flex_message(organized_data):
                     "contents": [
                         {
                             "type": "text",
-                            "text": f"{key}:",
+                            "text": f"{label_mapping.get(key, key)}:",  # ラベルを取得
                             "flex": 3,
                             "weight": "bold",
-                            "selectable": True,  # ← 選択可能にする
+                            "selectable": True,
                             "wrap": True
                         },
                         {
                             "type": "text",
                             "text": str(value),
                             "flex": 7,
-                            "selectable": True,  # ← 選択可能にする
+                            "selectable": True,
                             "wrap": True
                         }
                     ]
