@@ -1184,6 +1184,119 @@ def send_mode_selection_message(user_id):
     }
     send_flex_message(user_id, flex_message)
     
+def simple_estimate(user_id):
+    """
+    簡易見積計算を行う関数。
+    Flex Messageを使用して情報を収集し、計算結果を出力します。
+    """
+    flex_message = {
+        "type": "bubble",
+        "body": {
+            "type": "box",
+            "layout": "vertical",
+            "contents": [
+                {
+                    "type": "text",
+                    "text": "簡易見積入力",
+                    "weight": "bold",
+                    "size": "lg",
+                    "margin": "md"
+                },
+                {
+                    "type": "separator",
+                    "margin": "md"
+                },
+                {
+                    "type": "text",
+                    "text": "以下の内容を入力してください：",
+                    "margin": "sm",
+                    "wrap": True
+                },
+                {
+                    "type": "button",
+                    "action": {
+                        "type": "message",
+                        "label": "学校名",
+                        "text": "学校名を入力してください。"
+                    },
+                    "style": "primary",
+                    "margin": "sm"
+                },
+                {
+                    "type": "button",
+                    "action": {
+                        "type": "message",
+                        "label": "届け先の都道府県",
+                        "text": "届け先の都道府県を入力してください。"
+                    },
+                    "style": "primary",
+                    "margin": "sm"
+                },
+                {
+                    "type": "button",
+                    "action": {
+                        "type": "message",
+                        "label": "使用日",
+                        "text": "使用日を入力してください。"
+                    },
+                    "style": "primary",
+                    "margin": "sm"
+                },
+                {
+                    "type": "button",
+                    "action": {
+                        "type": "message",
+                        "label": "1枚当たりの予算",
+                        "text": "1枚当たりの予算を入力してください。"
+                    },
+                    "style": "primary",
+                    "margin": "sm"
+                },
+                {
+                    "type": "button",
+                    "action": {
+                        "type": "message",
+                        "label": "商品名",
+                        "text": "商品名を入力してください。"
+                    },
+                    "style": "primary",
+                    "margin": "sm"
+                },
+                {
+                    "type": "button",
+                    "action": {
+                        "type": "message",
+                        "label": "総枚数",
+                        "text": "総枚数を入力してください。"
+                    },
+                    "style": "primary",
+                    "margin": "sm"
+                },
+                {
+                    "type": "button",
+                    "action": {
+                        "type": "message",
+                        "label": "プリント位置",
+                        "text": "プリント位置を選択してください。（前, 背中, 前と背中）"
+                    },
+                    "style": "primary",
+                    "margin": "sm"
+                },
+                {
+                    "type": "button",
+                    "action": {
+                        "type": "message",
+                        "label": "プリントカラー数",
+                        "text": "プリントカラー数を選択してください。（1色または2色）"
+                    },
+                    "style": "primary",
+                    "margin": "sm"
+                }
+            ]
+        }
+    }
+    send_flex_message(user_id, flex_message)
+
 
 # Webhookエンドポイント
 @app.route("/webhook", methods=["POST"])
@@ -1219,6 +1332,14 @@ def webhook():
                         user_id,
                         "こちらをクリックしてください: line://app/1234567890-abcdefghijkl?redirect=https://webform-vqgk.onrender.com/"
                     )                        
+                # 簡易見積
+                if user_message == "簡易見積":
+                    simple_estimate(user_id)
+
+                # その他のメッセージ
+                else:
+                    send_message(user_id, "対応していないメッセージです。")
+
                 # 注文内容確認フロー
                 if user_message == "注文を確認":
                     organized_data = user_data_store.get(user_id, None)
