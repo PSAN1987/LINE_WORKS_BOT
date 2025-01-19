@@ -737,7 +737,7 @@ def create_flex_message(organized_data):
         "total": "合計",
         "print_size": "プリントサイズ",
         "print_colorl": "プリントカラー",
-        "print_design": "デザインサンプル",
+        "print_design": "プリントデザイン",
         "total_amount": "合計金額"
     }
 
@@ -827,12 +827,43 @@ def create_flex_message(organized_data):
     return flex_message
 
 
-
 def send_carousel_for_edit_with_next_button(user_id, page=0):
     """
     1ページに最大9個のデータカラム + 「次へ」用カラムを含むカルーセルを送信。
     """
     MAX_DATA_COLUMNS = 9  # 1ページあたりの最大項目数
+
+    # 変数名を日本語のラベルに変換するマッピング
+    label_mapping = {
+        "delivery_date": "配達日",
+        "use_date": "使用日",
+        "school_name": "学校名",
+        "line_name": "LINE名",
+        "group_name": "団体名",
+        "school_address": "学校住所",
+        "school_tel": "学校TEL",
+        "boss_furigana": "担任名",
+        "boss_mobile": "担任携帯",
+        "boss_email": "担任メール",
+        "design_confirm": "デザイン確認",
+        "product_name": "商品名",
+        "owner_name": "代表者",
+        "owner_mobile": "代表者TEL",
+        "owner_email": "代表者メール",
+        "product_color": "商品カラー",
+        "SS": "サイズ(SS)",
+        "S": "サイズ(S)",
+        "M": "サイズ(M)",
+        "L": "サイズ(L)",
+        "LL(XL)": "サイズ(LL)",
+        "3L(XXL)": "サイズ(3L)",
+        "sub_total": "小計",
+        "total": "合計",
+        "print_size": "プリントサイズ",
+        "print_colorl": "プリントカラー",
+        "print_design": "プリントデザイン",
+        "total_amount": "合計金額"
+    }
 
     # user_data_storeからデータ取得
     organized_data = user_data_store.get(user_id, {})
@@ -854,7 +885,10 @@ def send_carousel_for_edit_with_next_button(user_id, page=0):
     # カルーセルのカラムを構築
     columns = []
     for key, value in chunk:
-        truncated_key = (key[:30] + "...") if len(key) > 30 else key
+        # 変数名を日本語のラベルに変換
+        label = label_mapping.get(key, key)
+
+        truncated_key = (label[:30] + "...") if len(label) > 30 else label
         text_value = f"現在の値: {value}"
         if len(text_value) > 60:
             text_value = text_value[:57] + "..."
@@ -865,8 +899,8 @@ def send_carousel_for_edit_with_next_button(user_id, page=0):
             "actions": [
                 {
                     "type": "message",
-                    "label": f"{key}を修正",
-                    "text": f"{key}を修正"
+                    "label": f"{label}を修正",
+                    "text": f"{label}を修正"
                 }
             ]
         })
@@ -910,7 +944,6 @@ def send_carousel_for_edit_with_next_button(user_id, page=0):
             else:
                 print(f"Failed to send Carousel. Status: {response.status_code}, Body: {response.text}")
     except Exception as e:
-        print(f"Error sending Carousel Message: {e}")
 
 
 def send_flex_message(user_id, flex_message):
@@ -962,6 +995,38 @@ def final_confirmation(user_id):
         send_message(user_id, "注文データが見つかりません。")
         return
 
+    # 変数名を日本語のラベルに変換するマッピング
+    label_mapping = {
+        "delivery_date": "配達日",
+        "use_date": "使用日",
+        "school_name": "学校名",
+        "line_name": "LINE名",
+        "group_name": "団体名",
+        "school_address": "学校住所",
+        "school_tel": "学校TEL",
+        "boss_furigana": "担任名",
+        "boss_mobile": "担任携帯",
+        "boss_email": "担任メール",
+        "design_confirm": "デザイン確認",
+        "product_name": "商品名",
+        "owner_name": "代表者",
+        "owner_mobile": "代表者TEL",
+        "owner_email": "代表者メール",
+        "product_color": "商品カラー",
+        "SS": "サイズ(SS)",
+        "S": "サイズ(S)",
+        "M": "サイズ(M)",
+        "L": "サイズ(L)",
+        "LL(XL)": "サイズ(LL)",
+        "3L(XXL)": "サイズ(3L)",
+        "sub_total": "小計",
+        "total": "合計",
+        "print_size": "プリントサイズ",
+        "print_colorl": "プリントカラー",
+        "print_design": "プリントデザイン",
+        "total_amount": "合計金額"
+    }
+
     # Flex Messageを作成
     flex_message = {
         "type": "bubble",
@@ -985,8 +1050,8 @@ def final_confirmation(user_id):
                     "type": "box",
                     "layout": "horizontal",
                     "contents": [
-                        {"type": "text", "text": f"{key}:", "flex": 3, "weight": "bold"},
-                        {"type": "text", "text": str(value), "flex": 7}
+                        {"type": "text", "text": f"{label_mapping.get(key, key)}:", "flex": 3, "weight": "bold", "size": "sm"},
+                        {"type": "text", "text": str(value), "flex": 7, "size": "sm"}
                     ]
                 }
                 for key, value in organized_data.items()
@@ -1019,6 +1084,10 @@ def final_confirmation(user_id):
             ]
         }
     }
+
+    # Flex Messageを送信
+    send_flex_message(user_id, flex_message)
+
 
     # Flex Messageを送信
     send_flex_message(user_id, flex_message)
