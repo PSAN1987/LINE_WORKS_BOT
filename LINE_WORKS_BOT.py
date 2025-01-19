@@ -823,9 +823,9 @@ def send_carousel_for_edit_with_next_button(user_id, page=0):
 
     # user_data_storeからデータ取得
     organized_data = user_data_store.get(user_id, {})
-    items = list(organized_data.items())  # データをリスト化
+    items = list(organized_data.items())  # データをリスト化 ([(key, value), (key, value), ...])
 
-    # データの範囲を計算
+    # ページングのための範囲計算
     start_index = page * MAX_DATA_COLUMNS
     end_index = start_index + MAX_DATA_COLUMNS
     chunk = items[start_index:end_index]
@@ -846,14 +846,18 @@ def send_carousel_for_edit_with_next_button(user_id, page=0):
         if len(text_value) > 60:
             text_value = text_value[:57] + "..."
 
+        # ★修正ボタンを"uri"タイプに変更し、外部フォームURLに飛ぶ
         columns.append({
             "title": truncated_key,
             "text": text_value,
             "actions": [
                 {
-                    "type": "message",
+                    # ここで "type": "uri" を使用し、
+                    # 外部フォームへ遷移するためのURLを指定します
+                    "type": "uri",
                     "label": f"{key}を修正",
-                    "text": f"{key}を修正"
+                    # user_idやkeyなど必要なパラメータをクエリに含める
+                    "uri": f"https://example.com/edit_form?user_id={user_id}&key={key}"
                 }
             ]
         })
@@ -881,7 +885,7 @@ def send_carousel_for_edit_with_next_button(user_id, page=0):
         }
     }
 
-    # AccessToken取得と送信
+    # LINE WORKS APIへの送信処理
     try:
         token_data = get_access_token()
         if token_data and "access_token" in token_data:
@@ -1180,6 +1184,84 @@ def webhook():
     except Exception as e:
         print(f"Webhook処理中のエラー: {e}")
     return jsonify({"status": "ok"}), 200
+
+
+from flask import Flask, request, render_template, redirect, url_for
+
+app = Flask(__name__)
+
+@app.route('/edit_form', methods=['GET'])
+def edit_form():
+    user_id = request.args.get('user_id')
+    key = request.args.get('key')
+
+    # 現在の値を取得
+    organized_data = user_data_store.get(user_id, {})
+    current_value = organized_data.get(key, "")
+
+    # テンプレートに埋め込んで表示
+    return render_template(
+        'edit_form.html',
+        user_id=user_id,
+        key=key,
+        current_value=current_value
+    )
+
+@app.route('/edit_form', methods=['POST'])
+def update_form():
+    user_id = request.form.get('user_id')
+    key = request.form.get('key')
+    new_value = request.form.get('new_value')
+
+    # organized_data を更新
+    organized_data = user_data_store.get(user_id, {})
+    organized_data[key] = new_value
+    user_data_store[user_id] = organized_data
+
+    # 必要であれば、更新完了メッセージをBot経由でユーザーに送る
+    # send_message_to_line_works(user_id, f"{key}を{new_value}に更新しました。")
+
+    # 完了画面やリダイレクト先を指定
+    return "更新が完了しました！ LINEでご確認ください。"
+
+from flask import Flask, request, render_template, redirect, url_for
+
+app = Flask(__name__)
+
+@app.route('/edit_form', methods=['GET'])
+def edit_form():
+    user_id = request.args.get('user_id')
+    key = request.args.get('key')
+
+    # 現在の値を取得
+    organized_data = user_data_store.get(user_id, {})
+    current_value = organized_data.get(key, "")
+
+    # テンプレートに埋め込んで表示
+    return render_template(
+        'edit_form.html',
+        user_id=user_id,
+        key=key,
+        current_value=current_value
+    )
+
+@app.route('/edit_form', methods=['POST'])
+def update_form():
+    user_id = request.form.get('user_id')
+    key = request.form.get('key')
+    new_value = request.form.get('new_value')
+
+    # organized_data を更新
+    organized_data = user_data_store.get(user_id, {})
+    organized_data[key] = new_value
+    user_data_store[user_id] = organized_data
+
+    # 必要であれば、更新完了メッセージをBot経由でユーザーに送る
+    # send_message_to_line_works(user_id, f"{key}を{new_value}に更新しました。")
+
+    # 完了画面やリダイレクト先を指定
+    return "更新が完了しました！ LINEでご確認ください。"
+
 
 # アプリケーション起動
 @app.route("/", methods=["GET"])
