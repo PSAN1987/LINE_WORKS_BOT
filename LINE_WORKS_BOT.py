@@ -216,6 +216,11 @@ def initialize_vision_client():
 
 search_coordinates_template = [
     {
+        "label": "お申込み",
+        "variable_name": "order_date",
+        "prompt_instructions": "以下の整理されたデータから[お申込み日]」に該当する情報を抽出してください。回答は日付だけにしてください。"
+    },
+    {
         "label": "お届け日",
         "variable_name": "delivery_date",
         "prompt_instructions": "以下の整理されたデータから「お届け日」に該当する情報を抽出してください。回答は日付だけにしてください。"
@@ -337,18 +342,33 @@ search_coordinates_template = [
     },
     {
         "label": "プリントサイズ",
-        "variable_name": "print_size",
-        "prompt_instructions": "以下の整理されたデータから「サイズ」に該当する情報を抽出してください。期待する回答はヨコxx cm x タテxx cmという回答です。回答形式はX=xxcm, Y=xxcmです。"
+        "variable_name": "print_size_1",
+        "prompt_instructions": "以下の整理されたデータから「プリント前」「サイズ」に該当する情報を抽出してください。期待する回答はヨコxx cm x タテxx cmという回答です。回答形式はX=xxcm, Y=xxcmです。"
     },
     {
         "label": "プリントカラー/オプション",
-        "variable_name": "print_colorl",
-        "prompt_instructions": "以下の整理されたデータから「プリントカラー/オプション」に該当する情報を抽出してください。期待する回答は色情報と計xx色という回答です。回答形式は色=a,b,c,d, 計=x色です。"
+        "variable_name": "print_colorl_1",
+        "prompt_instructions": "以下の整理されたデータから「プリント前」「プリントカラー/オプション」に該当する情報を抽出してください。期待する回答は色情報と計xx色という回答です。回答形式は色=a,b,c,d, 計=x色です。"
     },
     {
         "label": "デザインサンプル",
-        "variable_name": "print_design",
-        "prompt_instructions": "以下の整理されたデータから「デザインサンプル」に該当する情報を抽出してください。期待する回答はD-352のようなアルファベットと数字の組み合わせ情報です。回答形式はx-xxxです。"
+        "variable_name": "print_design_1",
+        "prompt_instructions": "以下の整理されたデータから「プリント前」「デザインサンプル」に該当する情報を抽出してください。期待する回答はD-352のようなアルファベットと数字の組み合わせ情報です。回答形式はx-xxxです。"
+    },
+    {
+        "label": "プリントサイズ",
+        "variable_name": "print_size_2",
+        "prompt_instructions": "以下の整理されたデータから「プリント背中」「サイズ」に該当する情報を抽出してください。期待する回答はヨコxx cm x タテxx cmという回答です。回答形式はX=xxcm, Y=xxcmです。"
+    },
+    {
+        "label": "プリントカラー/オプション",
+        "variable_name": "print_colorl_2",
+        "prompt_instructions": "以下の整理されたデータから「プリント背中」「プリントカラー/オプション」に該当する情報を抽出してください。期待する回答は色情報と計xx色という回答です。回答形式は色=a,b,c,d, 計=x色です。"
+    },
+    {
+        "label": "デザインサンプル",
+        "variable_name": "print_design_2",
+        "prompt_instructions": "以下の整理されたデータから「プリント背中」「デザインサンプル」に該当する情報を抽出してください。期待する回答はD-352のようなアルファベットと数字の組み合わせ情報です。回答形式はx-xxxです。"
     },
 
 ]
@@ -712,6 +732,7 @@ def create_flex_message(organized_data):
     """
     # 変数名を日本語のラベルに変換するマッピング
     label_mapping = {
+        "order_date": "申込日",
         "delivery_date": "配達日",
         "use_date": "使用日",
         "school_name": "学校名",
@@ -736,9 +757,12 @@ def create_flex_message(organized_data):
         "3L(XXL)": "サイズ(3L)",
         "sub_total": "小計",
         "total": "合計",
-        "print_size": "プリントサイズ",
-        "print_colorl": "プリントカラー",
-        "print_design": "プリントデザイン",
+        "print_size_1": "プリントサイズ前",
+        "print_colorl_1": "プリントカラー前",
+        "print_design_1": "プリントデザイン前",
+        "print_size_2": "プリントサイズ後",
+        "print_colorl_2": "プリントカラー後",
+        "print_design_2": "プリントデザイン後",
         "total_amount": "合計金額"
     }
 
@@ -836,6 +860,7 @@ def send_carousel_for_edit_with_next_button(user_id, page=0):
 
     # 変数名を日本語のラベルに変換するマッピング
     label_mapping = {
+        "order_date": "申込日",
         "delivery_date": "配達日",
         "use_date": "使用日",
         "school_name": "学校名",
@@ -846,11 +871,11 @@ def send_carousel_for_edit_with_next_button(user_id, page=0):
         "boss_furigana": "担任名",
         "boss_mobile": "担任携帯",
         "boss_email": "担任メール",
-        "design_confirm": "デザイン確認",
+        "design_confirm":"デザイン確認",
         "product_name": "商品名",
         "owner_name": "代表者",
         "owner_mobile": "代表者TEL",
-        "owner_email": "代表者メール",
+        "owner_email":"代表者メール",
         "product_color": "商品カラー",
         "SS": "サイズ(SS)",
         "S": "サイズ(S)",
@@ -860,9 +885,12 @@ def send_carousel_for_edit_with_next_button(user_id, page=0):
         "3L(XXL)": "サイズ(3L)",
         "sub_total": "小計",
         "total": "合計",
-        "print_size": "プリントサイズ",
-        "print_colorl": "プリントカラー",
-        "print_design": "プリントデザイン",
+        "print_size_1": "プリントサイズ前",
+        "print_colorl_1": "プリントカラー前",
+        "print_design_1": "プリントデザイン前",
+        "print_size_2": "プリントサイズ後",
+        "print_colorl_2": "プリントカラー後",
+        "print_design_2": "プリントデザイン後",
         "total_amount": "合計金額"
     }
 
@@ -998,6 +1026,7 @@ def final_confirmation(user_id):
 
     # 変数名を日本語のラベルに変換するマッピング
     label_mapping = {
+        "order_date": "申込日",
         "delivery_date": "配達日",
         "use_date": "使用日",
         "school_name": "学校名",
@@ -1008,11 +1037,11 @@ def final_confirmation(user_id):
         "boss_furigana": "担任名",
         "boss_mobile": "担任携帯",
         "boss_email": "担任メール",
-        "design_confirm": "デザイン確認",
+        "design_confirm":"デザイン確認",
         "product_name": "商品名",
         "owner_name": "代表者",
         "owner_mobile": "代表者TEL",
-        "owner_email": "代表者メール",
+        "owner_email":"代表者メール",
         "product_color": "商品カラー",
         "SS": "サイズ(SS)",
         "S": "サイズ(S)",
@@ -1022,12 +1051,15 @@ def final_confirmation(user_id):
         "3L(XXL)": "サイズ(3L)",
         "sub_total": "小計",
         "total": "合計",
-        "print_size": "プリントサイズ",
-        "print_colorl": "プリントカラー",
-        "print_design": "プリントデザイン",
+        "print_size_1": "プリントサイズ前",
+        "print_colorl_1": "プリントカラー前",
+        "print_design_1": "プリントデザイン前",
+        "print_size_2": "プリントサイズ後",
+        "print_colorl_2": "プリントカラー後",
+        "print_design_2": "プリントデザイン後",
         "total_amount": "合計金額"
     }
-
+    
     # Flex Messageを作成
     flex_message = {
         "type": "bubble",
@@ -1098,7 +1130,7 @@ def send_mode_selection_message(user_id):
             "contents": [
                 {
                     "type": "text",
-                    "text": "Bot動作モードを選択してください",
+                    "text": "モード選択してください",
                     "weight": "bold",
                     "size": "lg",
                     "margin": "md"
@@ -1122,7 +1154,7 @@ def send_mode_selection_message(user_id):
                     "action": {
                         "type": "message",
                         "label": "②注文用紙",
-                        "text": "モード:注文用紙"
+                        "text": "注文用紙の写真を送ってください。"
                     },
                     "style": "primary",
                     "margin": "sm"
