@@ -1,4 +1,5 @@
 ﻿import os
+from socket import EAI_MAX
 import time
 from google.cloud import vision
 from google.cloud.vision_v1 import types
@@ -288,12 +289,17 @@ search_coordinates_template = [
     {
         "label": "商品名",
         "variable_name": "product_name",
-        "prompt_instructions": "以下の整理されたデータから「商品名」に該当する情報を抽出してください。回答は商品名座標の直ぐ下にある回答として洋服の種類を期待しています。記載する内容は抽出された商品名だけで良いです。- グラフィ ティーズ 2024は商品名ではありません。 "
+        "prompt_instructions": "以下の整理されたデータから「商品名」に該当する情報を抽出してください。回答は商品名座標の直ぐ下にある回答として洋服の種類を期待しています。記載する内容は抽出された商品名だけで良いです。- グラフィ ティーズ 2024 -は商品名ではありません。 "
     },
     {
         "label": "商品カラー",
         "variable_name": "product_color",
         "prompt_instructions": "以下の整理されたデータから「商品カラー」に該当する情報を抽出してください。回答は商品カラー座標の直ぐ下にある回答として色を連想させる回答を期待しています。記載する回答は回答だけにしてください。。"
+    },
+    {
+        "label": "SS",
+        "variable_name": "SS",
+        "prompt_instructions": "以下の整理されたデータから「SS」に該当する情報を抽出してください。回答はSから数10ピクセル以内で真下にある数字です。回答は数字だけにしてください。"
     },
     {
         "label": "S",
@@ -671,11 +677,12 @@ user_data_store = {
         "owner_email": "r9470774@gmail.com",
         "product_name": "フードスウェット",
         "product_color": "ダークチョコレート",
-        "S": "34",
-        "M": "34",
-        "L": "34",
-        "LL(XL)": "34",
-        "3L(XXL)": "34",
+        "SS":"3"
+        "S": "3",
+        "M": "3",
+        "L": "3",
+        "LL(XL)": "3",
+        "3L(XXL)": "3",
         "sub_total": "42",
         "total": "42",
         "print_size": "X=8cm, Y=1.5cm",
@@ -705,18 +712,23 @@ def create_flex_message(organized_data):
     """
     # 変数名を日本語のラベルに変換するマッピング
     label_mapping = {
-        "delivery_date": "注文日",
+        "delivery_date": "配達日",
         "use_date": "使用日",
         "school_name": "学校名",
         "line_name": "LINE名",
-        "group_name": "クラス・団体名",
+        "group_name": "団体名",
         "school_address": "学校住所",
-        "school_tel": "学校電話番号",
+        "school_tel": "学校TEL",
         "boss_furigana": "担任名",
-        "boss_mobile": "担任携帯番号",
-        "boss_email": "担任メールアドレス",
+        "boss_mobile": "担任携帯",
+        "boss_email": "担任メール",
+        "design_confirm":"デザイン確認",
         "product_name": "商品名",
+        "owner_name": "代表者"
+        "owner_mobile": "代表者TEL",
+        "owner_email":"代表者メール"
         "product_color": "商品カラー",
+        "SS": "サイズ(SS)",
         "S": "サイズ(S)",
         "M": "サイズ(M)",
         "L": "サイズ(L)",
