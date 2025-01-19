@@ -1215,7 +1215,7 @@ def webhook():
                     
                 # WEB注文
                 if user_message == "モード:WEB注文":
-                    send_text_message(
+                    send_message(
                         user_id,
                         "こちらをクリックしてください: line://app/1234567890-abcdefghijkl?redirect=https://webform-vqgk.onrender.com/"
                     )                        
