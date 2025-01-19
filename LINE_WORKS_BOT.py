@@ -944,8 +944,8 @@ def send_carousel_for_edit_with_next_button(user_id, page=0):
             else:
                 print(f"Failed to send Carousel. Status: {response.status_code}, Body: {response.text}")
     except Exception as e:
-
-
+                print(f"Error sending Carousel Message: {e}")
+        
 def send_flex_message(user_id, flex_message):
     """
     Flex MessageをLINE WORKSユーザーに送信する関数。
