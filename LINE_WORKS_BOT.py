@@ -233,7 +233,7 @@ search_coordinates_template = [
     {
         "label": "LINEアカウント名",
         "variable_name": "line_name",
-        "prompt_instructions": "以下の整理されたデータから「LINEアカウント名」に該当する情報を抽出してください。回答は表示名をご記入くださいの近くの[]の中の文字です。回答だけを抽出してください。"
+        "prompt_instructions": "以下の整理されたデータから「LINEアカウント名」に該当する情報を抽出してください。回答は表示名をご記入ください!の近くの[]の中の文字です。回答だけを抽出してください。"
     },
     {
         "label": "クラス団体名",
@@ -532,7 +532,7 @@ def process_and_send_text_from_image(image_path=None):
                 # デバッグ用ログ
                 print("Processed results:", processed_results)
 
-                # 結果をLINE Worksユーザーに送信
+                # 結果をLINE Worksユーザーに送信 (コメントアウト)
                 user_id = "9295462e-77df-4410-10a1-05ed80ea849d"  # 実際のユーザーIDに置き換え
                 for result in processed_results:
                     label = result["テキスト"]
@@ -549,9 +549,10 @@ def process_and_send_text_from_image(image_path=None):
                         # 結果を保存
                         organized_data[variable_name] = answer.strip()
                         try:
-                            send_message(user_id, f"{label}: {variable_name}: {answer.strip()}")
+                            # send_message(user_id, f"{label}: {variable_name}: {answer.strip()}")  # コメントアウト
+                            print(f"Prepared message for {label}: {variable_name}: {answer.strip()}")  # ログのみ出力
                         except Exception as send_error:
-                            print(f"Failed to send message for label '{label}': {send_error}")
+                            print(f"Failed to prepare message for label '{label}': {send_error}")
                     else:
                         print(f"No meaningful answer found for label '{label}' in {current_image_path}.")
             except Exception as e:
@@ -1244,8 +1245,9 @@ def webhook():
                                 if organized_data:
                                     user_data_store[user_id] = organized_data
                                     print(f"Updated user_data_store for user_id {user_id}: {organized_data}")
-                                    send_message(user_id, "データが保存されました。修正を開始できます。")
-                                    send_message(user_id, "注文を確認したい場合は『注文を確認』と送信してください。")                              
+                                    send_message(user_id, "データが保存されました。修正を開始できます。")  
+                                    flex_message = create_flex_message(organized_data)  # 既存の関数を想定
+                                    send_flex_message(user_id, flex_message)
                                 else:
                                     send_message(user_id, "データの保存に失敗しました。")
                             else:
