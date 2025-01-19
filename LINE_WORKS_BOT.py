@@ -223,7 +223,7 @@ search_coordinates_template = [
     {
         "label": "ご使用日",
         "variable_name": "use_date",
-        "prompt_instructions": "以下の整理されたデータから「ご使用日」に該当する情報を抽出してください。回答は日付だけにしてください。。"
+        "prompt_instructions": "以下の整理されたデータから「ご使用日」に該当する情報を抽出してください。ご使用日はお届け日より未来の日付です。回答は日付だけにしてください。。"
     },
     {
         "label": "学校名",
@@ -238,7 +238,7 @@ search_coordinates_template = [
     {
         "label": "クラス団体名",
         "variable_name": "group_name",
-        "prompt_instructions": "以下の整理されたデータから「クラス団体名」に該当する情報を抽出してください。回答は団体名の右の座標にある文字です。例:2-2など。50文字以内で記載してください。"
+        "prompt_instructions": "以下の整理されたデータから「クラス団体名」に該当する情報を抽出してください。回答は団体名の右の座標にある文字です。例:2-2など。50文字以内で記載してください。回答だけを抽出してください。"
     },
     {
         "label": "学校住所",
@@ -248,7 +248,7 @@ search_coordinates_template = [
     {
         "label": "学校TEL",
         "variable_name": "school_tel",
-        "prompt_instructions": "以下の整理されたデータから「学校TEL」に該当する情報を抽出してください。回答はxxxx-xx-xxxxのような10桁の数字だけで良いです"
+        "prompt_instructions": "以下の整理されたデータから「学校TEL」に該当する情報を抽出してください。回答はxxxx-xx-xxxxのような10桁の数字だけで良いです。抽出された学校TELの電話番号を使ってください。"
     },
     {
         "label": "ご担任",
@@ -273,7 +273,7 @@ search_coordinates_template = [
     {
         "label": "代表者氏名",
         "variable_name": "owner_name",
-        "prompt_instructions": "以下の整理されたデータから「代表者指名」に該当する情報を抽出してください。回答は20文字以内で漢字の名前だけで良いです。代表者氏名の右隣りにあります。"
+        "prompt_instructions": "以下の整理されたデータから「代表者指名」に該当する情報を抽出してください。回答は20文字以内で漢字の名前だけで良いです。代表者氏名の右隣りにあります。代表者は担任(保護者)とは違う名前です。"
     },
     {
         "label": "代表者携帯",
@@ -283,7 +283,7 @@ search_coordinates_template = [
     {
         "label": "代表者メール",
         "variable_name": "owner_email",
-        "prompt_instructions": "以下の整理されたデータから「代表者メール」に該当する情報を抽出してください。回答はxxx@xxxのようなemail形式を期待しています。回答は抽出されたemail情報だけで良いです。"
+        "prompt_instructions": "以下の整理されたデータから「代表者メール」に該当する情報を抽出してください。回答はxxx@xxxのようなemail形式です。。回答は抽出されたemail情報だけで良いです。"
     },
     {
         "label": "商品名",
@@ -901,7 +901,7 @@ def send_carousel_for_edit_with_next_button(user_id, page=0):
                 {
                     "type": "message",
                     "label": f"{label}を修正",
-                    "text": f"{label}を修正"
+                    "text": f"{key}を修正"  # 実際に送信されるテキストは変数名を使用
                 }
             ]
         })
@@ -945,7 +945,7 @@ def send_carousel_for_edit_with_next_button(user_id, page=0):
             else:
                 print(f"Failed to send Carousel. Status: {response.status_code}, Body: {response.text}")
     except Exception as e:
-                print(f"Error sending Carousel Message: {e}")
+        print(f"Error sending Carousel Message: {e}")
         
 def send_flex_message(user_id, flex_message):
     """
