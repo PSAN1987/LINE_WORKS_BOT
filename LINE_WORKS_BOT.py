@@ -1153,7 +1153,7 @@ def send_mode_selection_message(user_id):
                     "type": "button",
                     "action": {
                         "type": "message",
-                        "label": "②注文用紙",
+                        "label": "②注文用紙から注文",
                         "text": "注文用紙の写真を送ってください。"
                     },
                     "style": "primary",
@@ -1163,7 +1163,7 @@ def send_mode_selection_message(user_id):
                     "type": "button",
                     "action": {
                         "type": "message",
-                        "label": "③チャット注文",
+                        "label": "③AIチャットから注文",
                         "text": "モード:チャット注文"
                     },
                     "style": "primary",
@@ -1173,7 +1173,7 @@ def send_mode_selection_message(user_id):
                     "type": "button",
                     "action": {
                         "type": "message",
-                        "label": "④WEB注文",
+                        "label": "④WEBフォームから注文",
                         "text": "モード:WEB注文"
                     },
                     "style": "primary",
@@ -1212,6 +1212,13 @@ def webhook():
                 # モード選択
                 if user_message == "モード選択":
                     send_mode_selection_message(user_id)
+                    
+                # WEB注文
+                if user_message == "モード:WEB注文":
+                    send_text_message(
+                        user_id,
+                        "こちらをクリックしてください: line://app/1234567890-abcdefghijkl?redirect=https://webform-vqgk.onrender.com/"
+                    )                        
                 # 注文内容確認フロー
                 if user_message == "注文を確認":
                     organized_data = user_data_store.get(user_id, None)
