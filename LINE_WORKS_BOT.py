@@ -1333,12 +1333,8 @@ def webhook():
                         "こちらをクリックしてください: line://app/1234567890-abcdefghijkl?redirect=https://webform-vqgk.onrender.com/"
                     )                        
                 # 簡易見積
-                if user_message == "簡易見積":
+                if user_message == "モード:簡易見積":
                     simple_estimate(user_id)
-
-                # その他のメッセージ
-                else:
-                    send_message(user_id, "対応していないメッセージです。")
 
                 # 注文内容確認フロー
                 if user_message == "注文を確認":
