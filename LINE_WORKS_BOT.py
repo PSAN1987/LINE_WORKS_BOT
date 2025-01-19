@@ -701,7 +701,7 @@ print(user_data_store)
 
 def create_flex_message(organized_data):
     """
-    organized_dataをFlex Message形式で整形する関数。
+    organized_dataをFlex Message形式で整形し、テキストをコピー可能にする関数。
     """
     flex_message = {
         "type": "bubble",
@@ -714,7 +714,9 @@ def create_flex_message(organized_data):
                     "text": "注文内容確認",
                     "weight": "bold",
                     "size": "lg",
-                    "margin": "md"
+                    "margin": "md",
+                    "selectable": True,    # ← 選択可能にする
+                    "wrap": True           # 長めのテキストに折り返しを付けたい場合
                 },
                 {
                     "type": "separator",
@@ -725,8 +727,21 @@ def create_flex_message(organized_data):
                     "type": "box",
                     "layout": "horizontal",
                     "contents": [
-                        {"type": "text", "text": f"{key}:", "flex": 3, "weight": "bold"},
-                        {"type": "text", "text": str(value), "flex": 7}
+                        {
+                            "type": "text",
+                            "text": f"{key}:",
+                            "flex": 3,
+                            "weight": "bold",
+                            "selectable": True,  # ← 選択可能にする
+                            "wrap": True
+                        },
+                        {
+                            "type": "text",
+                            "text": str(value),
+                            "flex": 7,
+                            "selectable": True,  # ← 選択可能にする
+                            "wrap": True
+                        }
                     ]
                 }
                 for key, value in organized_data.items()
@@ -738,19 +753,31 @@ def create_flex_message(organized_data):
             "contents": [
                 {
                     "type": "button",
-                    "action": {"type": "message", "label": "修正", "text": "修正を開始"},
+                    "action": {
+                        "type": "message",
+                        "label": "修正",
+                        "text": "修正を開始"
+                    },
                     "style": "primary",
                     "color": "#FF6F61"
                 },
                 {
                     "type": "button",
-                    "action": {"type": "message", "label": "金額", "text": "請求金額を確認"},
+                    "action": {
+                        "type": "message",
+                        "label": "金額",
+                        "text": "請求金額を確認"
+                    },
                     "style": "primary",
-                    "color": "#FFD700"  # 黄色のカラーコード
+                    "color": "#FFD700"
                 },
                 {
                     "type": "button",
-                    "action": {"type": "message", "label": "確定", "text": "注文を確定する"},
+                    "action": {
+                        "type": "message",
+                        "label": "確定",
+                        "text": "注文を確定する"
+                    },
                     "style": "primary",
                     "color": "#4CAF50"
                 }
@@ -758,6 +785,7 @@ def create_flex_message(organized_data):
         }
     }
     return flex_message
+
 
 
 def send_carousel_for_edit_with_next_button(user_id, page=0):
