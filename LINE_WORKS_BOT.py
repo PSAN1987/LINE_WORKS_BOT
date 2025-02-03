@@ -1194,7 +1194,9 @@ def openai_extract_form_data(ocr_text: str) -> dict:
 - product_color
 - size_ss, size_s, size_m, size_l, size_ll, size_lll
 """
-
+    logger.info("[DEBUG] GPT SYSTEM PROMPT: " + system_prompt)
+    logger.info("[DEBUG] GPT USER PROMPT: " + user_prompt[:500])  # 長すぎる場合先頭500文字だけ
+    
     # ChatCompletion例 (GPT-3.5など)
     response = openai.ChatCompletion.create(
         model="gpt-4",
