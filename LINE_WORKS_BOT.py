@@ -1130,21 +1130,48 @@ import openai
 
 def openai_extract_form_data(ocr_text: str) -> dict:
     """
-    OCRで得た文章(ocr_text)から、学校名・商品名などを推定して返すサンプル。
-    実際にはOpenAIのプロンプトを詳細に作りこむ必要あり。
-    戻り値は paper_order_form で利用するキーを含むdictを想定。
+    あなたは注文用紙のOCR結果から必要な項目を抽出するアシスタントです。
+    入力として渡されるテキスト（OCR結果）を解析し、次のフォーム項目に合致する値を抽出してJSONで返してください。
+
+    注意・必須条件：
+    - 必ず JSON のみを返し、余計な文章は一切出力しないでください。
+    - JSONのキーは以下の通りです（必ず存在させてください）:
+      [
+        "application_date", "delivery_date", "use_date", "discount_option", 
+        "school_name", "line_account", "group_name", "school_address", "school_tel", 
+        "teacher_name", "teacher_tel", "teacher_email", "representative", "rep_tel", 
+        "rep_email", "design_confirm", "payment_method", "product_name", "product_color",
+        "size_ss", "size_s", "size_m", "size_l", "size_ll", "size_lll"
+      ]
+    - 値が見つからない場合は、空文字 "" または null を記載してください。
+    - 可能な範囲で似ていそうな値を抽出してください。
+    - 日付は yyyy-mm-dd 形式に変換できそうなら変換してください。変換できない場合はそのままでもかまいません。
+
     """
     openai.api_key = OPENAI_API_KEY
 
     # システムプロンプト例
-    system_prompt = """あなたは注文用紙のOCR結果をもとに、指定のフォーム項目に合致するであろう値を抽出するアシスタントです。
-各項目に合うと思われる内容をJSONで出力してください。空の場合はnullか空文字にします。"""
+    system_prompt = """    あなたは注文用紙のOCR結果から必要な項目を抽出するアシスタントです。
+    入力として渡されるテキスト（OCR結果）を解析し、次のフォーム項目に合致する値を抽出してJSONで返してください。
+
+    注意・必須条件：
+    - 必ず JSON のみを返し、余計な文章は一切出力しないでください。
+    - JSONのキーは以下の通りです（必ず存在させてください）:
+      [
+        "application_date", "delivery_date", "use_date", "discount_option", 
+        "school_name", "line_account", "group_name", "school_address", "school_tel", 
+        "teacher_name", "teacher_tel", "teacher_email", "representative", "rep_tel", 
+        "rep_email", "design_confirm", "payment_method", "product_name", "product_color",
+        "size_ss", "size_s", "size_m", "size_l", "size_ll", "size_lll"
+      ]
+    - 値が見つからない場合は、空文字 "" または null を記載してください。
+    - 可能な範囲で似ていそうな値を抽出してください。
+    - 日付は yyyy-mm-dd 形式に変換できそうなら変換してください。変換できない場合はそのままでもかまいません。。"""
 
     # ユーザープロンプト例（フォーム項目一覧）
     user_prompt = f"""
-以下は注文用紙をOCRした結果です：
-
-このテキストから、次の項目に合致しそうな値を抜き出し、JSON形式で出力してください。
+以下は注文用紙をOCRした結果です（前後の説明文も含む可能性があります）。
+テキストから、上記のフォーム項目に該当しそうな値を抽出して、必ず JSON だけを返してください。
 
 - application_date
 - delivery_date
