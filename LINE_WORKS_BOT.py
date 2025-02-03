@@ -1202,7 +1202,7 @@ OCRテキスト:
     logger.info("[DEBUG] GPT USER PROMPT: " + user_prompt[:500])  # 長すぎる場合先頭500文字だけ
     # ChatCompletion例 (GPT-3.5など)
     response = openai.ChatCompletion.create(
-        model="gpt-4",
+        model="gpt-3.5-turbo",
         temperature=0.2,
         messages=[
             {"role": "system", "content": system_prompt},
