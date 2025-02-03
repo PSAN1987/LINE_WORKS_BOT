@@ -1,1492 +1,983 @@
 ﻿import os
-import time
-from google.cloud import vision
-from google.cloud.vision_v1 import types
-import io
-import jwt  # PyJWTライブラリを使用
+import psycopg2
 import requests
-from flask import Flask, request, jsonify
 from dotenv import load_dotenv
-import re
-import unicodedata
-import openai
+from flask import Flask, request, abort, render_template_string
+import logging
+import traceback
+import json
 
+# ★ line-bot-sdk v2 系 ★
+from linebot import (
+    LineBotApi,
+    WebhookHandler
+)
+from linebot.exceptions import InvalidSignatureError
+from linebot.models import (
+    MessageEvent,
+    PostbackEvent,
+    TextMessage,
+    TextSendMessage,
+    PostbackAction,
+    FlexSendMessage,
+    BubbleContainer,
+    CarouselContainer,
+    BoxComponent,
+    TextComponent,
+    ButtonComponent
+)
 
-# Flaskアプリケーションの初期化
-app = Flask(__name__)
-
-# グローバル変数として user_data_store を定義
-user_data_store = {}
-user_state = {}
-
-# LINE Works Bot API設定
-CLIENT_ID = "FAKUIs1_C7TzbMG9ZoCp"  # 管理画面で取得
-CLIENT_SECRET = "n6ugyKvfCf"  # 管理画面で取得
-PRIVATE_KEY = """-----BEGIN PRIVATE KEY-----
-MIIEvQIBADANBgkqhkiG9w0BAQEFAASCBKcwggSjAgEAAoIBAQC7BP6/i48ra5BAqqj8IowXH1DvyfYbDiEx8x3a+pkiTJ55rfCyrDVrtww0fxORNPXf3EEGvqF6nE6lGshPw41gGLRFMwo151Egg9+PQMQdoTSJ2Nv1KbO3Hu5FwEnAcgUwhPeUMpbAg/klfQQASE9lGKfWO0sSIikQHQwiMfVcb938HzFwjm/SizJIUQkXIxcBwUg4qs2qTuUDpsburLha5YLsvpR8diK9EYh4NyYmpOE7TtxlSVz6/0ZWlgi2pbfYaqjEW+vgLWbfPK7zepuCHTsNwYqDKsy5x0Qb2EJ8AzGKUtrzmBlxfnMk3iBRH4+XV7erH3FxrvniuQAu47PRAgMBAAECggEAF76mcim6d5VUadl2fhi2zQLACHSNx4PvlANy5sggJDoyeW7WW3Zri+21jNQWPGlLJG03C6+tbz9O6ZMxG+t5/4RIyGvBX/RVbmQ/61TE8aFzkGLqaRdZMXv/CE0bMBC/TEM9meEjFyCfw/I6TVI2U7bMgcc3x1Qd/uU+kqLhglGcIbMx7/nJvJApl8WTiPLQvp4btYlUvjUCA/MV0dtYqY3SwuCqvOEKaX+HEYQwY0jTIiQ+mf2nC+OWhfSXBf3QERaRf8ESKIvb0w6fnTHRVnutyxW/QgFDcrhBEO1NIlU8qdMIUyG7SKc0eRuNr6aNL2N2lMDpvwXeZ9JxNaaGXwKBgQDTYxvenj/t2ttkCRibv7/6zcYOyuQqk2k7AfN6H98SeQJBr1BQdkd9CLbwGEESeg7ZhjmTUB0om13h4oZckw9pPc0uRyLXyYyOiku/e+I6C3AY2AVO7bOBLy+28VZOfoQlAYHTVlX8JuDdIKSNoZ+MnBkRDCxw9QgYpB/YWaUSPwKBgQDifVgbDXfZ0dj0qRd/djwc/qm66fj2PnmlxcEsIs4fz8rje/Ry39wKncSswt3SGNCYk3Bhtsopdza0BgcZfVo4DjBs2D4SBgD5BK8jAY2A/qgz2e7XwA0Cfif//XB17Uqngbv52gUJNGhrD/38POjKc1II0yzJLn333K3umZeV7wKBgEVzXoi5vY9MRKCNTIR/b3fbe6MIjgZfAEfe0DvjlMrg7xjdnKmS8tHltxUTIu4LJC3bp7b6r1nUEfhREIwB1SJip7L4tD3pfkCmt1RmQ2GGuIGxF61i84MSGb8lc5G+h3QRFrJ0vzNlIqQEQYw2+dCcyK+NLFzAZLST19KhQVbJAoGAWjrvZ8+kyL1GPqpCtz/mUPLPsaxWx9s54WX4QFoZXikNPjV6vG0cn4oc+Wqkrne+WpqacgM9ZOmefHfOSkRbNevJNQOtLsb/ijVohHyw4AwT/Jw8/+z+Adk6nExeikyfqj4QIkjOKs2bL9PuLpghcc4hh2yB8iA4hQ+Ap4a/EjcCgYEAzYBmuYAnIKbjX7YXq14VEeND4wdbQSCD9sZsqTYgG2ABUiZgDPidrzk2qZr4h84xWbwcZ2vrO4RnzttDW3iP8qPQ8P0ANZFE58h2XZ/LKMRmsdSfDdwBNus+mRmn1MkrjHlI1H1d52AXEYYJlJgsmBXhkKChqlSeWD14yuTCCE0=
------END PRIVATE KEY-----"""  # 管理コンソールで生成された秘密鍵
-ISS = "d7ya7.serviceaccount@reichan"  # 管理画面で確認 (Service Account ID)
-TOKEN_URL = "https://auth.worksmobile.com/oauth2/v2.0/token"
-API_URL = "https://www.worksapis.com/v1.0/bots/6807091/messages"  # BOT番号を含む
-BOT_NO = "6807091"
-SCOPE = "bot"
-
-# .envファイルを読み込む
+#############################
+# (A) 既存の環境変数など読み込み
+#############################
 load_dotenv()
-# 環境変数の取得
-google_credentials_path = os.getenv("GOOGLE_APPLICATION_CREDENTIALS")
-OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
-openai.api_key = OPENAI_API_KEY
-# Google Cloud Vision APIの認証設定
-os.environ["GOOGLE_APPLICATION_CREDENTIALS"] = google_credentials_path
 
-# 保存先ディレクトリ設定
-IMAGE_SAVE_PATH = "/tmp/saved_images"
-os.makedirs(IMAGE_SAVE_PATH, exist_ok=True)
+CHANNEL_ACCESS_TOKEN = os.getenv('CHANNEL_ACCESS_TOKEN')
+CHANNEL_SECRET = os.getenv('CHANNEL_SECRET')
 
-# JWTを生成する関数
-def create_jwt():
-    print("Creating JWT...")
-    now = int(time.time())
-    payload = {
-        "iss": CLIENT_ID,  # Client ID
-        "sub": ISS,  # Service Account ID
-        "iat": now,  # 現在のタイムスタンプ
-        "exp": now + 3600,  # 1時間後の有効期限
-        "aud": TOKEN_URL  # トークン取得エンドポイント
-    }
-    # JWTに署名
-    print(f"JWT Payload: {payload}")
-    token = jwt.encode(payload, PRIVATE_KEY, algorithm="RS256")
-    print("JWT created successfully.")
-    return token
+# ★ S3 などにアップロードするための環境変数例
+AWS_ACCESS_KEY_ID = os.getenv('AWS_ACCESS_KEY_ID')
+AWS_SECRET_ACCESS_KEY = os.getenv('AWS_SECRET_ACCESS_KEY')
+S3_BUCKET_NAME = os.getenv('S3_BUCKET_NAME')
 
-# アクセストークンを取得する関数
-def get_access_token():
-    print("Fetching access token...")
-    jwt_token = create_jwt()
-    payload = {
-        "grant_type": "urn:ietf:params:oauth:grant-type:jwt-bearer",
-        "assertion": jwt_token,
-        "client_id": CLIENT_ID,
-        "client_secret": CLIENT_SECRET,
-        "scope": SCOPE
-    }
-    headers = {
-        "Content-Type": "application/x-www-form-urlencoded"
-    }
-    try:
-        response = requests.post(TOKEN_URL, data=payload, headers=headers)
-        print(f"Token request status code: {response.status_code}")
-        print(f"Token request response: {response.text}")
-        if response.status_code == 200:
-            token_data = response.json()
-            print("Access token fetched successfully.")
-            return token_data
-        else:
-            print("Failed to fetch access token. Details: ", response.text)
-            return None
-    except Exception as e:
-        print(f"Error during token request: {e}")
-        return None
+DATABASE_NAME = os.getenv('DATABASE_NAME')
+DATABASE_USER = os.getenv('DATABASE_USER')
+DATABASE_PASSWORD = os.getenv('DATABASE_PASSWORD')
+DATABASE_HOST = os.getenv('DATABASE_HOST')
+DATABASE_PORT = os.getenv('DATABASE_PORT')
 
-# ユーザーIDを安全に取得する関数
-def get_user_id_from_request(data):
-    try:
-        user_id = data.get("source", {}).get("userId", None)
-        if not user_id:
-            raise ValueError("userId is missing in the request data.")
-        return user_id
-    except Exception as e:
-        print(f"Error retrieving user_id: {e}")
-        return None
+app = Flask(__name__)
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
 
-# メッセージを送信する関数
-def send_message(account_id, text):
-    print(f"Preparing to send message to userId: {account_id}")
-    try:
-        # アクセストークンを取得
-        token_data = get_access_token()
-        if token_data is None or "access_token" not in token_data:
-            raise Exception("Failed to obtain access token.")
+line_bot_api = LineBotApi(CHANNEL_ACCESS_TOKEN)
+handler = WebhookHandler(CHANNEL_SECRET)
 
-        access_token = token_data["access_token"]
-        headers = {
-            "Authorization": f"Bearer {access_token}",
-            "Content-Type": "application/json"
-        }
-        # 正しいエンドポイント
-        url = f"https://www.worksapis.com/v1.0/bots/{BOT_NO}/users/{account_id}/messages"
-        payload = {
-            "content": {
-                "type": "text",
-                "text": text
-            }
-        }
-        response = requests.post(url, json=payload, headers=headers)
-        print(f"Message send request status code: {response.status_code}")
-        if response.status_code == 201:
-            print("Message sent successfully!")
-        else:
-            print(f"Failed to send message. Response: {response.text}")
-    except Exception as e:
-        print(f"Error during message send: {e}")
+# ---------------------------------------
+# (B) ユーザーの状態管理 (簡易) - DB等推奨
+# ---------------------------------------
+user_states = {}
 
-# fileIdを使って画像URLを取得する関数
-def get_file_url(file_id):
-    try:
-        # アクセストークンを取得
-        token_data = get_access_token()
-        if token_data is None or "access_token" not in token_data:
-            raise Exception("Failed to obtain access token.")
+###################################
+# (C) DB接続 (PostgreSQL想定)
+###################################
+def get_db_connection():
+    """PostgreSQLに接続してconnectionを返す"""
+    return psycopg2.connect(
+        dbname=DATABASE_NAME,
+        user=DATABASE_USER,
+        password=DATABASE_PASSWORD,
+        host=DATABASE_HOST,
+        port=DATABASE_PORT
+    )
 
-        access_token = token_data["access_token"]
-        headers = {
-            "Authorization": f"Bearer {access_token}",
-            "Content-Type": "application/json"
-        }
-        # 添付ファイル情報を取得するエンドポイント
-        url = f"https://www.worksapis.com/v1.0/bots/{BOT_NO}/attachments/{file_id}"
-        print(f"Requesting file URL with: {url}")
-        print(f"Request Headers: {headers}")
+###################################
+# (D) S3にファイルをアップロード
+###################################
+import boto3
+from werkzeug.utils import secure_filename
+import uuid
 
-        # リクエストを送信
-        response = requests.get(url, headers=headers, allow_redirects=False)
-        print(f"Response Status Code: {response.status_code}")
-        print(f"Response Headers: {response.headers}")
-
-        # 302リダイレクトの場合
-        if response.status_code == 302 and "Location" in response.headers:
-            file_url = response.headers["Location"]
-            print(f"Redirected file URL: {file_url}")
-            return file_url
-        else:
-            print(f"Failed to fetch file URL. Status Code: {response.status_code}, Response: {response.text}")
-            return ""
-    except Exception as e:
-        print(f"Error fetching file URL: {e}")
-        return ""
-    
-# 添付ファイルをダウンロードする関数
-def download_attachment(file_url, access_token):
+def upload_file_to_s3(file_storage, s3_bucket, prefix="uploads/"):
     """
-    添付ファイルをダウンロードする関数
+    file_storage: FlaskのFileStorageオブジェクト (request.files['...'])
+    s3_bucket: アップ先のS3バケット名
+    prefix: S3上のパスのプレフィックス
+    戻り値: アップロード後のS3ファイルURL (空なら None)
     """
-    headers = {
-        "Authorization": f"Bearer {access_token}"
-    }
-
-    try:
-        print(f"Downloading file from: {file_url}")
-        response = requests.get(file_url, headers=headers, stream=True)
-        print(f"Response Status Code: {response.status_code}")
-
-        if response.status_code == 200:
-            file_name = os.path.join(IMAGE_SAVE_PATH, f"downloaded_image_{int(time.time())}.jpg")
-            with open(file_name, "wb") as f:
-                for chunk in response.iter_content(1024):
-                    f.write(chunk)
-            print(f"File saved as {file_name}")
-            return file_name
-        else:
-            print(f"Failed to download the file. Status Code: {response.status_code}, Response: {response.text}")
-            return None
-    except Exception as e:
-        print(f"Error occurred while downloading the file: {e}")
+    if not file_storage or file_storage.filename == "":
         return None
-    
-# 環境変数 GOOGLE_APPLICATION_CREDENTIALS をログに記録
-def verify_google_application_credentials():
-    try:
-        credentials_path = os.getenv("GOOGLE_APPLICATION_CREDENTIALS")
-        if credentials_path and os.path.exists(credentials_path):
-            print(f"GOOGLE_APPLICATION_CREDENTIALS is set correctly: {credentials_path}")
-        else:
-            print("Error: GOOGLE_APPLICATION_CREDENTIALS is not set or the file does not exist.")
-    except Exception as e:
-        print(f"Error verifying GOOGLE_APPLICATION_CREDENTIALS: {e}")
 
-# Vision API クライアント作成前に呼び出し
-verify_google_application_credentials()
-client = vision.ImageAnnotatorClient()
+    s3 = boto3.client(
+        's3',
+        aws_access_key_id=AWS_ACCESS_KEY_ID,
+        aws_secret_access_key=AWS_SECRET_ACCESS_KEY
+    )
 
-# Google Vision APIクライアントを初期化
-def initialize_vision_client():
-    return vision.ImageAnnotatorClient()
+    filename = secure_filename(file_storage.filename)
+    unique_id = str(uuid.uuid4())
+    s3_key = prefix + unique_id + "_" + filename
 
-search_coordinates_template = [
-    {
-        "label": "お申込み",
-        "variable_name": "order_date",
-        "prompt_instructions": "以下の整理されたデータから[お申込み日]」に該当する情報を抽出してください。回答は日付だけにしてください。"
-    },
-    {
-        "label": "お届け日",
-        "variable_name": "delivery_date",
-        "prompt_instructions": "以下の整理されたデータから「お届け日」に該当する情報を抽出してください。回答は日付だけにしてください。"
-    },
-    {
-        "label": "ご使用日",
-        "variable_name": "use_date",
-        "prompt_instructions": "以下の整理されたデータから「ご使用日」に該当する情報を抽出してください。ご使用日はお届け日より未来の日付です。回答は日付だけにしてください。。"
-    },
-    {
-        "label": "学校名",
-        "variable_name": "school_name",
-        "prompt_instructions": "以下の整理されたデータから「学校名」に該当する情報を抽出してください。回答は学校名だけで良いです。"
-    },
-    {
-        "label": "LINEアカウント名",
-        "variable_name": "line_name",
-        "prompt_instructions": "以下の整理されたデータから「LINEアカウント名」に該当する情報を抽出してください。回答は表示名をご記入ください!の近くの[]の中の文字です。回答だけを抽出してください。"
-    },
-    {
-        "label": "クラス団体名",
-        "variable_name": "group_name",
-        "prompt_instructions": "以下の整理されたデータから「クラス団体名」に該当する情報を抽出してください。回答は団体名の右の座標にある文字です。例:2-2など。50文字以内で記載してください。回答だけを抽出してください。"
-    },
-    {
-        "label": "学校住所",
-        "variable_name": "school_address",
-        "prompt_instructions": "以下の整理されたデータから「学校住所」として「学校名」からGoogle検索した学校住所のみを50文字以内で記載してください。TELやFAX番号は不要です。"
-    },
-    {
-        "label": "学校TEL",
-        "variable_name": "school_tel",
-        "prompt_instructions": "以下の整理されたデータから「学校TEL」に該当する情報を抽出してください。回答はxxxx-xx-xxxxのような10桁の数字だけで良いです。抽出された学校TELの電話番号を使ってください。"
-    },
-    {
-        "label": "ご担任",
-        "variable_name": "boss_furigana",
-        "prompt_instructions": "以下の整理されたデータから「ご担任」に該当する情報を抽出してください。回答は漢字の名前だけで良いです。。"
-    },
-    {
-        "label": "ご担任(保護者)携帯",
-        "variable_name": "boss_mobile",
-        "prompt_instructions": "以下の整理されたデータから「ご担任(保護者)携帯」に該当する情報を抽出してください。回答は50文字以内で「ご担任(保護者)携帯」の右にあってxxx-xxxx-xxxxのような形式の11桁の数字のみを提供してください。"
-    },
-    {
-        "label": "担任(保護者)メール",
-        "variable_name": "boss_email",
-        "prompt_instructions": "以下の整理されたデータから「担任(保護者)メール」に該当する情報を抽出してください。回答はxxx@xxxのようなemail形式を期待しています。回答は抽出されたemail情報だけで良いです。"
-    },
-    {
-        "label": "デザイン確認方法",
-        "variable_name": "design_confirm",
-        "prompt_instructions": "以下の整理されたデータから「デザイン確認方法」に該当する情報を抽出してください。回答は20文字以内にしてください。LINE代表者 or LINEご担任 or メール代表者 or メールご担任のどれか1つのみを選択して、結果だけを返してください"
-    },
-    {
-        "label": "代表者氏名",
-        "variable_name": "owner_name",
-        "prompt_instructions": "以下の整理されたデータから「代表者指名」に該当する情報を抽出してください。回答は20文字以内で漢字の名前だけで良いです。代表者氏名の右隣りにあります。代表者は担任(保護者)とは違う名前です。"
-    },
-    {
-        "label": "代表者携帯",
-        "variable_name": "owner_mobile",
-        "prompt_instructions": "以下の整理されたデータから「代表者携帯」に該当する情報を抽出してください。回答は50文字以内で「代表者携帯」の右にあってxxx-xxxx-xxxxのような形式の11桁の数字のみを提供してください"
-    },
-    {
-        "label": "代表者メール",
-        "variable_name": "owner_email",
-        "prompt_instructions": "以下の整理されたデータから「代表者メール」に該当する情報を抽出してください。回答はxxx@xxxのようなemail形式です。回答は抽出されたemail情報だけで良いです。"
-    },
-    {
-        "label": "商品名",
-        "variable_name": "product_name",
-        "prompt_instructions": "以下の整理されたデータから「商品名」に該当する情報を抽出してください。回答は商品名座標の直ぐ下にある回答として洋服の種類を期待しています。記載する内容は抽出された商品名だけで良いです。- グラフィ ティーズ 2024 -は商品名ではありません。 "
-    },
-    {
-        "label": "商品カラー",
-        "variable_name": "product_color",
-        "prompt_instructions": "以下の整理されたデータから「商品カラー」に該当する情報を抽出してください。回答は商品カラー座標の直ぐ下にある回答として色を連想させる回答を期待しています。記載する回答は回答だけにしてください。。"
-    },
-    {
-        "label": "SS",
-        "variable_name": "SS",
-        "prompt_instructions": "以下の整理されたデータから「SS」に該当する情報を抽出してください。回答はSから数10ピクセル以内で真下にある数字です。回答は数字だけにしてください。"
-    },
-    {
-        "label": "S",
-        "variable_name": "S",
-        "prompt_instructions": "以下の整理されたデータから「S」に該当する情報を抽出してください。回答はSから数10ピクセル以内で真下にある数字です。回答は数字だけにしてください。"
-    },
-    {
-        "label": "M",
-        "variable_name": "M",
-        "prompt_instructions": "以下の整理されたデータから「M」に該当する情報を抽出してください。回答はMから数10ピクセル以内で真下にある数字です。回答は数字だけにしてください。"
-    },
-    {
-        "label": "L",
-        "variable_name": "L",
-        "prompt_instructions": "以下の整理されたデータから「L」に該当する情報を抽出してください。回答はLから数10ピクセル以内で真下にある数字です。回答は数字だけにしてください。。"
-    },
-    {
-        "label": "LL",
-        "variable_name": "LL(XL)",
-        "prompt_instructions": "以下の整理されたデータから「LL」に該当する情報を抽出してください。回答はLLから数10ピクセル以内で真下にある数字です。回答は数字だけにしてください。"
-    },
-    {
-        "label": "3L",
-        "variable_name": "3L(XXL)",
-        "prompt_instructions": "以下の整理されたデータから「3L」に該当する情報を抽出してください。回答は3Lから数10ピクセル以内で真下にある数字です。回答は数字だけにしてください。"
-    },
-    {
-        "label": "小計",
-        "variable_name": "sub_total",
-        "prompt_instructions": "以下の整理されたデータから「小計」に該当する情報を抽出してください。回答は数字だけにしてください。。"
-    },
-    {
-        "label": "合計",
-        "variable_name": "total",
-        "prompt_instructions": "以下の整理されたデータから「合計」に該当する情報を抽出してください。回答は数字だけにしてください。"
-    },
-    {
-        "label": "プリントサイズ",
-        "variable_name": "print_size_1",
-        "prompt_instructions": "以下の整理されたデータから「プリント前」「サイズ」に該当する情報を抽出してください。期待する回答はヨコxx cm x タテxx cmという回答です。回答形式はX=xxcm, Y=xxcmです。"
-    },
-    {
-        "label": "プリントカラー/オプション",
-        "variable_name": "print_colorl_1",
-        "prompt_instructions": "以下の整理されたデータから「プリント前」「プリントカラー/オプション」に該当する情報を抽出してください。期待する回答は色情報と計xx色という回答です。回答形式は色=a,b,c,d, 計=x色です。"
-    },
-    {
-        "label": "デザインサンプル",
-        "variable_name": "print_design_1",
-        "prompt_instructions": "以下の整理されたデータから「プリント前」「デザインサンプル」に該当する情報を抽出してください。期待する回答はD-352のようなアルファベットと数字の組み合わせ情報です。回答形式はx-xxxです。"
-    },
-    {
-        "label": "プリントサイズ",
-        "variable_name": "print_size_2",
-        "prompt_instructions": "以下の整理されたデータから「プリント背中」「サイズ」に該当する情報を抽出してください。期待する回答はヨコxx cm x タテxx cmという回答です。回答形式はX=xxcm, Y=xxcmです。"
-    },
-    {
-        "label": "プリントカラー/オプション",
-        "variable_name": "print_colorl_2",
-        "prompt_instructions": "以下の整理されたデータから「プリント背中」「プリントカラー/オプション」に該当する情報を抽出してください。期待する回答は色情報と計xx色という回答です。回答形式は色=a,b,c,d, 計=x色です。"
-    },
-    {
-        "label": "デザインサンプル",
-        "variable_name": "print_design_2",
-        "prompt_instructions": "以下の整理されたデータから「プリント背中」「デザインサンプル」に該当する情報を抽出してください。期待する回答はD-352のようなアルファベットと数字の組み合わせ情報です。回答形式はx-xxxです。"
-    },
+    s3.upload_fileobj(file_storage, s3_bucket, s3_key)
 
+    url = f"https://{s3_bucket}.s3.amazonaws.com/{s3_key}"
+    return url
+
+###################################
+# (E) 価格表と計算ロジック
+###################################
+PRICE_TABLE = [
+    # product,  minQty, maxQty, discountType, unitPrice, addColor, addPosition, addFullColor
+    # e.g. ドライTシャツ (早割 or 通常)
+    # ドライTシャツ
+    ("ドライTシャツ", 10, 14, "早割", 1830, 850, 850, 550),
+    ("ドライTシャツ", 10, 14, "通常", 2030, 850, 850, 550),
+    ("ドライTシャツ", 15, 19, "早割", 1470, 650, 650, 550),
+    ("ドライTシャツ", 15, 19, "通常", 1670, 650, 650, 550),
+    ("ドライTシャツ", 20, 29, "早割", 1230, 450, 450, 550),
+    ("ドライTシャツ", 20, 29, "通常", 1430, 450, 450, 550),
+    ("ドライTシャツ", 30, 39, "早割", 1060, 350, 350, 550),
+    ("ドライTシャツ", 30, 39, "通常", 1260, 350, 350, 550),
+    ("ドライTシャツ", 40, 49, "早割", 980, 350, 350, 550),
+    ("ドライTシャツ", 40, 49, "通常", 1180, 350, 350, 550),
+    ("ドライTシャツ", 50, 99, "早割", 890, 350, 350, 550),
+    ("ドライTシャツ", 50, 99, "通常", 1090, 350, 350, 550),
+    ("ドライTシャツ", 100, 500, "早割", 770, 300, 300, 550),
+    ("ドライTシャツ", 100, 500, "通常", 970, 300, 300, 550),
+
+    # ヘビーウェイトTシャツ
+    ("ヘビーウェイトTシャツ", 10, 14, "早割", 1970, 850, 850, 550),
+    ("ヘビーウェイトTシャツ", 10, 14, "通常", 2170, 850, 850, 550),
+    ("ヘビーウェイトTシャツ", 15, 19, "早割", 1610, 650, 650, 550),
+    ("ヘビーウェイトTシャツ", 15, 19, "通常", 1810, 650, 650, 550),
+    ("ヘビーウェイトTシャツ", 20, 29, "早割", 1370, 450, 450, 550),
+    ("ヘビーウェイトTシャツ", 20, 29, "通常", 1570, 450, 450, 550),
+    ("ヘビーウェイトTシャツ", 30, 39, "早割", 1200, 350, 350, 550),
+    ("ヘビーウェイトTシャツ", 30, 39, "通常", 1400, 350, 350, 550),
+    ("ヘビーウェイトTシャツ", 40, 49, "早割", 1120, 350, 350, 550),
+    ("ヘビーウェイトTシャツ", 40, 49, "通常", 1320, 350, 350, 550),
+    ("ヘビーウェイトTシャツ", 50, 99, "早割", 1030, 350, 350, 550),
+    ("ヘビーウェイトTシャツ", 50, 99, "通常", 1230, 350, 350, 550),
+    ("ヘビーウェイトTシャツ", 100, 500, "早割", 910, 300, 300, 550),
+    ("ヘビーウェイトTシャツ", 100, 500, "通常", 1100, 300, 300, 550),
+
+    # ドライポロシャツ
+    ("ドライポロシャツ", 10, 14, "早割", 2170, 850, 850, 550),
+    ("ドライポロシャツ", 10, 14, "通常", 2370, 850, 850, 550),
+    ("ドライポロシャツ", 15, 19, "早割", 1810, 650, 650, 550),
+    ("ドライポロシャツ", 15, 19, "通常", 2010, 650, 650, 550),
+    ("ドライポロシャツ", 20, 29, "早割", 1570, 450, 450, 550),
+    ("ドライポロシャツ", 20, 29, "通常", 1770, 450, 450, 550),
+    ("ドライポロシャツ", 30, 39, "早割", 1400, 350, 350, 550),
+    ("ドライポロシャツ", 30, 39, "通常", 1600, 350, 350, 550),
+    ("ドライポロシャツ", 40, 49, "早割", 1320, 350, 350, 550),
+    ("ドライポロシャツ", 40, 49, "通常", 1520, 350, 350, 550),
+    ("ドライポロシャツ", 50, 99, "早割", 1230, 350, 350, 550),
+    ("ドライポロシャツ", 50, 99, "通常", 1430, 350, 350, 550),
+    ("ドライポロシャツ", 100, 500, "早割", 1110, 300, 300, 550),
+    ("ドライポロシャツ", 100, 500, "通常", 1310, 300, 300, 550),
+
+    # ドライメッシュビブス
+    ("ドライメッシュビブス", 10, 14, "早割", 2170, 850, 850, 550),
+    ("ドライメッシュビブス", 10, 14, "通常", 2370, 850, 850, 550),
+    ("ドライメッシュビブス", 15, 19, "早割", 1810, 650, 650, 550),
+    ("ドライメッシュビブス", 15, 19, "通常", 2010, 650, 650, 550),
+    ("ドライメッシュビブス", 20, 29, "早割", 1570, 450, 450, 550),
+    ("ドライメッシュビブス", 20, 29, "通常", 1770, 450, 450, 550),
+    ("ドライメッシュビブス", 30, 39, "早割", 1400, 350, 350, 550),
+    ("ドライメッシュビブス", 30, 39, "通常", 1600, 350, 350, 550),
+    ("ドライメッシュビブス", 40, 49, "早割", 1320, 350, 350, 550),
+    ("ドライメッシュビブス", 40, 49, "通常", 1520, 350, 350, 550),
+    ("ドライメッシュビブス", 50, 99, "早割", 1230, 350, 350, 550),
+    ("ドライメッシュビブス", 50, 99, "通常", 1430, 350, 350, 550),
+    ("ドライメッシュビブス", 100, 500, "早割", 1100, 300, 300, 550),
+    ("ドライメッシュビブス", 100, 500, "通常", 1310, 300, 300, 550),
+
+    # ドライベースボールシャツ
+    ("ドライベースボールシャツ", 10, 14, "早割", 2470, 850, 850, 550),
+    ("ドライベースボールシャツ", 10, 14, "通常", 2670, 850, 850, 550),
+    ("ドライベースボールシャツ", 15, 19, "早割", 2110, 650, 650, 550),
+    ("ドライベースボールシャツ", 15, 19, "通常", 2310, 650, 650, 550),
+    ("ドライベースボールシャツ", 20, 29, "早割", 1870, 450, 450, 550),
+    ("ドライベースボールシャツ", 20, 29, "通常", 2070, 450, 450, 550),
+    ("ドライベースボールシャツ", 30, 39, "早割", 1700, 350, 350, 550),
+    ("ドライベースボールシャツ", 30, 39, "通常", 1900, 350, 350, 550),
+    ("ドライベースボールシャツ", 40, 49, "早割", 1620, 350, 350, 550),
+    ("ドライベースボールシャツ", 40, 49, "通常", 1820, 350, 350, 550),
+    ("ドライベースボールシャツ", 50, 99, "早割", 1530, 350, 350, 550),
+    ("ドライベースボールシャツ", 50, 99, "通常", 1730, 350, 350, 550),
+    ("ドライベースボールシャツ", 100, 500, "早割", 1410, 300, 300, 550),
+    ("ドライベースボールシャツ", 100, 500, "通常", 1610, 300, 300, 550),
+
+    # ドライロングスリープTシャツ
+    ("ドライロングスリープTシャツ", 10, 14, "早割", 2030, 850, 850, 550),
+    ("ドライロングスリープTシャツ", 10, 14, "通常", 2230, 850, 850, 550),
+    ("ドライロングスリープTシャツ", 15, 19, "早割", 1670, 650, 650, 550),
+    ("ドライロングスリープTシャツ", 15, 19, "通常", 1870, 650, 650, 550),
+    ("ドライロングスリープTシャツ", 20, 29, "早割", 1430, 450, 450, 550),
+    ("ドライロングスリープTシャツ", 20, 29, "通常", 1630, 450, 450, 550),
+    ("ドライロングスリープTシャツ", 30, 39, "早割", 1260, 350, 350, 550),
+    ("ドライロングスリープTシャツ", 30, 39, "通常", 1460, 350, 350, 550),
+    ("ドライロングスリープTシャツ", 40, 49, "早割", 1180, 350, 350, 550),
+    ("ドライロングスリープTシャツ", 40, 49, "通常", 1380, 350, 350, 550),
+    ("ドライロングスリープTシャツ", 50, 99, "早割", 1090, 350, 350, 550),
+    ("ドライロングスリープTシャツ", 50, 99, "通常", 1290, 350, 350, 550),
+    ("ドライロングスリープTシャツ", 100, 500, "早割", 970, 300, 300, 550),
+    ("ドライロングスリープTシャツ", 100, 500, "通常", 1170, 300, 300, 550),
+
+    # ドライハーフパンツ
+    ("ドライハーフパンツ", 10, 14, "早割", 2270, 850, 850, 550),
+    ("ドライハーフパンツ", 10, 14, "通常", 2470, 850, 850, 550),
+    ("ドライハーフパンツ", 15, 19, "早割", 1910, 650, 650, 550),
+    ("ドライハーフパンツ", 15, 19, "通常", 2110, 650, 650, 550),
+    ("ドライハーフパンツ", 20, 29, "早割", 1670, 450, 450, 550),
+    ("ドライハーフパンツ", 20, 29, "通常", 1870, 450, 450, 550),
+    ("ドライハーフパンツ", 30, 39, "早割", 1500, 350, 350, 550),
+    ("ドライハーフパンツ", 30, 39, "通常", 1700, 350, 350, 550),
+    ("ドライハーフパンツ", 40, 49, "早割", 1420, 350, 350, 550),
+    ("ドライハーフパンツ", 40, 49, "通常", 1620, 350, 350, 550),
+    ("ドライハーフパンツ", 50, 99, "早割", 1330, 350, 350, 550),
+    ("ドライハーフパンツ", 50, 99, "通常", 1530, 350, 350, 550),
+    ("ドライハーフパンツ", 100, 500, "早割", 1210, 300, 300, 550),
+    ("ドライハーフパンツ", 100, 500, "通常", 1410, 300, 300, 550),
+
+    # ヘビーウェイトロングスリープTシャツ
+    ("ヘビーウェイトロングスリープTシャツ", 10, 14, "早割", 2330, 850, 850, 550),
+    ("ヘビーウェイトロングスリープTシャツ", 10, 14, "通常", 2530, 850, 850, 550),
+    ("ヘビーウェイトロングスリープTシャツ", 15, 19, "早割", 1970, 650, 650, 550),
+    ("ヘビーウェイトロングスリープTシャツ", 15, 19, "通常", 2170, 650, 650, 550),
+    ("ヘビーウェイトロングスリープTシャツ", 20, 29, "早割", 1730, 450, 450, 550),
+    ("ヘビーウェイトロングスリープTシャツ", 20, 29, "通常", 1930, 450, 450, 550),
+    ("ヘビーウェイトロングスリープTシャツ", 30, 39, "早割", 1560, 350, 350, 550),
+    ("ヘビーウェイトロングスリープTシャツ", 30, 39, "通常", 1760, 350, 350, 550),
+    ("ヘビーウェイトロングスリープTシャツ", 40, 49, "早割", 1480, 350, 350, 550),
+    ("ヘビーウェイトロングスリープTシャツ", 40, 49, "通常", 1680, 350, 350, 550),
+    ("ヘビーウェイトロングスリープTシャツ", 50, 99, "早割", 1390, 350, 350, 550),
+    ("ヘビーウェイトロングスリープTシャツ", 50, 99, "通常", 1590, 350, 350, 550),
+    ("ヘビーウェイトロングスリープTシャツ", 100, 500, "早割", 1270, 300, 300, 550),
+    ("ヘビーウェイトロングスリープTシャツ", 100, 500, "通常", 1470, 300, 300, 550),
+
+    # クルーネックライトトレーナー
+    ("クルーネックライトトレーナー", 10, 14, "早割", 2870, 850, 850, 550),
+    ("クルーネックライトトレーナー", 10, 14, "通常", 3070, 850, 850, 550),
+    ("クルーネックライトトレーナー", 15, 19, "早割", 2510, 650, 650, 550),
+    ("クルーネックライトトレーナー", 15, 19, "通常", 2710, 650, 650, 550),
+    ("クルーネックライトトレーナー", 20, 29, "早割", 2270, 450, 450, 550),
+    ("クルーネックライトトレーナー", 20, 29, "通常", 2470, 450, 450, 550),
+    ("クルーネックライトトレーナー", 30, 39, "早割", 2100, 350, 350, 550),
+    ("クルーネックライトトレーナー", 30, 39, "通常", 2300, 350, 350, 550),
+    ("クルーネックライトトレーナー", 40, 49, "早割", 2020, 350, 350, 550),
+    ("クルーネックライトトレーナー", 40, 49, "通常", 2220, 350, 350, 550),
+    ("クルーネックライトトレーナー", 50, 99, "早割", 1930, 350, 350, 550),
+    ("クルーネックライトトレーナー", 50, 99, "通常", 2130, 350, 350, 550),
+    ("クルーネックライトトレーナー", 100, 500, "早割", 1810, 300, 300, 550),
+    ("クルーネックライトトレーナー", 100, 500, "通常", 2010, 300, 300, 550),
+
+    # フーデッドライトパーカー
+    ("フーデッドライトパーカー", 10, 14, "早割", 3270, 850, 850, 550),
+    ("フーデッドライトパーカー", 10, 14, "通常", 3470, 850, 850, 550),
+    ("フーデッドライトパーカー", 15, 19, "早割", 2910, 650, 650, 550),
+    ("フーデッドライトパーカー", 15, 19, "通常", 3110, 650, 650, 550),
+    ("フーデッドライトパーカー", 20, 29, "早割", 2670, 450, 450, 550),
+    ("フーデッドライトパーカー", 20, 29, "通常", 2870, 450, 450, 550),
+    ("フーデッドライトパーカー", 30, 39, "早割", 2500, 350, 350, 550),
+    ("フーデッドライトパーカー", 30, 39, "通常", 2700, 350, 350, 550),
+    ("フーデッドライトパーカー", 40, 49, "早割", 2420, 350, 350, 550),
+    ("フーデッドライトパーカー", 40, 49, "通常", 2620, 350, 350, 550),
+    ("フーデッドライトパーカー", 50, 99, "早割", 2330, 350, 350, 550),
+    ("フーデッドライトパーカー", 50, 99, "通常", 2530, 350, 350, 550),
+    ("フーデッドライトパーカー", 100, 500, "早割", 2210, 300, 300, 550),
+    ("フーデッドライトパーカー", 100, 500, "通常", 2410, 300, 300, 550),
+
+    # スタンダードトレーナー
+    ("スタンダードトレーナー", 10, 14, "早割", 3280, 850, 850, 550),
+    ("スタンダードトレーナー", 10, 14, "通常", 3480, 850, 850, 550),
+    ("スタンダードトレーナー", 15, 19, "早割", 2920, 650, 650, 550),
+    ("スタンダードトレーナー", 15, 19, "通常", 3120, 650, 650, 550),
+    ("スタンダードトレーナー", 20, 29, "早割", 2680, 450, 450, 550),
+    ("スタンダードトレーナー", 20, 29, "通常", 2880, 450, 450, 550),
+    ("スタンダードトレーナー", 30, 39, "早割", 2510, 350, 350, 550),
+    ("スタンダードトレーナー", 30, 39, "通常", 2710, 350, 350, 550),
+    ("スタンダードトレーナー", 40, 49, "早割", 2430, 350, 350, 550),
+    ("スタンダードトレーナー", 40, 49, "通常", 2630, 350, 350, 550),
+    ("スタンダードトレーナー", 50, 99, "早割", 2340, 350, 350, 550),
+    ("スタンダードトレーナー", 50, 99, "通常", 2540, 350, 350, 550),
+    ("スタンダードトレーナー", 100, 500, "早割", 2220, 300, 300, 550),
+    ("スタンダードトレーナー", 100, 500, "通常", 2420, 300, 300, 550),
+
+    # スタンダードWフードパーカー
+    ("スタンダードWフードパーカー", 10, 14, "早割", 4040, 850, 850, 550),
+    ("スタンダードWフードパーカー", 10, 14, "通常", 4240, 850, 850, 550),
+    ("スタンダードWフードパーカー", 15, 19, "早割", 3680, 650, 650, 550),
+    ("スタンダードWフードパーカー", 15, 19, "通常", 3880, 650, 650, 550),
+    ("スタンダードWフードパーカー", 20, 29, "早割", 3440, 450, 450, 550),
+    ("スタンダードWフードパーカー", 20, 29, "通常", 3640, 450, 450, 550),
+    ("スタンダードWフードパーカー", 30, 39, "早割", 3270, 350, 350, 550),
+    ("スタンダードWフードパーカー", 30, 39, "通常", 3470, 350, 350, 550),
+    ("スタンダードWフードパーカー", 40, 49, "早割", 3190, 350, 350, 550),
+    ("スタンダードWフードパーカー", 40, 49, "通常", 3390, 350, 350, 550),
+    ("スタンダードWフードパーカー", 50, 99, "早割", 3100, 350, 350, 550),
+    ("スタンダードWフードパーカー", 50, 99, "通常", 3300, 350, 350, 550),
+    ("スタンダードWフードパーカー", 100, 500, "早割", 2980, 300, 300, 550),
+    ("スタンダードWフードパーカー", 100, 500, "通常", 3180, 300, 300, 550),
+
+    # ジップアップライトパーカー
+    ("ジップアップライトパーカー", 10, 14, "早割", 3770, 850, 850, 550),
+    ("ジップアップライトパーカー", 10, 14, "通常", 3970, 850, 850, 550),
+    ("ジップアップライトパーカー", 15, 19, "早割", 3410, 650, 650, 550),
+    ("ジップアップライトパーカー", 15, 19, "通常", 3610, 650, 650, 550),
+    ("ジップアップライトパーカー", 20, 29, "早割", 3170, 450, 450, 550),
+    ("ジップアップライトパーカー", 20, 29, "通常", 3370, 450, 450, 550),
+    ("ジップアップライトパーカー", 30, 39, "早割", 3000, 350, 350, 550),
+    ("ジップアップライトパーカー", 30, 39, "通常", 3200, 350, 350, 550),
+    ("ジップアップライトパーカー", 40, 49, "早割", 2920, 350, 350, 550),
+    ("ジップアップライトパーカー", 40, 49, "通常", 3120, 350, 350, 550),
+    ("ジップアップライトパーカー", 50, 99, "早割", 2830, 350, 350, 550),
+    ("ジップアップライトパーカー", 50, 99, "通常", 3030, 350, 350, 550),
+    ("ジップアップライトパーカー", 100, 500, "早割", 2710, 300, 300, 550),
+    ("ジップアップライトパーカー", 100, 500, "通常", 2910, 300, 300, 550),
 ]
 
+def calc_total_price(
+    product_name: str,
+    quantity: int,
+    early_discount_str: str,  # "14日前以上" => "早割", それ以外 => "通常"
+    print_position: str,
+    color_option: str
+) -> int:
+    if early_discount_str == "14日前以上":
+        discount_type = "早割"
+    else:
+        discount_type = "通常"
 
-def normalize_text(text):
-    """
-    テキストの正規化（例: 全角→半角、スペース除去）。
-    """
-    text = unicodedata.normalize('NFKC', text)  # 全角を半角に変換
-    text = text.strip()  # 前後のスペースを削除
-    return text
+    row = None
+    for item in PRICE_TABLE:
+        (p_name, min_q, max_q, d_type, unit_price, color_price, pos_price, full_price) = item
+        if p_name == product_name and d_type == discount_type and min_q <= quantity <= max_q:
+            row = item
+            break
 
-import openai
-import re
-import unicodedata
+    if not row:
+        return 0
 
-def process_extracted_text(response, search_coordinates_template):
-    """
-    OCRレスポンスから指定されたラベルに対応する回答を抽出。
-    全OCRデータをOpenAI APIで整理し、整理されたデータからラベルごとに該当する回答を抽出。
+    (_, _, _, _, unit_price, color_price, pos_price, full_price) = row
+    base = unit_price * quantity
+    option_cost = 0
 
-    Parameters:
-        response (obj): Google Vision APIのレスポンス。
-        search_coordinates_template (list[dict]): ラベル情報と範囲情報を含むテンプレート。
+    if color_option == "same_color_add":
+        option_cost += color_price * quantity
+    elif color_option == "different_color_add":
+        option_cost += pos_price * quantity
+    elif color_option == "full_color_add":
+        option_cost += full_price * quantity
 
-    Returns:
-        list[dict]: ラベル、変数名、回答、座標をまとめた結果。
-    """
+    total = base + option_cost
+    return total
 
-    def normalize_text(text):
-        """テキストを正規化して比較可能な形に整える。"""
-        text = unicodedata.normalize('NFKC', text)  # 全角→半角
-        text = re.sub(r"\s+", "", text)            # スペース削除
-        return text.lower()
-
-    def extract_blocks_with_coordinates(response):
-        """OCRレスポンスから block 単位でテキストと座標情報を抽出。"""
-        block_data = []
-        if not response.full_text_annotation:
-            return []
-
-        for page in response.full_text_annotation.pages:
-            for block in page.blocks:
-                block_text = "".join(
-                    [
-                        "".join(symbol.text for symbol in word.symbols) + " "
-                        for paragraph in block.paragraphs
-                        for word in paragraph.words
-                    ]
-                )
-                coordinates = [(v.x, v.y) for v in block.bounding_box.vertices]
-                block_data.append({
-                    "text": block_text.strip(),
-                    "coordinates": coordinates
-                })
-
-        return block_data
-
-    def query_openai_for_analysis(block_data):
-        """
-        OpenAI APIを使用してブロックデータを整理。
-        ドキュメントに沿って openai.chat.completions.create を用いた実装に修正。
-        """
-        prompt = (
-            "以下はOCRで抽出されたテキストブロックと座標のデータです。"
-            "データを整理して、人が理解しやすい形式に変換してください。毎回固定処理にしてください。:\n"
-            f"{block_data}"
+###################################
+# (F) Flex Message: モード選択
+###################################
+def create_mode_selection_flex():
+    bubble = BubbleContainer(
+        body=BoxComponent(
+            layout='vertical',
+            contents=[
+                TextComponent(text='モードを選択してください!', weight='bold', size='lg')
+            ]
+        ),
+        footer=BoxComponent(
+            layout='vertical',
+            contents=[
+                ButtonComponent(style='primary', action=PostbackAction(label='簡易見積', data='quick_estimate')),
+                ButtonComponent(style='primary', action=PostbackAction(label='WEBフォームから注文', data='web_order')),
+                ButtonComponent(style='primary', action=PostbackAction(label='注文用紙から注文', data='paper_order'))
+            ]
         )
-        try:
-            response_obj = openai.chat.completions.create(
-                model="gpt-3.5-turbo",  # 必要に応じて "gpt-4" 等に変更
-                messages=[
-                    {"role": "system", "content": "You are a helpful assistant."},
-                    {"role": "user", "content": prompt}
-                ],
-                temperature = 0,
-            )
-            ai_message = response_obj.choices[0].message.content
-            return ai_message
-        except Exception as e:
-            print(f"OpenAI API Error (analysis): {e}")
-            return ""
+    )
+    return FlexSendMessage(alt_text='モードを選択してください', contents=bubble)
 
-    def find_label_in_organized_text(organized_text, label, custom_prompt=None):
-        """
-        整理されたテキストからラベルに対応する回答を探す。
-        custom_prompt（独自のプロンプト）を受け取り、なければデフォルト文言を使う。
-        """
-
-        # テンプレートで独自のプロンプトが指定されている場合
-        if custom_prompt:
-            prompt = f"{custom_prompt}\n\n{organized_text}"
-        else:
-            # 指定がなければ、従来の文言で検索
-            prompt = (
-                f"以下の整理されたデータから「{label}」に該当する内容を6抽出してください:\n"
-                f"{organized_text}"
-            )
-
-        try:
-            response_obj = openai.chat.completions.create(
-                model="gpt-3.5-turbo",  # 必要に応じて "gpt-4" 等に変更
-                messages=[
-                    {"role": "system", "content": "You are a helpful assistant."},
-                    {"role": "user", "content": prompt}
-                ],
-                temperature = 0,
-            )
-            return response_obj.choices[0].message.content
-        except Exception as e:
-            print(f"OpenAI API Error (label-search): {e}")
-            return ""
-
-    # --- ここからメイン処理 ---
-
-    # 1. OCR結果のブロックを抽出
-    block_data = extract_blocks_with_coordinates(response)
-
-    # 2. OpenAI API を使って全ブロックデータを人が理解しやすい形に整理
-    organized_text = query_openai_for_analysis(block_data)
-
-    results = []
-    # 3. テンプレートの各要素に対してラベルを検索
-    for template_item in search_coordinates_template:
-        label = template_item["label"]
-        variable_name = template_item["variable_name"]
-
-        # テンプレートに"prompt_instructions"があれば使う
-        custom_prompt = template_item.get("prompt_instructions", None)
-
-        # find_label_in_organized_text に custom_prompt を渡す
-        refined_answer = find_label_in_organized_text(organized_text, label, custom_prompt)
-
-        results.append({
-            "テキスト": label,
-            "変数名": variable_name,
-            "回答": refined_answer,
-            "座標": None  # 必要に応じて座標情報を付与するならここで追加
-        })
-
-    return results
-
-
-def process_and_send_text_from_image(image_path=None):
-    """
-    Google Vision APIを使用して画像からテキストを抽出し、
-    抽出したテキストを処理および送信する関数。
-    """
-    print("Processing images with Google Vision API...")
-    image_files = [image_path] if image_path else sorted(os.listdir(IMAGE_SAVE_PATH))
-    
-    # 変数名ごとの回答を保存する辞書
-    organized_data = {}
-
-    try:
-        for image_file in image_files:
-            current_image_path = image_path if image_path else os.path.join(IMAGE_SAVE_PATH, image_file)
-            try:
-                # 画像ファイルを読み込む
-                with open(current_image_path, "rb") as image_file:
-                    content = image_file.read()
-
-                # Google Vision APIのリクエストを準備
-                image = vision.Image(content=content)
-                response = client.text_detection(image=image)
-
-                # APIレスポンスのエラーチェック
-                if response.error.message:
-                    raise Exception(f"Vision API Error: {response.error.message}")
-
-                # レスポンスからテキストを抽出
-                if not response.text_annotations:
-                    print(f"No text found in {current_image_path}.")
-                    continue
-
-                print(f"Extracting text from {current_image_path}...")
-                # search_coordinates_template を渡す
-                processed_results = process_extracted_text(response, search_coordinates_template)
-
-                # デバッグ用ログ
-                print("Processed results:", processed_results)
-
-                # 結果をLINE Worksユーザーに送信 (コメントアウト)
-                user_id = "9295462e-77df-4410-10a1-05ed80ea849d"  # 実際のユーザーIDに置き換え
-                for result in processed_results:
-                    label = result["テキスト"]
-                    answer = result["回答"]
-                    variable_name = result["変数名"]
-
-                    # `回答`がリストの場合を考慮
-                    if isinstance(answer, list):
-                        # リスト内の要素を結合して1つの文字列にする
-                        answer = " ".join(map(str, answer))
-
-                    # `回答`が文字列であることを確認
-                    if isinstance(answer, str) and answer.strip():
-                        # 結果を保存
-                        organized_data[variable_name] = answer.strip()
-                        try:
-                            # send_message(user_id, f"{label}: {variable_name}: {answer.strip()}")  # コメントアウト
-                            print(f"Prepared message for {label}: {variable_name}: {answer.strip()}")  # ログのみ出力
-                        except Exception as send_error:
-                            print(f"Failed to prepare message for label '{label}': {send_error}")
-                    else:
-                        print(f"No meaningful answer found for label '{label}' in {current_image_path}.")
-            except Exception as e:
-                print(f"Failed to process {current_image_path}: {e}")
-
-            # 処理済み画像を削除
-            if not image_path:
-                try:
-                    os.remove(current_image_path)
-                    print(f"Processed and removed {current_image_path}.")
-                except Exception as remove_error:
-                    print(f"Failed to remove {current_image_path}: {remove_error}")
-    except Exception as e:
-        print(f"Error processing images: {e}")
-    
-    # 結果の保存を確認
-    print("Organized data:")
-    for key, value in organized_data.items():
-        print(f"{key}: {value}")
-
-    return organized_data
-
-def normalize_product_name(product_name):
-    """
-    商品名を正規化して不要なスペースや文字を除去する関数。
-    """
-    return product_name.replace(" ", "").strip()
-
-def calculate_invoice(user_id, price_table, user_data_store):
-    """
-    user_data_store に保存された organized_data から請求金額を計算し、結果を保存する関数。
-
-    Parameters:
-        user_id (str): ユーザーID。
-        price_table (dict): 商品名をキー、価格を値とする価格表。
-        user_data_store (dict): ユーザーごとのデータを保存する辞書。
-
-    Returns:
-        dict: 請求金額を追加した organized_data。
-    """
-    try:
-        # organized_data を取得
-        organized_data = user_data_store.get(user_id, None)
-        if not organized_data:
-            print(f"Error: No organized_data found for user_id {user_id}.")
-            return None
-
-        # 商品名を取得
-        product_name = organized_data.get("product_name", "").strip()
-        if not product_name:
-            print(f"Error: No product_name found in organized_data for user_id {user_id}.")
-            return organized_data
-
-        normalized_product_name = normalize_product_name(product_name)
-
-        # 部分一致で商品の価格を取得
-        product_price = None
-        for key in price_table.keys():
-            if normalize_product_name(key) in normalized_product_name:
-                product_price = price_table[key]
-                break
-
-        if product_price is None:
-            print(f"Error: No matching product found for '{product_name}' in price table.")
-            return organized_data
-
-        # 数量を取得
-        quantities = {}
-        for size in ["S", "M", "L", "LL(XL)", "3L(XXL)"]:
-            value = organized_data.get(size, "0")
-            try:
-                quantities[size] = int(value)
-            except ValueError:
-                print(f"Warning: Invalid quantity value '{value}' for size '{size}'. Setting it to 0.")
-                quantities[size] = 0
-
-        # 合計数量を計算
-        total_quantity = sum(quantities.values())
-        if total_quantity == 0:
-            print(f"Error: No valid quantities found for product '{product_name}'.")
-            return organized_data
-
-        # 合計金額を計算
-        total_amount = product_price * total_quantity
-
-        # 結果を organized_data に保存
-        organized_data["total_amount"] = total_amount
-        user_data_store[user_id] = organized_data
-        print(f"Data stored for user_id {user_id}: {user_data_store[user_id]}")
-
-        print(f"Invoice calculated and updated in user_data_store: {product_name} x {total_quantity} = {total_amount}円")
-        return organized_data
-
-    except Exception as e:
-        print(f"Error calculating invoice: {e}")
-        return None
-
-
-# 使用例
-price_table = {
-    "フードスウェット": 5000,
-    "Tシャツ": 2000,
-    "パーカー": 4000
-}
-
-# ユーザーデータ管理用の辞書
-user_data_store = {
-    "9295462e-77df-4410-10a1-05ed80ea849d": {
-        "delivery_date": "10月29日",
-        "use_date": "10月29日（火）",
-        "school_name": "栃木県立鹿沼商工高等学校",
-        "line_name": "抽出された情報は、[ LINE ]です。",
-        "group_name": "クラス団体名は「グラフィティーズ」です。座標は「34」です。",
-        "school_address": "〒322-0049 栃木県鹿沼市花岡町180-1",
-        "school_tel": "0289-62-4148",
-        "boss_furigana": "廣澤史子（ひろさわ ふみこ）",
-        "boss_mobile": "090-6478-4514",
-        "boss_email": "hirosama-f01@tochigi-edu.ed.jp",
-        "design_confirm": "メール代表者",
-        "owner_name": "廣澤史子（ヒロサワ フミコ）",
-        "owner_mobile": "090-6478-4514",
-        "owner_email": "r9470774@gmail.com",
-        "product_name": "フードスウェット",
-        "product_color": "ダークチョコレート",
-        "SS":"3",
-        "S":"3",
-        "M": "3",
-        "L": "3",
-        "LL(XL)": "3",
-        "3L(XXL)": "3",
-        "sub_total": "42",
-        "total": "42",
-        "print_size": "X=8cm, Y=1.5cm",
-        "print_colorl": "青、白、赤、金, 計=4色",
-        "print_design": "D-352",
-        "total_amount": "30000"
-    }
-}
-
-# サンプルユーザーID
-user_id = "9295462e-77df-4410-10a1-05ed80ea849d"
-
-# 請求金額を計算
-updated_data = calculate_invoice(user_id, price_table, user_data_store)
-print(f"updated_data {user_id}: {user_data_store[user_id]}")
-
-# organized_data の内容を確認
-print(updated_data)
-
-# user_data_store の内容を確認
-print(user_data_store)
-
-
-def create_flex_message(organized_data):
-    """
-    organized_dataをFlex Message形式で整形し、テキストラベルと回答を表示する関数。
-    """
-    # 変数名を日本語のラベルに変換するマッピング
-    label_mapping = {
-        "order_date": "申込日",
-        "delivery_date": "配達日",
-        "use_date": "使用日",
-        "school_name": "学校名",
-        "line_name": "LINE名",
-        "group_name": "団体名",
-        "school_address": "学校住所",
-        "school_tel": "学校TEL",
-        "boss_furigana": "担任名",
-        "boss_mobile": "担任携帯",
-        "boss_email": "担任メール",
-        "design_confirm":"デザイン確認",
-        "product_name": "商品名",
-        "owner_name": "代表者",
-        "owner_mobile": "代表者TEL",
-        "owner_email":"代表者メール",
-        "product_color": "商品カラー",
-        "SS": "サイズ(SS)",
-        "S": "サイズ(S)",
-        "M": "サイズ(M)",
-        "L": "サイズ(L)",
-        "LL(XL)": "サイズ(LL)",
-        "3L(XXL)": "サイズ(3L)",
-        "sub_total": "小計",
-        "total": "合計",
-        "print_size_1": "プリントサイズ前",
-        "print_colorl_1": "プリントカラー前",
-        "print_design_1": "プリントデザイン前",
-        "print_size_2": "プリントサイズ後",
-        "print_colorl_2": "プリントカラー後",
-        "print_design_2": "プリントデザイン後",
-        "total_amount": "合計金額"
-    }
-
-    flex_message = {
-        "type": "bubble",
-        "body": {
-            "type": "box",
-            "layout": "vertical",
-            "contents": [
-                {
-                    "type": "text",
-                    "text": "注文内容確認",
-                    "weight": "bold",
-                    "size": "lg",
-                    "margin": "md",
-                    "selectable": True,  # テキストを選択可能に
-                    "wrap": True         # 長いテキストを折り返し可能に
-                },
-                {
-                    "type": "separator",
-                    "margin": "md"
-                }
-            ] + [
-                {
-                    "type": "box",
-                    "layout": "horizontal",
-                    "contents": [
-                        {
-                            "type": "text",
-                            "text": f"{label_mapping.get(key, key)}:",  # ラベルを取得
-                            "flex": 3,
-                            "weight": "bold",
-                            "size":"sm",
-                            "selectable": True,
-                            "wrap": True
-                        },
-                        {
-                            "type": "text",
-                            "text": str(value),
-                            "flex": 7,
-                            "size":"sm",
-                            "selectable": True,
-                            "wrap": True
-                        }
-                    ]
-                }
-                for key, value in organized_data.items()
+###################################
+# (G) 簡易見積フロー (既存機能)
+###################################
+def create_quick_estimate_intro_flex():
+    bubble = BubbleContainer(
+        body=BoxComponent(
+            layout='vertical',
+            contents=[
+                TextComponent(
+                    text=(
+                        '簡易見積に必要な項目を順番に確認します。\n'
+                        '1. 学校/団体名\n'
+                        '2. お届け先(都道府県)\n'
+                        '3. 早割確認\n'
+                        '4. 1枚当たりの予算\n'
+                        '5. 商品名\n'
+                        '6. 枚数\n'
+                        '7. プリント位置\n'
+                        '8. 使用する色数'
+                    ),
+                    wrap=True
+                )
             ]
-        },
-        "footer": {
-            "type": "box",
-            "layout": "horizontal",
-            "contents": [
-                {
-                    "type": "button",
-                    "action": {
-                        "type": "message",
-                        "label": "修正",
-                        "text": "修正を開始"
-                    },
-                    "style": "primary",
-                    "color": "#FF6F61"
-                },
-                {
-                    "type": "button",
-                    "action": {
-                        "type": "message",
-                        "label": "金額",
-                        "text": "請求金額を確認"
-                    },
-                    "style": "primary",
-                    "color": "#FFD700"
-                },
-                {
-                    "type": "button",
-                    "action": {
-                        "type": "message",
-                        "label": "確定",
-                        "text": "注文を確定する"
-                    },
-                    "style": "primary",
-                    "color": "#4CAF50"
-                }
+        ),
+        footer=BoxComponent(
+            layout='vertical',
+            contents=[
+                ButtonComponent(style='primary', action=PostbackAction(label='入力を開始する', data='start_quick_estimate_input'))
             ]
-        }
-    }
-    return flex_message
+        )
+    )
+    return FlexSendMessage(alt_text='簡易見積モードへようこそ', contents=bubble)
 
-
-def send_carousel_for_edit_with_next_button(user_id, page=0):
-    """
-    1ページに最大9個のデータカラム + 「次へ」用カラムを含むカルーセルを送信。
-    """
-    MAX_DATA_COLUMNS = 9  # 1ページあたりの最大項目数
-
-    # 変数名を日本語のラベルに変換するマッピング
-    label_mapping = {
-        "order_date": "申込日",
-        "delivery_date": "配達日",
-        "use_date": "使用日",
-        "school_name": "学校名",
-        "line_name": "LINE名",
-        "group_name": "団体名",
-        "school_address": "学校住所",
-        "school_tel": "学校TEL",
-        "boss_furigana": "担任名",
-        "boss_mobile": "担任携帯",
-        "boss_email": "担任メール",
-        "design_confirm":"デザイン確認",
-        "product_name": "商品名",
-        "owner_name": "代表者",
-        "owner_mobile": "代表者TEL",
-        "owner_email":"代表者メール",
-        "product_color": "商品カラー",
-        "SS": "サイズ(SS)",
-        "S": "サイズ(S)",
-        "M": "サイズ(M)",
-        "L": "サイズ(L)",
-        "LL(XL)": "サイズ(LL)",
-        "3L(XXL)": "サイズ(3L)",
-        "sub_total": "小計",
-        "total": "合計",
-        "print_size_1": "プリントサイズ前",
-        "print_colorl_1": "プリントカラー前",
-        "print_design_1": "プリントデザイン前",
-        "print_size_2": "プリントサイズ後",
-        "print_colorl_2": "プリントカラー後",
-        "print_design_2": "プリントデザイン後",
-        "total_amount": "合計金額"
-    }
-
-    # user_data_storeからデータ取得
-    organized_data = user_data_store.get(user_id, {})
-    items = list(organized_data.items())  # データをリスト化
-
-    # データの範囲を計算
-    start_index = page * MAX_DATA_COLUMNS
-    end_index = start_index + MAX_DATA_COLUMNS
-    chunk = items[start_index:end_index]
-
-    # デバッグ用: 現在のページとデータ範囲
-    print(f"DEBUG: Page={page}, Start={start_index}, End={end_index}, Chunk={chunk}")
-
-    # データがなければメッセージ送信して終了
-    if not chunk:
-        send_message(user_id, "これ以上修正できる項目はありません。")
-        return
-
-    # カルーセルのカラムを構築
-    columns = []
-    for key, value in chunk:
-        # 変数名を日本語のラベルに変換
-        label = label_mapping.get(key, key)
-
-        truncated_key = (label[:30] + "...") if len(label) > 30 else label
-        text_value = f"現在の値: {value}"
-        if len(text_value) > 60:
-            text_value = text_value[:57] + "..."
-
-        columns.append({
-            "title": truncated_key,
-            "text": text_value,
-            "actions": [
-                {
-                    "type": "message",
-                    "label": f"{label}を修正",
-                    "text": f"{key}を修正"  # 実際に送信されるテキストは変数名を使用
-                }
+def create_early_discount_flex():
+    bubble = BubbleContainer(
+        body=BoxComponent(layout='vertical', contents=[
+            TextComponent(text='使用日から14日前以上 or 14日前以内を選択してください。', wrap=True)
+        ]),
+        footer=BoxComponent(
+            layout='vertical',
+            contents=[
+                ButtonComponent(style='primary', action=PostbackAction(label='14日前以上', data='14days_plus')),
+                ButtonComponent(style='primary', action=PostbackAction(label='14日前以内', data='14days_minus'))
             ]
-        })
+        )
+    )
+    return FlexSendMessage(alt_text='早割確認', contents=bubble)
 
-    # 次ページがある場合は「次へ」ボタンを追加
-    if end_index < len(items):
-        columns.append({
-            "title": "次の項目を表示",
-            "text": "次へ",
-            "actions": [
-                {
-                    "type": "message",
-                    "label": "次へ",
-                    "text": "次へ"
-                }
-            ]
-        })
+def create_product_selection_carousel():
+    bubble1 = BubbleContainer(
+        body=BoxComponent(layout='vertical', contents=[
+            TextComponent(text='商品を選択してください(1/2)', weight='bold', size='md')
+        ]),
+        footer=BoxComponent(layout='vertical', contents=[
+            ButtonComponent(style='primary', action=PostbackAction(label='ドライTシャツ', data='ドライTシャツ')),
+            ButtonComponent(style='primary', action=PostbackAction(label='ヘビーウェイトTシャツ', data='ヘビーウェイトTシャツ')),
+            ButtonComponent(style='primary', action=PostbackAction(label='ドライポロシャツ', data='ドライポロシャツ')),
+            ButtonComponent(style='primary', action=PostbackAction(label='ドライメッシュビブス', data='ドライメッシュビブス')),
+            ButtonComponent(style='primary', action=PostbackAction(label='ドライベースボールシャツ', data='ドライベースボールシャツ')),
+            ButtonComponent(style='primary', action=PostbackAction(label='ドライロングスリープTシャツ', data='ドライロングスリープTシャツ')),
+            ButtonComponent(style='primary', action=PostbackAction(label='ドライハーフパンツ', data='ドライハーフパンツ'))
+        ])
+    )
+    bubble2 = BubbleContainer(
+        body=BoxComponent(layout='vertical', contents=[
+            TextComponent(text='商品を選択してください(2/2)', weight='bold', size='md')
+        ]),
+        footer=BoxComponent(layout='vertical', contents=[
+            ButtonComponent(style='primary', action=PostbackAction(label='ヘビーウェイトロングスリープTシャツ', data='ヘビーウェイトロングスリープTシャツ')),
+            ButtonComponent(style='primary', action=PostbackAction(label='クルーネックライトトレーナー', data='クルーネックライトトレーナー')),
+            ButtonComponent(style='primary', action=PostbackAction(label='フーデッドライトパーカー', data='フーデッドライトパーカー')),
+            ButtonComponent(style='primary', action=PostbackAction(label='スタンダードトレーナー', data='スタンダードトレーナー')),
+            ButtonComponent(style='primary', action=PostbackAction(label='スタンダードWフードパーカー', data='スタンダードWフードパーカー')),
+            ButtonComponent(style='primary', action=PostbackAction(label='ジップアップライトパーカー', data='ジップアップライトパーカー'))
+        ])
+    )
+    carousel = CarouselContainer(contents=[bubble1, bubble2])
+    return FlexSendMessage(alt_text='商品を選択してください', contents=carousel)
 
-    # カルーセルのペイロード作成
-    carousel_payload = {
-        "content": {
-            "type": "carousel",
-            "altText": "修正したい項目を選択してください。",
-            "columns": columns
-        }
-    }
+def create_print_position_flex():
+    bubble = BubbleContainer(
+        body=BoxComponent(layout='vertical', contents=[
+            TextComponent(text='プリントする位置を選択してください', weight='bold')
+        ]),
+        footer=BoxComponent(layout='vertical', contents=[
+            ButtonComponent(style='primary', action=PostbackAction(label='前', data='front')),
+            ButtonComponent(style='primary', action=PostbackAction(label='背中', data='back')),
+            ButtonComponent(style='primary', action=PostbackAction(label='前と背中', data='front_back'))
+        ])
+    )
+    return FlexSendMessage(alt_text='プリント位置選択', contents=bubble)
 
-    # AccessToken取得と送信
-    try:
-        token_data = get_access_token()
-        if token_data and "access_token" in token_data:
-            access_token = token_data["access_token"]
-            url = f"https://www.worksapis.com/v1.0/bots/{BOT_NO}/users/{user_id}/messages"
-            headers = {
-                "Authorization": f"Bearer {access_token}",
-                "Content-Type": "application/json"
-            }
-            response = requests.post(url, json=carousel_payload, headers=headers)
-            if response.status_code == 201:
-                print(f"[Carousel Page={page}] sent successfully to {user_id}")
-            else:
-                print(f"Failed to send Carousel. Status: {response.status_code}, Body: {response.text}")
-    except Exception as e:
-        print(f"Error sending Carousel Message: {e}")
-        
-def send_flex_message(user_id, flex_message):
-    """
-    Flex MessageをLINE WORKSユーザーに送信する関数。
+def create_color_options_flex():
+    bubble = BubbleContainer(
+        body=BoxComponent(layout='vertical', contents=[
+            TextComponent(text='使用する色数(前・背中)を選択してください', weight='bold'),
+            TextComponent(text='(複数選択の実装は省略)', size='sm')
+        ]),
+        footer=BoxComponent(layout='vertical', contents=[
+            ButtonComponent(style='primary', action=PostbackAction(label='同じ位置にプリントカラー追加', data='same_color_add')),
+            ButtonComponent(style='primary', action=PostbackAction(label='別の場所にプリント位置追加', data='different_color_add')),
+            ButtonComponent(style='primary', action=PostbackAction(label='フルカラーに追加', data='full_color_add'))
+        ])
+    )
+    return FlexSendMessage(alt_text='使用する色数を選択', contents=bubble)
 
-    Parameters:
-        user_id (str): メッセージを送信するユーザーのID。
-        flex_message (dict): Flex Messageのデータ構造。
-
-    Returns:
-        None
-    """
-    try:
-        # アクセストークンを取得
-        token_data = get_access_token()
-        if token_data and "access_token" in token_data:
-            access_token = token_data["access_token"]
-            url = f"https://www.worksapis.com/v1.0/bots/{BOT_NO}/users/{user_id}/messages"
-            headers = {
-                "Authorization": f"Bearer {access_token}",
-                "Content-Type": "application/json"
-            }
-            payload = {
-                "content": {
-                    "type": "flex",
-                    "altText": "注文内容の確認",  # 必須のaltTextパラメータを追加
-                    "contents": flex_message
-                }
-            }
-            response = requests.post(url, json=payload, headers=headers)
-            if response.status_code == 201:
-                print("Flex Message sent successfully!")
-            else:
-                print(f"Failed to send Flex Message. Status Code: {response.status_code}, Response: {response.text}")
-        else:
-            print("Failed to fetch access token.")
-    except Exception as e:
-        print(f"Error sending Flex Message: {e}")
-
-
-def final_confirmation(user_id):
-    """
-    注文最終確認を行う関数。
-    """
-    # organized_dataを取得
-    organized_data = user_data_store.get(user_id, {})
-    if not organized_data:
-        send_message(user_id, "注文データが見つかりません。")
-        return
-
-    # 変数名を日本語のラベルに変換するマッピング
-    label_mapping = {
-        "order_date": "申込日",
-        "delivery_date": "配達日",
-        "use_date": "使用日",
-        "school_name": "学校名",
-        "line_name": "LINE名",
-        "group_name": "団体名",
-        "school_address": "学校住所",
-        "school_tel": "学校TEL",
-        "boss_furigana": "担任名",
-        "boss_mobile": "担任携帯",
-        "boss_email": "担任メール",
-        "design_confirm":"デザイン確認",
-        "product_name": "商品名",
-        "owner_name": "代表者",
-        "owner_mobile": "代表者TEL",
-        "owner_email":"代表者メール",
-        "product_color": "商品カラー",
-        "SS": "サイズ(SS)",
-        "S": "サイズ(S)",
-        "M": "サイズ(M)",
-        "L": "サイズ(L)",
-        "LL(XL)": "サイズ(LL)",
-        "3L(XXL)": "サイズ(3L)",
-        "sub_total": "小計",
-        "total": "合計",
-        "print_size_1": "プリントサイズ前",
-        "print_colorl_1": "プリントカラー前",
-        "print_design_1": "プリントデザイン前",
-        "print_size_2": "プリントサイズ後",
-        "print_colorl_2": "プリントカラー後",
-        "print_design_2": "プリントデザイン後",
-        "total_amount": "合計金額"
-    }
-    
-    # Flex Messageを作成
-    flex_message = {
-        "type": "bubble",
-        "body": {
-            "type": "box",
-            "layout": "vertical",
-            "contents": [
-                {
-                    "type": "text",
-                    "text": "注文最終確認",
-                    "weight": "bold",
-                    "size": "lg",
-                    "margin": "md"
-                },
-                {
-                    "type": "separator",
-                    "margin": "md"
-                }
-            ] + [
-                {
-                    "type": "box",
-                    "layout": "horizontal",
-                    "contents": [
-                        {"type": "text", "text": f"{label_mapping.get(key, key)}:", "flex": 3, "weight": "bold", "size": "sm"},
-                        {"type": "text", "text": str(value), "flex": 7, "size": "sm"}
-                    ]
-                }
-                for key, value in organized_data.items()
-            ]
-        },
-        "footer": {
-            "type": "box",
-            "layout": "vertical",
-            "contents": [
-                {
-                    "type": "button",
-                    "action": {
-                        "type": "uri",
-                        "label": "約款を確認する",
-                        "uri": "https://www.google.co.jp/"  # 実際のURLに置き換えてください
-                    },
-                    "style": "primary",
-                    "color": "#4CAF50"
-                },
-                {
-                    "type": "button",
-                    "action": {
-                        "type": "message",
-                        "label": "注文を確定する",
-                        "text": "注文最終確定"
-                    },
-                    "style": "primary",
-                    "color": "#FF6F61"
-                }
-            ]
-        }
-    }
-
-    # Flex Messageを送信
-    send_flex_message(user_id, flex_message)
-
-def send_mode_selection_message(user_id):
-    flex_message = {
-        "type": "bubble",
-        "body": {
-            "type": "box",
-            "layout": "vertical",
-            "contents": [
-                {
-                    "type": "text",
-                    "text": "モード選択してください",
-                    "weight": "bold",
-                    "size": "lg",
-                    "margin": "md"
-                },
-                {
-                    "type": "separator",
-                    "margin": "md"
-                },
-                {
-                    "type": "button",
-                    "action": {
-                        "type": "message",
-                        "label": "①簡易見積",
-                        "text": "モード:簡易見積"
-                    },
-                    "style": "primary",
-                    "margin": "sm"
-                },
-                {
-                    "type": "button",
-                    "action": {
-                        "type": "message",
-                        "label": "②注文用紙から注文",
-                        "text": "注文用紙の写真を送ってください。"
-                    },
-                    "style": "primary",
-                    "margin": "sm"
-                },
-                {
-                    "type": "button",
-                    "action": {
-                        "type": "message",
-                        "label": "③AIチャットから注文",
-                        "text": "モード:チャット注文"
-                    },
-                    "style": "primary",
-                    "margin": "sm"
-                },
-                {
-                    "type": "button",
-                    "action": {
-                        "type": "message",
-                        "label": "④WEBフォームから注文",
-                        "text": "モード:WEB注文"
-                    },
-                    "style": "primary",
-                    "margin": "sm"
-                }
-            ]
-        }
-    }
-    send_flex_message(user_id, flex_message)
-    
-def simple_estimate(user_id):
-    """
-    簡易見積計算を行う関数。
-    Flex Messageを使用して情報を収集し、計算結果を出力します。
-    """
-    flex_message = {
-        "type": "bubble",
-        "body": {
-            "type": "box",
-            "layout": "vertical",
-            "contents": [
-                {
-                    "type": "text",
-                    "text": "簡易見積入力",
-                    "weight": "bold",
-                    "size": "lg",
-                    "margin": "md"
-                },
-                {
-                    "type": "separator",
-                    "margin": "md"
-                },
-                {
-                    "type": "text",
-                    "text": "以下の内容を入力してください：",
-                    "margin": "sm",
-                    "wrap": True
-                },
-                {
-                    "type": "button",
-                    "action": {
-                        "type": "message",
-                        "label": "学校名",
-                        "text": "学校名を入力してください。"
-                    },
-                    "style": "primary",
-                    "margin": "sm"
-                },
-                {
-                    "type": "button",
-                    "action": {
-                        "type": "message",
-                        "label": "届け先の都道府県",
-                        "text": "届け先の都道府県を入力してください。"
-                    },
-                    "style": "primary",
-                    "margin": "sm"
-                },
-                {
-                    "type": "button",
-                    "action": {
-                        "type": "message",
-                        "label": "使用日",
-                        "text": "使用日を入力してください。"
-                    },
-                    "style": "primary",
-                    "margin": "sm"
-                },
-                {
-                    "type": "button",
-                    "action": {
-                        "type": "message",
-                        "label": "1枚当たりの予算",
-                        "text": "1枚当たりの予算を入力してください。"
-                    },
-                    "style": "primary",
-                    "margin": "sm"
-                },
-                {
-                    "type": "button",
-                    "action": {
-                        "type": "message",
-                        "label": "商品名",
-                        "text": "商品名を入力してください。"
-                    },
-                    "style": "primary",
-                    "margin": "sm"
-                },
-                {
-                    "type": "button",
-                    "action": {
-                        "type": "message",
-                        "label": "総枚数",
-                        "text": "総枚数を入力してください。"
-                    },
-                    "style": "primary",
-                    "margin": "sm"
-                },
-                {
-                    "type": "button",
-                    "action": {
-                        "type": "message",
-                        "label": "プリント位置",
-                        "text": "プリント位置を選択してください。（前, 背中, 前と背中）"
-                    },
-                    "style": "primary",
-                    "margin": "sm"
-                },
-                {
-                    "type": "button",
-                    "action": {
-                        "type": "message",
-                        "label": "プリントカラー数",
-                        "text": "プリントカラー数を選択してください。（1色または2色）"
-                    },
-                    "style": "primary",
-                    "margin": "sm"
-                }
-            ]
-        }
-    }
-    send_flex_message(user_id, flex_message)
-
-
-# Webhookエンドポイント
-@app.route("/webhook", methods=["POST"])
-def webhook():
-    print("Webhook called.")
-    try:
-        data = request.json
-        print(f"Received webhook data: {data}")
-
-        # 初期化
-        organized_data = None
-        user_id = data.get("source", {}).get("userId", None)
-
-        if not user_id:
-            print("エラー: userId がリクエストデータに含まれていません。")
-            return jsonify({"status": "error", "message": "Missing userId"}), 400
-
-        if "content" in data:
-            content_type = data["content"].get("type", "")
-
-            # テキストメッセージを処理
-            if content_type == "text":
-                user_message = data["content"].get("text", "").strip()
-                user_id = data.get("source", {}).get("userId", None)
-                
-                # モード選択
-                if user_message == "モード選択":
-                    send_mode_selection_message(user_id)
-                    
-                # WEB注文
-                if user_message == "モード:WEB注文":
-                    send_message(
-                        user_id,
-                        "こちらをクリックしてください: line://app/1234567890-abcdefghijkl?redirect=https://webform-vqgk.onrender.com/"
-                    )                        
-                # 簡易見積
-                if user_message == "モード:簡易見積":
-                    simple_estimate(user_id)
-
-                # 注文内容確認フロー
-                if user_message == "注文を確認":
-                    organized_data = user_data_store.get(user_id, None)
-                    if not organized_data:
-                        send_message(user_id, "注文データが見つかりません。")
-                        return
-
-                    # organized_data の全ての変数を確認してログに出力
-                    print(f"Organized data for user {user_id}: {organized_data}")
-
-                    # Flex Messageで確認メッセージを送信
-                    flex_message = create_flex_message(organized_data)  # 既存の関数を想定
-                    send_flex_message(user_id, flex_message)
-
-                # 1) 「修正を開始」
-                if user_message == "修正を開始":
-                    # user_state にページ=0 を設定
-                    user_state[user_id] = {"action": "edit_carousel", "page": 0}
-                    page = 0
-                    send_carousel_for_edit_with_next_button(user_id, page)
-
-                # 2) 「次へ」ボタン
-                elif user_message == "次へ":
-                    state = user_state.get(user_id, {})
-                    if state.get("action") == "edit_carousel":
-                        current_page = state.get("page", 0)
-                        new_page = current_page + 1
-                        user_state[user_id]["page"] = new_page
-                        send_carousel_for_edit_with_next_button(user_id, new_page)
-                    else:
-                        send_message(user_id, "修正項目の選択モードではありません。")
-
-                # 3) 「xxxを修正」
-                elif "を修正" in user_message:
-                    key_to_edit = user_message.replace("を修正", "").strip()
-                    # state を一時的に取得
-                    state = user_state.get(user_id, {})
-                    current_page = state.get("page", 0)  # ここで今のページを取り出す
-
-                    if user_id in user_data_store and key_to_edit in user_data_store[user_id]:
-                        send_message(user_id, f"新しい {key_to_edit} を入力してください。")
-        
-                        # action=edit とともに、page も保持しておく
-                        user_state[user_id] = {
-                            "action": "edit",
-                            "key": key_to_edit,
-                            "page": current_page
-                        }
-                    else:
-                        send_message(user_id, f"'{key_to_edit}' は修正できる項目ではありません。")
-
-                # 4) ユーザーが新しい値を入力 (「action」が "edit" なら)
-                elif user_id in user_state and user_state[user_id].get("action") == "edit":
-                    key_to_edit = user_state[user_id]["key"]
-                    organized_data = user_data_store.get(user_id, {})
-                    organized_data[key_to_edit] = user_message  # 値を更新
-                    user_data_store[user_id] = organized_data   # 上書き保存
-
-                    send_message(user_id, f"{key_to_edit} を {user_message} に更新しました。")
-
-                    # 直前まで保持していた page を復元
-                    page_before_edit = user_state[user_id].get("page", 0)
-
-                    # 状態を "edit_carousel" に戻す
-                    user_state[user_id]["action"] = "edit_carousel"
-                    # ここで page も再度セットしてあげる
-                    user_state[user_id]["page"] = page_before_edit
-
-                    print(f"DEBUG: Updated user_state: {user_state[user_id]}")
-
-                    # Carouselを再送信 (page_before_edit)
-                    send_carousel_for_edit_with_next_button(user_id, page_before_edit)
-
-                # 請求金額を確認
-                elif user_message == "請求金額を確認":
-                    organized_data = user_data_store.get(user_id, None)
-                    if not organized_data:
-                        send_message(user_id, "注文データが見つかりません。")
-                        return
-
-                    # organized_data の全ての変数を確認してログに出力
-                    print(f"Organized data for user {user_id}: {organized_data}")
-
-                    # 請求金額を計算
-                    price_table = {
-                        "フードスウェット": 5000,
-                        "Tシャツ": 2000,
-                        "パーカー": 4000
-                    }
-                    updated_data = calculate_invoice(user_id, price_table, user_data_store)
-
-                    # ユーザーに請求金額を送信
-                    if "total_amount" in updated_data:
-                        total_amount = updated_data["total_amount"]
-                        product_name = updated_data.get("product_name", "不明")
-                        send_message(user_id, f"請求金額: {product_name} の合計は {total_amount}円です。")
-                    else:
-                        send_message(user_id, "請求金額の計算に失敗しました。")
-                        
-                # 注文確定
-                elif user_message == "注文を確定する":
-                    final_confirmation(user_id)
-
-                elif user_message == "注文最終確定":
-                    send_message(user_id, "注文が確定されました。ありがとうございます！")
-
-            # 画像メッセージを処理
-            elif content_type == "image":
-                print("画像メッセージを受信しました。")
-                send_message(user_id, "注文を受けました。注文を確認するので1分程度お待ちください。")
-                file_id = data["content"].get("fileId")
-                if file_id:
-                    file_url = get_file_url(file_id)
-                    if file_url:
-                        token_data = get_access_token()
-                        if token_data and "access_token" in token_data:
-                            access_token = token_data["access_token"]
-                            downloaded_file = download_attachment(file_url, access_token)
-                            if downloaded_file:
-                                print(f"Downloaded file saved at {downloaded_file}")
-
-                                # 保存した画像を処理
-                                organized_data = process_and_send_text_from_image(downloaded_file)
-
-                                if organized_data:
-                                    user_data_store[user_id] = organized_data
-                                    print(f"Updated user_data_store for user_id {user_id}: {organized_data}")
-                                    send_message(user_id, "データが保存されました。修正を開始できます。")  
-                                    flex_message = create_flex_message(organized_data)  # 既存の関数を想定
-                                    send_flex_message(user_id, flex_message)
-                                else:
-                                    send_message(user_id, "データの保存に失敗しました。")
-                            else:
-                                send_message(user_id, "画像のダウンロードに失敗しました。")
-                        else:
-                            send_message(user_id, "アクセストークンを取得できませんでした。")
-                    else:
-                        send_message(user_id, "fileUrlを取得できませんでした。")
-                else:
-                    send_message(user_id, "画像の 'fileId' が見つかりません。")
-        else:
-            print("Webhookデータに 'content' フィールドが含まれていません。")
-    except Exception as e:
-        print(f"Webhook処理中のエラー: {e}")
-    return jsonify({"status": "ok"}), 200
-
-# アプリケーション起動
+###################################
+# (H) Flaskルート: HealthCheck
+###################################
 @app.route("/", methods=["GET"])
-def home():
-    return jsonify({"status": "ok", "message": "LINE Works Bot is running!"}), 200
+def health_check():
+    return "OK", 200
 
+###################################
+# (I) Flaskルート: LINE Callback
+###################################
+@app.route("/callback", methods=["POST"])
+def callback():
+    signature = request.headers.get("X-Line-Signature", "")
+    if not signature:
+        abort(400)
+
+    body = request.get_data(as_text=True)
+    try:
+        handler.handle(body, signature)
+    except InvalidSignatureError as e:
+        logger.error(f"InvalidSignatureError: {e}")
+        abort(400)
+    except Exception as e:
+        logger.error(f"Unexpected error: {e}")
+        traceback.print_exc()
+        abort(500)
+
+    return "OK", 200
+
+###################################
+# (J) LINEハンドラ: TextMessage
+###################################
+@handler.add(MessageEvent, message=TextMessage)
+def handle_text_message(event):
+    user_id = event.source.user_id
+    user_input = event.message.text.strip()
+    logger.info(f"[DEBUG] user_input: '{user_input}'")
+
+    if user_input == "モード選択":
+        flex = create_mode_selection_flex()
+        line_bot_api.reply_message(event.reply_token, flex)
+        return
+
+    if user_id in user_states:
+        st = user_states[user_id].get("state")
+        if st == "await_school_name":
+            user_states[user_id]["school_name"] = user_input
+            user_states[user_id]["state"] = "await_prefecture"
+            line_bot_api.reply_message(
+                event.reply_token,
+                TextSendMessage(text="学校名を保存しました。\n次にお届け先(都道府県)を入力してください。")
+            )
+            return
+
+        if st == "await_prefecture":
+            user_states[user_id]["prefecture"] = user_input
+            user_states[user_id]["state"] = "await_early_discount"
+            discount_flex = create_early_discount_flex()
+            line_bot_api.reply_message(event.reply_token, discount_flex)
+            return
+
+        if st == "await_budget":
+            user_states[user_id]["budget"] = user_input
+            user_states[user_id]["state"] = "await_product"
+            product_flex = create_product_selection_carousel()
+            line_bot_api.reply_message(event.reply_token, product_flex)
+            return
+
+        if st == "await_quantity":
+            user_states[user_id]["quantity"] = user_input
+            user_states[user_id]["state"] = "await_print_position"
+            pos_flex = create_print_position_flex()
+            line_bot_api.reply_message(event.reply_token, pos_flex)
+            return
+
+        # 想定外
+        line_bot_api.reply_message(
+            event.reply_token,
+            TextSendMessage(text=f"現在の状態({st})でテキスト入力は想定外です。")
+        )
+        return
+
+    line_bot_api.reply_message(
+        event.reply_token,
+        TextSendMessage(text=f"あなたのメッセージ: {user_input}")
+    )
+
+###################################
+# (K) LINEハンドラ: PostbackEvent
+###################################
+@handler.add(PostbackEvent)
+def handle_postback(event):
+    user_id = event.source.user_id
+    data = event.postback.data
+    logger.info(f"[DEBUG] Postback data: {data}")
+
+    if data == "quick_estimate":
+        intro = create_quick_estimate_intro_flex()
+        line_bot_api.reply_message(event.reply_token, intro)
+        return
+
+    if data == "start_quick_estimate_input":
+        user_states[user_id] = {
+            "state": "await_school_name",
+            "school_name": None,
+            "prefecture": None,
+            "early_discount": None,
+            "budget": None,
+            "product": None,
+            "quantity": None,
+            "print_position": None,
+            "color_options": None
+        }
+        line_bot_api.reply_message(
+            event.reply_token,
+            TextSendMessage(text="まずは学校または団体名を入力してください。")
+        )
+        return
+
+    if data == "web_order":
+        form_url = f"https://graffitees-line-bot.onrender.com/webform?user_id={user_id}"
+        msg = (f"WEBフォームから注文ですね！\nこちらから入力してください。\n{form_url}")
+        line_bot_api.reply_message(event.reply_token, TextSendMessage(text=msg))
+        return
+
+    if data == "paper_order":
+        line_bot_api.reply_message(event.reply_token, TextSendMessage(text="注文用紙から注文は未実装です。"))
+        return
+
+    if user_id not in user_states:
+        line_bot_api.reply_message(event.reply_token, TextSendMessage(text="簡易見積モードではありません。"))
+        return
+
+    st = user_states[user_id]["state"]
+
+    if st == "await_early_discount":
+        if data == "14days_plus":
+            user_states[user_id]["early_discount"] = "14日前以上"
+        elif data == "14days_minus":
+            user_states[user_id]["early_discount"] = "14日前以内"
+        else:
+            line_bot_api.reply_message(event.reply_token, TextSendMessage(text="早割選択が不明です。"))
+            return
+        user_states[user_id]["state"] = "await_budget"
+        line_bot_api.reply_message(event.reply_token, TextSendMessage(text="早割を保存しました。\n1枚あたりの予算を入力してください。"))
+        return
+
+    if st == "await_product":
+        user_states[user_id]["product"] = data
+        user_states[user_id]["state"] = "await_quantity"
+        line_bot_api.reply_message(
+            event.reply_token,
+            TextSendMessage(text=f"{data} を選択しました。\n枚数を入力してください。")
+        )
+        return
+
+    if st == "await_print_position":
+        if data == "front":
+            user_states[user_id]["print_position"] = "前"
+        elif data == "back":
+            user_states[user_id]["print_position"] = "背中"
+        elif data == "front_back":
+            user_states[user_id]["print_position"] = "前と背中"
+        else:
+            line_bot_api.reply_message(event.reply_token, TextSendMessage(text="プリント位置の指定が不明です。"))
+            return
+        user_states[user_id]["state"] = "await_color_options"
+        color_flex = create_color_options_flex()
+        line_bot_api.reply_message(event.reply_token, color_flex)
+        return
+
+    if st == "await_color_options":
+        if data not in ["same_color_add", "different_color_add", "full_color_add"]:
+            line_bot_api.reply_message(event.reply_token, TextSendMessage(text="色数の選択が不明です。"))
+            return
+
+        user_states[user_id]["color_options"] = data
+        s = user_states[user_id]
+        summary = (
+            f"学校/団体名: {s['school_name']}\n"
+            f"都道府県: {s['prefecture']}\n"
+            f"早割確認: {s['early_discount']}\n"
+            f"予算: {s['budget']}\n"
+            f"商品名: {s['product']}\n"
+            f"枚数: {s['quantity']}\n"
+            f"プリント位置: {s['print_position']}\n"
+            f"使用する色数: {s['color_options']}"
+        )
+
+        qty = int(s['quantity'])
+        early_disc = s['early_discount']
+        product = s['product']
+        pos = s['print_position']
+        color_opt = s['color_options']
+        total_price = calc_total_price(product, qty, early_disc, pos, color_opt)
+
+        del user_states[user_id]
+        reply_text = (
+            "全項目の入力が完了しました。\n\n" + summary +
+            "\n\n--- 見積計算結果 ---\n"
+            f"合計金額: ¥{total_price:,}\n"
+            "（概算です。詳細は別途ご相談ください）"
+        )
+        line_bot_api.reply_message(event.reply_token, TextSendMessage(text=reply_text))
+        return
+
+    line_bot_api.reply_message(event.reply_token, TextSendMessage(text=f"不明なアクション: {data}"))
+
+###################################
+# (L) WEBフォームの実装
+###################################
+FORM_HTML = """
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <title>WEBフォームから注文</title>
+</head>
+<body>
+  <h1>WEBフォームから注文</h1>
+  <!-- 画像アップロードに対応するため、enctypeをmultipart/form-data に設定 -->
+  <form action="/webform_submit" method="POST" enctype="multipart/form-data">
+    <input type="hidden" name="user_id" value="{{ user_id }}" />
+
+    <p>申込日: <input type="date" name="application_date"></p>
+    <p>配達日: <input type="date" name="delivery_date"></p>
+    <p>使用日: <input type="date" name="use_date"></p>
+
+    <p>利用する学割特典:
+      <select name="discount_option">
+        <option value="早割">早割</option>
+        <option value="タダ割">タダ割</option>
+        <option value="いっしょ割り">いっしょ割り</option>
+      </select>
+    </p>
+
+    <p>学校名: <input type="text" name="school_name"></p>
+    <p>LINEアカウント名: <input type="text" name="line_account"></p>
+    <p>団体名: <input type="text" name="group_name"></p>
+    <p>学校住所: <input type="text" name="school_address"></p>
+    <p>学校TEL: <input type="text" name="school_tel"></p>
+    <p>担任名: <input type="text" name="teacher_name"></p>
+    <p>担任携帯: <input type="text" name="teacher_tel"></p>
+    <p>担任メール: <input type="email" name="teacher_email"></p>
+    <p>代表者: <input type="text" name="representative"></p>
+    <p>代表者TEL: <input type="text" name="rep_tel"></p>
+    <p>代表者メール: <input type="email" name="rep_email"></p>
+
+    <p>デザイン確認方法:
+      <select name="design_confirm">
+        <option value="LINE代表者">LINE代表者</option>
+        <option value="LINEご担任(保護者)">LINEご担任(保護者)</option>
+        <option value="メール代表者">メール代表者</option>
+        <option value="メールご担任(保護者)">メールご担任(保護者)</option>
+      </select>
+    </p>
+
+    <p>お支払い方法:
+      <select name="payment_method">
+        <option value="代金引換(ヤマト運輸/現金のみ)">代金引換(ヤマト運輸/現金のみ)</option>
+        <option value="後払い(コンビニ/郵便振替)">後払い(コンビニ/郵便振替)</option>
+        <option value="後払い(銀行振込)">後払い(銀行振込)</option>
+        <option value="先払い(銀行振込)">先払い(銀行振込)</option>
+      </select>
+    </p>
+
+    <p>商品名:
+      <select name="product_name">
+        <option value="ドライTシャツ">ドライTシャツ</option>
+        <option value="ヘビーウェイトTシャツ">ヘビーウェイトTシャツ</option>
+        <option value="ドライポロシャツ">ドライポロシャツ</option>
+        <option value="ドライメッシュビブス">ドライメッシュビブス</option>
+        <option value="ドライベースボールシャツ">ドライベースボールシャツ</option>
+        <option value="ドライロングスリープTシャツ">ドライロングスリープTシャツ</option>
+        <option value="ドライハーフパンツ">ドライハーフパンツ</option>
+        <option value="ヘビーウェイトロングスリープTシャツ">ヘビーウェイトロングスリープTシャツ</option>
+        <option value="クルーネックライトトレーナー">クルーネックライトトレーナー</option>
+        <option value="フーデッドライトパーカー">フーデッドライトパーカー</option>
+        <option value="スタンダードトレーナー">スタンダードトレーナー</option>
+        <option value="スタンダードWフードパーカー">スタンダードWフードパーカー</option>
+        <option value="ジップアップライトパーカー">ジップアップライトパーカー</option>
+      </select>
+    </p>
+    <p>商品カラー: <input type="text" name="product_color"></p>
+    <p>サイズ(SS): <input type="number" name="size_ss"></p>
+    <p>サイズ(S): <input type="number" name="size_s"></p>
+    <p>サイズ(M): <input type="number" name="size_m"></p>
+    <p>サイズ(L): <input type="number" name="size_l"></p>
+    <p>サイズ(LL): <input type="number" name="size_ll"></p>
+    <p>サイズ(LLL): <input type="number" name="size_lll"></p>
+
+    <p>プリントデザインイメージデータ(前): <input type="file" name="design_image_front"></p>
+    <p>プリントデザインイメージデータ(後): <input type="file" name="design_image_back"></p>
+    <p>プリントデザインイメージデータ(その他): <input type="file" name="design_image_other"></p>
+
+    <p><button type="submit">送信</button></p>
+  </form>
+</body>
+</html>
+"""
+
+@app.route("/webform", methods=["GET"])
+def show_webform():
+    user_id = request.args.get("user_id", "")
+    return render_template_string(FORM_HTML, user_id=user_id)
+
+###################################
+# (M) 空文字を None にする関数
+###################################
+def none_if_empty_str(val: str):
+    """文字列入力が空なら None, そうでなければ文字列を返す"""
+    if not val:  # '' or None
+        return None
+    return val
+
+def none_if_empty_date(val: str):
+    """日付カラム用: 空なら None、そうでなければそのまま文字列として渡す (Postgresがdate型に変換)"""
+    if not val:
+        return None
+    return val
+
+def none_if_empty_int(val: str):
+    """数値カラム用: 空なら None, それ以外はintに変換"""
+    if not val:
+        return None
+    return int(val)
+
+###################################
+# (N) /webform_submit: フォーム送信受け取り
+###################################
+@app.route("/webform_submit", methods=["POST"])
+def webform_submit():
+    form = request.form
+    files = request.files
+    user_id = form.get("user_id", "")
+
+    # ---------- テキスト項目を取得 (空文字はNone化) ----------
+    application_date = none_if_empty_date(form.get("application_date"))
+    delivery_date = none_if_empty_date(form.get("delivery_date"))
+    use_date = none_if_empty_date(form.get("use_date"))
+
+    discount_option = none_if_empty_str(form.get("discount_option"))
+    school_name = none_if_empty_str(form.get("school_name"))
+    line_account = none_if_empty_str(form.get("line_account"))
+    group_name = none_if_empty_str(form.get("group_name"))
+    school_address = none_if_empty_str(form.get("school_address"))
+    school_tel = none_if_empty_str(form.get("school_tel"))
+    teacher_name = none_if_empty_str(form.get("teacher_name"))
+    teacher_tel = none_if_empty_str(form.get("teacher_tel"))
+    teacher_email = none_if_empty_str(form.get("teacher_email"))
+    representative = none_if_empty_str(form.get("representative"))
+    rep_tel = none_if_empty_str(form.get("rep_tel"))
+    rep_email = none_if_empty_str(form.get("rep_email"))
+
+    design_confirm = none_if_empty_str(form.get("design_confirm"))
+    payment_method = none_if_empty_str(form.get("payment_method"))
+    product_name = none_if_empty_str(form.get("product_name"))
+    product_color = none_if_empty_str(form.get("product_color"))
+
+    # サイズは数値カラムの場合、intかNone
+    size_ss = none_if_empty_int(form.get("size_ss"))
+    size_s = none_if_empty_int(form.get("size_s"))
+    size_m = none_if_empty_int(form.get("size_m"))
+    size_l = none_if_empty_int(form.get("size_l"))
+    size_ll = none_if_empty_int(form.get("size_ll"))
+    size_lll = none_if_empty_int(form.get("size_lll"))
+
+    # ---------- 画像ファイル ----------
+    img_front = files.get("design_image_front")
+    img_back = files.get("design_image_back")
+    img_other = files.get("design_image_other")
+
+    # S3にアップロード → URL取得
+    front_url = upload_file_to_s3(img_front, S3_BUCKET_NAME, prefix="uploads/")
+    back_url = upload_file_to_s3(img_back, S3_BUCKET_NAME, prefix="uploads/")
+    other_url = upload_file_to_s3(img_other, S3_BUCKET_NAME, prefix="uploads/")
+
+    # DBに保存
+    with get_db_connection() as conn:
+        with conn.cursor() as cur:
+            sql = """
+            INSERT INTO orders (
+                user_id,
+                application_date,
+                delivery_date,
+                use_date,
+                discount_option,
+                school_name,
+                line_account,
+                group_name,
+                school_address,
+                school_tel,
+                teacher_name,
+                teacher_tel,
+                teacher_email,
+                representative,
+                rep_tel,
+                rep_email,
+                design_confirm,
+                payment_method,
+                product_name,
+                product_color,
+                size_ss,
+                size_s,
+                size_m,
+                size_l,
+                size_ll,
+                size_lll,
+                design_image_front_url,
+                design_image_back_url,
+                design_image_other_url,
+                created_at
+            ) VALUES (
+                %s, %s, %s, %s, %s,
+                %s, %s, %s, %s, %s,
+                %s, %s, %s, %s, %s,
+                %s, %s, %s, %s, %s,
+                %s, %s, %s, %s, %s,
+                %s, %s, %s, %s, NOW()
+            )
+            RETURNING id
+            """
+            params = (
+                user_id,
+                application_date,
+                delivery_date,
+                use_date,
+                discount_option,
+                school_name,
+                line_account,
+                group_name,
+                school_address,
+                school_tel,
+                teacher_name,
+                teacher_tel,
+                teacher_email,
+                representative,
+                rep_tel,
+                rep_email,
+                design_confirm,
+                payment_method,
+                product_name,
+                product_color,
+                size_ss,
+                size_s,
+                size_m,
+                size_l,
+                size_ll,
+                size_lll,
+                front_url,
+                back_url,
+                other_url
+            )
+            cur.execute(sql, params)
+            new_id = cur.fetchone()[0]
+        conn.commit()
+        logger.info(f"Inserted order id={new_id}")
+
+    # フォーム送信完了 → Push通知
+    push_text = (
+        "WEBフォームの注文を受け付けました！\n"
+        f"学校名: {school_name}\n"
+        f"商品名: {product_name}\n"
+        "後ほど担当者からご連絡いたします。"
+    )
+    try:
+        line_bot_api.push_message(to=user_id, messages=TextSendMessage(text=push_text))
+    except Exception as e:
+        logger.error(f"Push message failed: {e}")
+
+    return "フォーム送信完了。LINEに通知を送りました。"
+
+
+###################################
+# (O) 例: CSV出力関数 (任意)
+###################################
+import csv
+
+def export_orders_to_csv():
+    """DBの orders テーブルをCSV形式で出力する例(ローカルファイル書き込み想定)"""
+    with get_db_connection() as conn:
+        with conn.cursor() as cur:
+            cur.execute("SELECT * FROM orders ORDER BY id")
+            rows = cur.fetchall()
+            col_names = [desc[0] for desc in cur.description]
+
+    file_path = "orders_export.csv"
+    with open(file_path, mode="w", encoding="utf-8", newline="") as f:
+        writer = csv.writer(f)
+        writer.writerow(col_names)
+        for row in rows:
+            writer.writerow(row)
+    logger.info(f"CSV Export Done: {file_path}")
+
+###################################
+# Flask起動
+###################################
 if __name__ == "__main__":
-    print("Starting Flask app on port 3000...")
-    app.run(port=3000, debug=True, host="0.0.0.0")
+    app.run(host="0.0.0.0", port=8000, debug=True)
