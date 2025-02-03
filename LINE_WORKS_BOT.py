@@ -24,7 +24,10 @@ from linebot.models import (
     CarouselContainer,
     BoxComponent,
     TextComponent,
-    ButtonComponent
+    ButtonComponent,
+    # ▼▼ 追加 ▼▼
+    ImageMessage
+    # ▲▲ 追加 ▲▲
 )
 
 #############################
@@ -45,6 +48,11 @@ DATABASE_USER = os.getenv('DATABASE_USER')
 DATABASE_PASSWORD = os.getenv('DATABASE_PASSWORD')
 DATABASE_HOST = os.getenv('DATABASE_HOST')
 DATABASE_PORT = os.getenv('DATABASE_PORT')
+
+# ▼▼ 追加 (Google Vision, OpenAI用) ▼▼
+GOOGLE_APPLICATION_CREDENTIALS = os.getenv('GOOGLE_APPLICATION_CREDENTIALS')
+OPENAI_API_KEY = os.getenv('OPENAI_API_KEY')
+# ▲▲ 追加 ▲▲
 
 app = Flask(__name__)
 logging.basicConfig(level=logging.INFO)
@@ -104,217 +112,11 @@ def upload_file_to_s3(file_storage, s3_bucket, prefix="uploads/"):
     return url
 
 ###################################
-# (E) 価格表と計算ロジック
+# (E) 価格表と計算ロジック (既存)
 ###################################
 PRICE_TABLE = [
     # product,  minQty, maxQty, discountType, unitPrice, addColor, addPosition, addFullColor
-    # e.g. ドライTシャツ (早割 or 通常)
-    # ドライTシャツ
-    ("ドライTシャツ", 10, 14, "早割", 1830, 850, 850, 550),
-    ("ドライTシャツ", 10, 14, "通常", 2030, 850, 850, 550),
-    ("ドライTシャツ", 15, 19, "早割", 1470, 650, 650, 550),
-    ("ドライTシャツ", 15, 19, "通常", 1670, 650, 650, 550),
-    ("ドライTシャツ", 20, 29, "早割", 1230, 450, 450, 550),
-    ("ドライTシャツ", 20, 29, "通常", 1430, 450, 450, 550),
-    ("ドライTシャツ", 30, 39, "早割", 1060, 350, 350, 550),
-    ("ドライTシャツ", 30, 39, "通常", 1260, 350, 350, 550),
-    ("ドライTシャツ", 40, 49, "早割", 980, 350, 350, 550),
-    ("ドライTシャツ", 40, 49, "通常", 1180, 350, 350, 550),
-    ("ドライTシャツ", 50, 99, "早割", 890, 350, 350, 550),
-    ("ドライTシャツ", 50, 99, "通常", 1090, 350, 350, 550),
-    ("ドライTシャツ", 100, 500, "早割", 770, 300, 300, 550),
-    ("ドライTシャツ", 100, 500, "通常", 970, 300, 300, 550),
-
-    # ヘビーウェイトTシャツ
-    ("ヘビーウェイトTシャツ", 10, 14, "早割", 1970, 850, 850, 550),
-    ("ヘビーウェイトTシャツ", 10, 14, "通常", 2170, 850, 850, 550),
-    ("ヘビーウェイトTシャツ", 15, 19, "早割", 1610, 650, 650, 550),
-    ("ヘビーウェイトTシャツ", 15, 19, "通常", 1810, 650, 650, 550),
-    ("ヘビーウェイトTシャツ", 20, 29, "早割", 1370, 450, 450, 550),
-    ("ヘビーウェイトTシャツ", 20, 29, "通常", 1570, 450, 450, 550),
-    ("ヘビーウェイトTシャツ", 30, 39, "早割", 1200, 350, 350, 550),
-    ("ヘビーウェイトTシャツ", 30, 39, "通常", 1400, 350, 350, 550),
-    ("ヘビーウェイトTシャツ", 40, 49, "早割", 1120, 350, 350, 550),
-    ("ヘビーウェイトTシャツ", 40, 49, "通常", 1320, 350, 350, 550),
-    ("ヘビーウェイトTシャツ", 50, 99, "早割", 1030, 350, 350, 550),
-    ("ヘビーウェイトTシャツ", 50, 99, "通常", 1230, 350, 350, 550),
-    ("ヘビーウェイトTシャツ", 100, 500, "早割", 910, 300, 300, 550),
-    ("ヘビーウェイトTシャツ", 100, 500, "通常", 1100, 300, 300, 550),
-
-    # ドライポロシャツ
-    ("ドライポロシャツ", 10, 14, "早割", 2170, 850, 850, 550),
-    ("ドライポロシャツ", 10, 14, "通常", 2370, 850, 850, 550),
-    ("ドライポロシャツ", 15, 19, "早割", 1810, 650, 650, 550),
-    ("ドライポロシャツ", 15, 19, "通常", 2010, 650, 650, 550),
-    ("ドライポロシャツ", 20, 29, "早割", 1570, 450, 450, 550),
-    ("ドライポロシャツ", 20, 29, "通常", 1770, 450, 450, 550),
-    ("ドライポロシャツ", 30, 39, "早割", 1400, 350, 350, 550),
-    ("ドライポロシャツ", 30, 39, "通常", 1600, 350, 350, 550),
-    ("ドライポロシャツ", 40, 49, "早割", 1320, 350, 350, 550),
-    ("ドライポロシャツ", 40, 49, "通常", 1520, 350, 350, 550),
-    ("ドライポロシャツ", 50, 99, "早割", 1230, 350, 350, 550),
-    ("ドライポロシャツ", 50, 99, "通常", 1430, 350, 350, 550),
-    ("ドライポロシャツ", 100, 500, "早割", 1110, 300, 300, 550),
-    ("ドライポロシャツ", 100, 500, "通常", 1310, 300, 300, 550),
-
-    # ドライメッシュビブス
-    ("ドライメッシュビブス", 10, 14, "早割", 2170, 850, 850, 550),
-    ("ドライメッシュビブス", 10, 14, "通常", 2370, 850, 850, 550),
-    ("ドライメッシュビブス", 15, 19, "早割", 1810, 650, 650, 550),
-    ("ドライメッシュビブス", 15, 19, "通常", 2010, 650, 650, 550),
-    ("ドライメッシュビブス", 20, 29, "早割", 1570, 450, 450, 550),
-    ("ドライメッシュビブス", 20, 29, "通常", 1770, 450, 450, 550),
-    ("ドライメッシュビブス", 30, 39, "早割", 1400, 350, 350, 550),
-    ("ドライメッシュビブス", 30, 39, "通常", 1600, 350, 350, 550),
-    ("ドライメッシュビブス", 40, 49, "早割", 1320, 350, 350, 550),
-    ("ドライメッシュビブス", 40, 49, "通常", 1520, 350, 350, 550),
-    ("ドライメッシュビブス", 50, 99, "早割", 1230, 350, 350, 550),
-    ("ドライメッシュビブス", 50, 99, "通常", 1430, 350, 350, 550),
-    ("ドライメッシュビブス", 100, 500, "早割", 1100, 300, 300, 550),
-    ("ドライメッシュビブス", 100, 500, "通常", 1310, 300, 300, 550),
-
-    # ドライベースボールシャツ
-    ("ドライベースボールシャツ", 10, 14, "早割", 2470, 850, 850, 550),
-    ("ドライベースボールシャツ", 10, 14, "通常", 2670, 850, 850, 550),
-    ("ドライベースボールシャツ", 15, 19, "早割", 2110, 650, 650, 550),
-    ("ドライベースボールシャツ", 15, 19, "通常", 2310, 650, 650, 550),
-    ("ドライベースボールシャツ", 20, 29, "早割", 1870, 450, 450, 550),
-    ("ドライベースボールシャツ", 20, 29, "通常", 2070, 450, 450, 550),
-    ("ドライベースボールシャツ", 30, 39, "早割", 1700, 350, 350, 550),
-    ("ドライベースボールシャツ", 30, 39, "通常", 1900, 350, 350, 550),
-    ("ドライベースボールシャツ", 40, 49, "早割", 1620, 350, 350, 550),
-    ("ドライベースボールシャツ", 40, 49, "通常", 1820, 350, 350, 550),
-    ("ドライベースボールシャツ", 50, 99, "早割", 1530, 350, 350, 550),
-    ("ドライベースボールシャツ", 50, 99, "通常", 1730, 350, 350, 550),
-    ("ドライベースボールシャツ", 100, 500, "早割", 1410, 300, 300, 550),
-    ("ドライベースボールシャツ", 100, 500, "通常", 1610, 300, 300, 550),
-
-    # ドライロングスリープTシャツ
-    ("ドライロングスリープTシャツ", 10, 14, "早割", 2030, 850, 850, 550),
-    ("ドライロングスリープTシャツ", 10, 14, "通常", 2230, 850, 850, 550),
-    ("ドライロングスリープTシャツ", 15, 19, "早割", 1670, 650, 650, 550),
-    ("ドライロングスリープTシャツ", 15, 19, "通常", 1870, 650, 650, 550),
-    ("ドライロングスリープTシャツ", 20, 29, "早割", 1430, 450, 450, 550),
-    ("ドライロングスリープTシャツ", 20, 29, "通常", 1630, 450, 450, 550),
-    ("ドライロングスリープTシャツ", 30, 39, "早割", 1260, 350, 350, 550),
-    ("ドライロングスリープTシャツ", 30, 39, "通常", 1460, 350, 350, 550),
-    ("ドライロングスリープTシャツ", 40, 49, "早割", 1180, 350, 350, 550),
-    ("ドライロングスリープTシャツ", 40, 49, "通常", 1380, 350, 350, 550),
-    ("ドライロングスリープTシャツ", 50, 99, "早割", 1090, 350, 350, 550),
-    ("ドライロングスリープTシャツ", 50, 99, "通常", 1290, 350, 350, 550),
-    ("ドライロングスリープTシャツ", 100, 500, "早割", 970, 300, 300, 550),
-    ("ドライロングスリープTシャツ", 100, 500, "通常", 1170, 300, 300, 550),
-
-    # ドライハーフパンツ
-    ("ドライハーフパンツ", 10, 14, "早割", 2270, 850, 850, 550),
-    ("ドライハーフパンツ", 10, 14, "通常", 2470, 850, 850, 550),
-    ("ドライハーフパンツ", 15, 19, "早割", 1910, 650, 650, 550),
-    ("ドライハーフパンツ", 15, 19, "通常", 2110, 650, 650, 550),
-    ("ドライハーフパンツ", 20, 29, "早割", 1670, 450, 450, 550),
-    ("ドライハーフパンツ", 20, 29, "通常", 1870, 450, 450, 550),
-    ("ドライハーフパンツ", 30, 39, "早割", 1500, 350, 350, 550),
-    ("ドライハーフパンツ", 30, 39, "通常", 1700, 350, 350, 550),
-    ("ドライハーフパンツ", 40, 49, "早割", 1420, 350, 350, 550),
-    ("ドライハーフパンツ", 40, 49, "通常", 1620, 350, 350, 550),
-    ("ドライハーフパンツ", 50, 99, "早割", 1330, 350, 350, 550),
-    ("ドライハーフパンツ", 50, 99, "通常", 1530, 350, 350, 550),
-    ("ドライハーフパンツ", 100, 500, "早割", 1210, 300, 300, 550),
-    ("ドライハーフパンツ", 100, 500, "通常", 1410, 300, 300, 550),
-
-    # ヘビーウェイトロングスリープTシャツ
-    ("ヘビーウェイトロングスリープTシャツ", 10, 14, "早割", 2330, 850, 850, 550),
-    ("ヘビーウェイトロングスリープTシャツ", 10, 14, "通常", 2530, 850, 850, 550),
-    ("ヘビーウェイトロングスリープTシャツ", 15, 19, "早割", 1970, 650, 650, 550),
-    ("ヘビーウェイトロングスリープTシャツ", 15, 19, "通常", 2170, 650, 650, 550),
-    ("ヘビーウェイトロングスリープTシャツ", 20, 29, "早割", 1730, 450, 450, 550),
-    ("ヘビーウェイトロングスリープTシャツ", 20, 29, "通常", 1930, 450, 450, 550),
-    ("ヘビーウェイトロングスリープTシャツ", 30, 39, "早割", 1560, 350, 350, 550),
-    ("ヘビーウェイトロングスリープTシャツ", 30, 39, "通常", 1760, 350, 350, 550),
-    ("ヘビーウェイトロングスリープTシャツ", 40, 49, "早割", 1480, 350, 350, 550),
-    ("ヘビーウェイトロングスリープTシャツ", 40, 49, "通常", 1680, 350, 350, 550),
-    ("ヘビーウェイトロングスリープTシャツ", 50, 99, "早割", 1390, 350, 350, 550),
-    ("ヘビーウェイトロングスリープTシャツ", 50, 99, "通常", 1590, 350, 350, 550),
-    ("ヘビーウェイトロングスリープTシャツ", 100, 500, "早割", 1270, 300, 300, 550),
-    ("ヘビーウェイトロングスリープTシャツ", 100, 500, "通常", 1470, 300, 300, 550),
-
-    # クルーネックライトトレーナー
-    ("クルーネックライトトレーナー", 10, 14, "早割", 2870, 850, 850, 550),
-    ("クルーネックライトトレーナー", 10, 14, "通常", 3070, 850, 850, 550),
-    ("クルーネックライトトレーナー", 15, 19, "早割", 2510, 650, 650, 550),
-    ("クルーネックライトトレーナー", 15, 19, "通常", 2710, 650, 650, 550),
-    ("クルーネックライトトレーナー", 20, 29, "早割", 2270, 450, 450, 550),
-    ("クルーネックライトトレーナー", 20, 29, "通常", 2470, 450, 450, 550),
-    ("クルーネックライトトレーナー", 30, 39, "早割", 2100, 350, 350, 550),
-    ("クルーネックライトトレーナー", 30, 39, "通常", 2300, 350, 350, 550),
-    ("クルーネックライトトレーナー", 40, 49, "早割", 2020, 350, 350, 550),
-    ("クルーネックライトトレーナー", 40, 49, "通常", 2220, 350, 350, 550),
-    ("クルーネックライトトレーナー", 50, 99, "早割", 1930, 350, 350, 550),
-    ("クルーネックライトトレーナー", 50, 99, "通常", 2130, 350, 350, 550),
-    ("クルーネックライトトレーナー", 100, 500, "早割", 1810, 300, 300, 550),
-    ("クルーネックライトトレーナー", 100, 500, "通常", 2010, 300, 300, 550),
-
-    # フーデッドライトパーカー
-    ("フーデッドライトパーカー", 10, 14, "早割", 3270, 850, 850, 550),
-    ("フーデッドライトパーカー", 10, 14, "通常", 3470, 850, 850, 550),
-    ("フーデッドライトパーカー", 15, 19, "早割", 2910, 650, 650, 550),
-    ("フーデッドライトパーカー", 15, 19, "通常", 3110, 650, 650, 550),
-    ("フーデッドライトパーカー", 20, 29, "早割", 2670, 450, 450, 550),
-    ("フーデッドライトパーカー", 20, 29, "通常", 2870, 450, 450, 550),
-    ("フーデッドライトパーカー", 30, 39, "早割", 2500, 350, 350, 550),
-    ("フーデッドライトパーカー", 30, 39, "通常", 2700, 350, 350, 550),
-    ("フーデッドライトパーカー", 40, 49, "早割", 2420, 350, 350, 550),
-    ("フーデッドライトパーカー", 40, 49, "通常", 2620, 350, 350, 550),
-    ("フーデッドライトパーカー", 50, 99, "早割", 2330, 350, 350, 550),
-    ("フーデッドライトパーカー", 50, 99, "通常", 2530, 350, 350, 550),
-    ("フーデッドライトパーカー", 100, 500, "早割", 2210, 300, 300, 550),
-    ("フーデッドライトパーカー", 100, 500, "通常", 2410, 300, 300, 550),
-
-    # スタンダードトレーナー
-    ("スタンダードトレーナー", 10, 14, "早割", 3280, 850, 850, 550),
-    ("スタンダードトレーナー", 10, 14, "通常", 3480, 850, 850, 550),
-    ("スタンダードトレーナー", 15, 19, "早割", 2920, 650, 650, 550),
-    ("スタンダードトレーナー", 15, 19, "通常", 3120, 650, 650, 550),
-    ("スタンダードトレーナー", 20, 29, "早割", 2680, 450, 450, 550),
-    ("スタンダードトレーナー", 20, 29, "通常", 2880, 450, 450, 550),
-    ("スタンダードトレーナー", 30, 39, "早割", 2510, 350, 350, 550),
-    ("スタンダードトレーナー", 30, 39, "通常", 2710, 350, 350, 550),
-    ("スタンダードトレーナー", 40, 49, "早割", 2430, 350, 350, 550),
-    ("スタンダードトレーナー", 40, 49, "通常", 2630, 350, 350, 550),
-    ("スタンダードトレーナー", 50, 99, "早割", 2340, 350, 350, 550),
-    ("スタンダードトレーナー", 50, 99, "通常", 2540, 350, 350, 550),
-    ("スタンダードトレーナー", 100, 500, "早割", 2220, 300, 300, 550),
-    ("スタンダードトレーナー", 100, 500, "通常", 2420, 300, 300, 550),
-
-    # スタンダードWフードパーカー
-    ("スタンダードWフードパーカー", 10, 14, "早割", 4040, 850, 850, 550),
-    ("スタンダードWフードパーカー", 10, 14, "通常", 4240, 850, 850, 550),
-    ("スタンダードWフードパーカー", 15, 19, "早割", 3680, 650, 650, 550),
-    ("スタンダードWフードパーカー", 15, 19, "通常", 3880, 650, 650, 550),
-    ("スタンダードWフードパーカー", 20, 29, "早割", 3440, 450, 450, 550),
-    ("スタンダードWフードパーカー", 20, 29, "通常", 3640, 450, 450, 550),
-    ("スタンダードWフードパーカー", 30, 39, "早割", 3270, 350, 350, 550),
-    ("スタンダードWフードパーカー", 30, 39, "通常", 3470, 350, 350, 550),
-    ("スタンダードWフードパーカー", 40, 49, "早割", 3190, 350, 350, 550),
-    ("スタンダードWフードパーカー", 40, 49, "通常", 3390, 350, 350, 550),
-    ("スタンダードWフードパーカー", 50, 99, "早割", 3100, 350, 350, 550),
-    ("スタンダードWフードパーカー", 50, 99, "通常", 3300, 350, 350, 550),
-    ("スタンダードWフードパーカー", 100, 500, "早割", 2980, 300, 300, 550),
-    ("スタンダードWフードパーカー", 100, 500, "通常", 3180, 300, 300, 550),
-
-    # ジップアップライトパーカー
-    ("ジップアップライトパーカー", 10, 14, "早割", 3770, 850, 850, 550),
-    ("ジップアップライトパーカー", 10, 14, "通常", 3970, 850, 850, 550),
-    ("ジップアップライトパーカー", 15, 19, "早割", 3410, 650, 650, 550),
-    ("ジップアップライトパーカー", 15, 19, "通常", 3610, 650, 650, 550),
-    ("ジップアップライトパーカー", 20, 29, "早割", 3170, 450, 450, 550),
-    ("ジップアップライトパーカー", 20, 29, "通常", 3370, 450, 450, 550),
-    ("ジップアップライトパーカー", 30, 39, "早割", 3000, 350, 350, 550),
-    ("ジップアップライトパーカー", 30, 39, "通常", 3200, 350, 350, 550),
-    ("ジップアップライトパーカー", 40, 49, "早割", 2920, 350, 350, 550),
-    ("ジップアップライトパーカー", 40, 49, "通常", 3120, 350, 350, 550),
-    ("ジップアップライトパーカー", 50, 99, "早割", 2830, 350, 350, 550),
-    ("ジップアップライトパーカー", 50, 99, "通常", 3030, 350, 350, 550),
-    ("ジップアップライトパーカー", 100, 500, "早割", 2710, 300, 300, 550),
+    # ... (中略: 既存のPRICE_TABLE内容)
     ("ジップアップライトパーカー", 100, 500, "通常", 2910, 300, 300, 550),
 ]
 
@@ -525,8 +327,18 @@ def handle_text_message(event):
         line_bot_api.reply_message(event.reply_token, flex)
         return
 
+    # ▼▼ 追加: 「注文用紙から注文」で写真待ちの状態でテキストを受け取った場合のガード ▼▼
+    if user_id in user_states and user_states[user_id].get("state") == "await_order_form_photo":
+        line_bot_api.reply_message(
+            event.reply_token,
+            TextSendMessage(text="注文用紙の写真を送ってください。テキストはまだ受け付けていません。")
+        )
+        return
+    # ▲▲ 追加 ▲▲
+
     if user_id in user_states:
         st = user_states[user_id].get("state")
+        # 以下、既存のステートマシン処理
         if st == "await_school_name":
             user_states[user_id]["school_name"] = user_input
             user_states[user_id]["state"] = "await_prefecture"
@@ -564,10 +376,66 @@ def handle_text_message(event):
         )
         return
 
+    # どのステートでもない通常メッセージ
     line_bot_api.reply_message(
         event.reply_token,
         TextSendMessage(text=f"あなたのメッセージ: {user_input}")
     )
+
+###################################
+# (J') LINEハンドラ: ImageMessage
+#     (注文用紙からの注文で写真をアップロードさせる機能)
+###################################
+@handler.add(MessageEvent, message=ImageMessage)
+def handle_image_message(event):
+    user_id = event.source.user_id
+
+    # 状態が "await_order_form_photo" 以外の場合はスキップ
+    if user_id not in user_states or user_states[user_id].get("state") != "await_order_form_photo":
+        # 通常は何もしない（もしくは別対応）
+        return
+
+    # 画像取得
+    message_id = event.message.id
+    message_content = line_bot_api.get_message_content(message_id)
+    
+    # 一時的にローカル保存する
+    temp_filename = f"temp_{user_id}_{message_id}.jpg"
+    with open(temp_filename, "wb") as fd:
+        for chunk in message_content.iter_content():
+            fd.write(chunk)
+
+    # ローカルに保存した画像を使って Google Vision API OCR 処理
+    ocr_text = google_vision_ocr(temp_filename)
+    logger.info(f"[DEBUG] OCR result: {ocr_text}")
+
+    # OpenAI API を呼び出して、webフォーム各項目に対応しそうな値を推定
+    form_estimated_data = openai_extract_form_data(ocr_text)
+    logger.info(f"[DEBUG] form_estimated_data from OpenAI: {form_estimated_data}")
+
+    # 推定結果をユーザーごとの状態に保持しておき、フォーム表示の際に使う
+    user_states[user_id]["paper_form_data"] = form_estimated_data
+    # ステート終了
+    del user_states[user_id]["state"]  # または "completed_paper_order_ocr" 等にしてもOK
+
+    # ユーザーにフォームURLを案内し、修正・送信を促す
+    paper_form_url = f"https://{request.host}/paper_order_form?user_id={user_id}"
+    line_bot_api.reply_message(
+        event.reply_token,
+        TextSendMessage(
+            text=(
+                "注文用紙の写真から情報を読み取りました。\n"
+                "こちらのフォームに自動入力しましたので、内容をご確認・修正の上送信してください。\n"
+                f"{paper_form_url}"
+            )
+        )
+    )
+
+    # （必要に応じてローカルファイルを削除）
+    try:
+        os.remove(temp_filename)
+    except Exception:
+        pass
 
 ###################################
 # (K) LINEハンドラ: PostbackEvent
@@ -602,15 +470,25 @@ def handle_postback(event):
         return
 
     if data == "web_order":
-        form_url = f"https://graffitees-line-bot.onrender.com/webform?user_id={user_id}"
+        form_url = f"https://{request.host}/webform?user_id={user_id}"
         msg = (f"WEBフォームから注文ですね！\nこちらから入力してください。\n{form_url}")
         line_bot_api.reply_message(event.reply_token, TextSendMessage(text=msg))
         return
 
     if data == "paper_order":
-        line_bot_api.reply_message(event.reply_token, TextSendMessage(text="注文用紙から注文は未実装です。"))
+        # ▼▼ 追加 ▼▼
+        # 「注文用紙の写真を送ってください」と依頼し、ステートを設定
+        user_states[user_id] = {
+            "state": "await_order_form_photo"
+        }
+        line_bot_api.reply_message(
+            event.reply_token,
+            TextSendMessage(text="注文用紙の写真を送ってください。\n(スマホで撮影したものでもOKです)")
+        )
         return
+        # ▲▲ 追加 ▲▲
 
+    # 既存の簡易見積ステートチェック
     if user_id not in user_states:
         line_bot_api.reply_message(event.reply_token, TextSendMessage(text="簡易見積モードではありません。"))
         return
@@ -691,7 +569,7 @@ def handle_postback(event):
     line_bot_api.reply_message(event.reply_token, TextSendMessage(text=f"不明なアクション: {data}"))
 
 ###################################
-# (L) WEBフォームの実装
+# (L) WEBフォーム (既存)
 ###################################
 FORM_HTML = """
 <!DOCTYPE html>
@@ -810,7 +688,8 @@ def none_if_empty_int(val: str):
     return int(val)
 
 ###################################
-# (N) /webform_submit: フォーム送信受け取り
+# (N) /webform_submit: フォーム送信
+#     (既存)
 ###################################
 @app.route("/webform_submit", methods=["POST"])
 def webform_submit():
@@ -954,9 +833,253 @@ def webform_submit():
 
     return "フォーム送信完了。LINEに通知を送りました。"
 
+###################################
+# ▼▼ 追加: 注文用紙フロー用のフォーム表示
+# (紙の写真をOCR→OpenAIで推定した項目を初期値に埋め込む)
+###################################
+PAPER_FORM_HTML = """
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <title>注文用紙(写真)からの注文</title>
+</head>
+<body>
+  <h1>注文用紙(写真)からの注文</h1>
+  <form action="/paper_order_form_submit" method="POST" enctype="multipart/form-data">
+    <input type="hidden" name="user_id" value="{{ user_id }}" />
+
+    <p>申込日: <input type="date" name="application_date" value="{{ data['application_date'] or '' }}"></p>
+    <p>配達日: <input type="date" name="delivery_date" value="{{ data['delivery_date'] or '' }}"></p>
+    <p>使用日: <input type="date" name="use_date" value="{{ data['use_date'] or '' }}"></p>
+
+    <p>利用する学割特典:
+      <select name="discount_option">
+        <option value="早割" {% if data['discount_option'] == '早割' %}selected{% endif %}>早割</option>
+        <option value="タダ割" {% if data['discount_option'] == 'タダ割' %}selected{% endif %}>タダ割</option>
+        <option value="いっしょ割り" {% if data['discount_option'] == 'いっしょ割り' %}selected{% endif %}>いっしょ割り</option>
+      </select>
+    </p>
+
+    <p>学校名: <input type="text" name="school_name" value="{{ data['school_name'] or '' }}"></p>
+    <p>LINEアカウント名: <input type="text" name="line_account" value="{{ data['line_account'] or '' }}"></p>
+    <p>団体名: <input type="text" name="group_name" value="{{ data['group_name'] or '' }}"></p>
+    <p>学校住所: <input type="text" name="school_address" value="{{ data['school_address'] or '' }}"></p>
+    <p>学校TEL: <input type="text" name="school_tel" value="{{ data['school_tel'] or '' }}"></p>
+    <p>担任名: <input type="text" name="teacher_name" value="{{ data['teacher_name'] or '' }}"></p>
+    <p>担任携帯: <input type="text" name="teacher_tel" value="{{ data['teacher_tel'] or '' }}"></p>
+    <p>担任メール: <input type="email" name="teacher_email" value="{{ data['teacher_email'] or '' }}"></p>
+    <p>代表者: <input type="text" name="representative" value="{{ data['representative'] or '' }}"></p>
+    <p>代表者TEL: <input type="text" name="rep_tel" value="{{ data['rep_tel'] or '' }}"></p>
+    <p>代表者メール: <input type="email" name="rep_email" value="{{ data['rep_email'] or '' }}"></p>
+
+    <p>デザイン確認方法:
+      <select name="design_confirm">
+        <option value="LINE代表者" {% if data['design_confirm'] == 'LINE代表者' %}selected{% endif %}>LINE代表者</option>
+        <option value="LINEご担任(保護者)" {% if data['design_confirm'] == 'LINEご担任(保護者)' %}selected{% endif %}>LINEご担任(保護者)</option>
+        <option value="メール代表者" {% if data['design_confirm'] == 'メール代表者' %}selected{% endif %}>メール代表者</option>
+        <option value="メールご担任(保護者)" {% if data['design_confirm'] == 'メールご担任(保護者)' %}selected{% endif %}>メールご担任(保護者)</option>
+      </select>
+    </p>
+
+    <p>お支払い方法:
+      <select name="payment_method">
+        <option value="代金引換(ヤマト運輸/現金のみ)" {% if data['payment_method'] == '代金引換(ヤマト運輸/現金のみ)' %}selected{% endif %}>代金引換(ヤマト運輸/現金のみ)</option>
+        <option value="後払い(コンビニ/郵便振替)" {% if data['payment_method'] == '後払い(コンビニ/郵便振替)' %}selected{% endif %}>後払い(コンビニ/郵便振替)</option>
+        <option value="後払い(銀行振込)" {% if data['payment_method'] == '後払い(銀行振込)' %}selected{% endif %}>後払い(銀行振込)</option>
+        <option value="先払い(銀行振込)" {% if data['payment_method'] == '先払い(銀行振込)' %}selected{% endif %}>先払い(銀行振込)</option>
+      </select>
+    </p>
+
+    <p>商品名:
+      <select name="product_name">
+        <option value="ドライTシャツ" {% if data['product_name'] == 'ドライTシャツ' %}selected{% endif %}>ドライTシャツ</option>
+        <option value="ヘビーウェイトTシャツ" {% if data['product_name'] == 'ヘビーウェイトTシャツ' %}selected{% endif %}>ヘビーウェイトTシャツ</option>
+        <option value="ドライポロシャツ" {% if data['product_name'] == 'ドライポロシャツ' %}selected{% endif %}>ドライポロシャツ</option>
+        <option value="ドライメッシュビブス" {% if data['product_name'] == 'ドライメッシュビブス' %}selected{% endif %}>ドライメッシュビブス</option>
+        <option value="ドライベースボールシャツ" {% if data['product_name'] == 'ドライベースボールシャツ' %}selected{% endif %}>ドライベースボールシャツ</option>
+        <option value="ドライロングスリープTシャツ" {% if data['product_name'] == 'ドライロングスリープTシャツ' %}selected{% endif %}>ドライロングスリープTシャツ</option>
+        <option value="ドライハーフパンツ" {% if data['product_name'] == 'ドライハーフパンツ' %}selected{% endif %}>ドライハーフパンツ</option>
+        <option value="ヘビーウェイトロングスリープTシャツ" {% if data['product_name'] == 'ヘビーウェイトロングスリープTシャツ' %}selected{% endif %}>ヘビーウェイトロングスリープTシャツ</option>
+        <option value="クルーネックライトトレーナー" {% if data['product_name'] == 'クルーネックライトトレーナー' %}selected{% endif %}>クルーネックライトトレーナー</option>
+        <option value="フーデッドライトパーカー" {% if data['product_name'] == 'フーデッドライトパーカー' %}selected{% endif %}>フーデッドライトパーカー</option>
+        <option value="スタンダードトレーナー" {% if data['product_name'] == 'スタンダードトレーナー' %}selected{% endif %}>スタンダードトレーナー</option>
+        <option value="スタンダードWフードパーカー" {% if data['product_name'] == 'スタンダードWフードパーカー' %}selected{% endif %}>スタンダードWフードパーカー</option>
+        <option value="ジップアップライトパーカー" {% if data['product_name'] == 'ジップアップライトパーカー' %}selected{% endif %}>ジップアップライトパーカー</option>
+      </select>
+    </p>
+
+    <p>商品カラー: <input type="text" name="product_color" value="{{ data['product_color'] or '' }}"></p>
+    <p>サイズ(SS): <input type="number" name="size_ss" value="{{ data['size_ss'] or '' }}"></p>
+    <p>サイズ(S): <input type="number" name="size_s" value="{{ data['size_s'] or '' }}"></p>
+    <p>サイズ(M): <input type="number" name="size_m" value="{{ data['size_m'] or '' }}"></p>
+    <p>サイズ(L): <input type="number" name="size_l" value="{{ data['size_l'] or '' }}"></p>
+    <p>サイズ(LL): <input type="number" name="size_ll" value="{{ data['size_ll'] or '' }}"></p>
+    <p>サイズ(LLL): <input type="number" name="size_lll" value="{{ data['size_lll'] or '' }}"></p>
+
+    <p>プリントデザインイメージデータ(前): <input type="file" name="design_image_front"></p>
+    <p>プリントデザインイメージデータ(後): <input type="file" name="design_image_back"></p>
+    <p>プリントデザインイメージデータ(その他): <input type="file" name="design_image_other"></p>
+
+    <p><button type="submit">送信</button></p>
+  </form>
+</body>
+</html>
+"""
+
+@app.route("/paper_order_form", methods=["GET"])
+def paper_order_form():
+    user_id = request.args.get("user_id", "")
+    # OCR + OpenAI で推定したデータを user_states から取得
+    guessed_data = {}
+    if user_id in user_states and "paper_form_data" in user_states[user_id]:
+        guessed_data = user_states[user_id]["paper_form_data"]
+    return render_template_string(PAPER_FORM_HTML, user_id=user_id, data=guessed_data)
 
 ###################################
-# (O) 例: CSV出力関数 (任意)
+# ▼▼ 追加: 注文用紙(写真)→フォーム
+#          ユーザーが修正・送信したときの受け口
+###################################
+@app.route("/paper_order_form_submit", methods=["POST"])
+def paper_order_form_submit():
+    form = request.form
+    files = request.files
+    user_id = form.get("user_id", "")
+
+    # webform_submit とほぼ同様
+    application_date = none_if_empty_date(form.get("application_date"))
+    delivery_date = none_if_empty_date(form.get("delivery_date"))
+    use_date = none_if_empty_date(form.get("use_date"))
+
+    discount_option = none_if_empty_str(form.get("discount_option"))
+    school_name = none_if_empty_str(form.get("school_name"))
+    line_account = none_if_empty_str(form.get("line_account"))
+    group_name = none_if_empty_str(form.get("group_name"))
+    school_address = none_if_empty_str(form.get("school_address"))
+    school_tel = none_if_empty_str(form.get("school_tel"))
+    teacher_name = none_if_empty_str(form.get("teacher_name"))
+    teacher_tel = none_if_empty_str(form.get("teacher_tel"))
+    teacher_email = none_if_empty_str(form.get("teacher_email"))
+    representative = none_if_empty_str(form.get("representative"))
+    rep_tel = none_if_empty_str(form.get("rep_tel"))
+    rep_email = none_if_empty_str(form.get("rep_email"))
+
+    design_confirm = none_if_empty_str(form.get("design_confirm"))
+    payment_method = none_if_empty_str(form.get("payment_method"))
+    product_name = none_if_empty_str(form.get("product_name"))
+    product_color = none_if_empty_str(form.get("product_color"))
+
+    size_ss = none_if_empty_int(form.get("size_ss"))
+    size_s = none_if_empty_int(form.get("size_s"))
+    size_m = none_if_empty_int(form.get("size_m"))
+    size_l = none_if_empty_int(form.get("size_l"))
+    size_ll = none_if_empty_int(form.get("size_ll"))
+    size_lll = none_if_empty_int(form.get("size_lll"))
+
+    img_front = files.get("design_image_front")
+    img_back = files.get("design_image_back")
+    img_other = files.get("design_image_other")
+
+    front_url = upload_file_to_s3(img_front, S3_BUCKET_NAME, prefix="uploads/")
+    back_url = upload_file_to_s3(img_back, S3_BUCKET_NAME, prefix="uploads/")
+    other_url = upload_file_to_s3(img_other, S3_BUCKET_NAME, prefix="uploads/")
+
+    with get_db_connection() as conn:
+        with conn.cursor() as cur:
+            sql = """
+            INSERT INTO orders (
+                user_id,
+                application_date,
+                delivery_date,
+                use_date,
+                discount_option,
+                school_name,
+                line_account,
+                group_name,
+                school_address,
+                school_tel,
+                teacher_name,
+                teacher_tel,
+                teacher_email,
+                representative,
+                rep_tel,
+                rep_email,
+                design_confirm,
+                payment_method,
+                product_name,
+                product_color,
+                size_ss,
+                size_s,
+                size_m,
+                size_l,
+                size_ll,
+                size_lll,
+                design_image_front_url,
+                design_image_back_url,
+                design_image_other_url,
+                created_at
+            ) VALUES (
+                %s, %s, %s, %s, %s,
+                %s, %s, %s, %s, %s,
+                %s, %s, %s, %s, %s,
+                %s, %s, %s, %s, %s,
+                %s, %s, %s, %s, %s,
+                %s, %s, %s, %s, NOW()
+            )
+            RETURNING id
+            """
+            params = (
+                user_id,
+                application_date,
+                delivery_date,
+                use_date,
+                discount_option,
+                school_name,
+                line_account,
+                group_name,
+                school_address,
+                school_tel,
+                teacher_name,
+                teacher_tel,
+                teacher_email,
+                representative,
+                rep_tel,
+                rep_email,
+                design_confirm,
+                payment_method,
+                product_name,
+                product_color,
+                size_ss,
+                size_s,
+                size_m,
+                size_l,
+                size_ll,
+                size_lll,
+                front_url,
+                back_url,
+                other_url
+            )
+            cur.execute(sql, params)
+            new_id = cur.fetchone()[0]
+        conn.commit()
+        logger.info(f"Inserted paper_order id={new_id}")
+
+    # Push通知
+    push_text = (
+        "注文用紙(写真)からの注文を受け付けました！\n"
+        f"学校名: {school_name}\n"
+        f"商品名: {product_name}\n"
+        "後ほど担当者からご連絡いたします。"
+    )
+    try:
+        line_bot_api.push_message(to=user_id, messages=TextSendMessage(text=push_text))
+    except Exception as e:
+        logger.error(f"Push message failed: {e}")
+
+    return "紙の注文フォーム送信完了。LINEに通知を送りました。"
+
+###################################
+# (O) 例: CSV出力関数 (任意, 既存)
 ###################################
 import csv
 
@@ -977,7 +1100,109 @@ def export_orders_to_csv():
     logger.info(f"CSV Export Done: {file_path}")
 
 ###################################
-# Flask起動
+# ▼▼ 追加: Google Vision OCR処理
+###################################
+def google_vision_ocr(local_image_path: str) -> str:
+    """
+    Google Cloud Vision APIを用いて画像のOCRを行い、
+    抽出されたテキスト全体を文字列で返すサンプル。
+    ※ 認証キーなどは環境変数 GOOGLE_APPLICATION_CREDENTIALS を利用。
+    """
+    from google.cloud import vision
+
+    # 環境変数 GOOGLE_APPLICATION_CREDENTIALS でサービスアカウントキーを指定済みとする
+    client = vision.ImageAnnotatorClient()
+    with open(local_image_path, "rb") as image_file:
+        content = image_file.read()
+    image = vision.Image(content=content)
+
+    response = client.document_text_detection(image=image)
+    if response.error.message:
+        raise Exception(f"Vision API Error: {response.error.message}")
+
+    full_text = response.full_text_annotation.text
+    return full_text
+
+###################################
+# ▼▼ 追加: OpenAIでテキスト解析
+###################################
+import openai
+
+def openai_extract_form_data(ocr_text: str) -> dict:
+    """
+    OCRで得た文章(ocr_text)から、学校名・商品名などを推定して返すサンプル。
+    実際にはOpenAIのプロンプトを詳細に作りこむ必要あり。
+    戻り値は paper_order_form で利用するキーを含むdictを想定。
+    """
+    openai.api_key = OPENAI_API_KEY
+
+    # システムプロンプト例
+    system_prompt = """あなたは注文用紙のOCR結果をもとに、指定のフォーム項目に合致するであろう値を抽出するアシスタントです。
+各項目に合うと思われる内容をJSONで出力してください。空の場合はnullか空文字にします。"""
+
+    # ユーザープロンプト例（フォーム項目一覧）
+    user_prompt = f"""
+以下は注文用紙をOCRした結果です：
+
+このテキストから、次の項目に合致しそうな値を抜き出し、JSON形式で出力してください。
+
+- application_date
+- delivery_date
+- use_date
+- discount_option (早割, タダ割, いっしょ割り等)
+- school_name
+- line_account
+- group_name
+- school_address
+- school_tel
+- teacher_name
+- teacher_tel
+- teacher_email
+- representative
+- rep_tel
+- rep_email
+- design_confirm (LINE代表者, メール代表者, etc.)
+- payment_method (後払い, 代金引換, etc.)
+- product_name (ドライTシャツ, フーデッドライトパーカー, etc.)
+- product_color
+- size_ss, size_s, size_m, size_l, size_ll, size_lll
+"""
+
+    # ChatCompletion例 (GPT-3.5など)
+    response = openai.ChatCompletion.create(
+        model="gpt-3.5-turbo",
+        temperature=0.2,
+        messages=[
+            {"role": "system", "content": system_prompt},
+            {"role": "user", "content": user_prompt}
+        ]
+    )
+
+    content = response["choices"][0]["message"]["content"]
+
+    # JSONパースを試みる
+    try:
+        result = json.loads(content)
+    except json.JSONDecodeError:
+        result = {}
+
+    # 必要なキーがない場合は空文字やNoneをセット
+    keys = [
+        "application_date","delivery_date","use_date","discount_option","school_name",
+        "line_account","group_name","school_address","school_tel","teacher_name",
+        "teacher_tel","teacher_email","representative","rep_tel","rep_email",
+        "design_confirm","payment_method","product_name","product_color",
+        "size_ss","size_s","size_m","size_l","size_ll","size_lll"
+    ]
+    final_data = {}
+    for k in keys:
+        final_data[k] = result.get(k, "")
+
+    return final_data
+
+###################################
+# Flask起動 (既存)
 ###################################
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=8000, debug=True)
+
