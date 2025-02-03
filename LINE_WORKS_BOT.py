@@ -1205,7 +1205,12 @@ def openai_extract_form_data(ocr_text: str) -> dict:
         ]
     )
 
+    print("=== OpenAI RAW RESPONSE ===")
+    print(response)  # または logger.info(response)
+
     content = response["choices"][0]["message"]["content"]
+    print("=== OpenAI CONTENT ===")
+    print(content)
 
     # JSONパースを試みる
     try:
