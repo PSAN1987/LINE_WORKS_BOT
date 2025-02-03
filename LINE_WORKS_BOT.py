@@ -1197,7 +1197,7 @@ def openai_extract_form_data(ocr_text: str) -> dict:
 
     # ChatCompletion例 (GPT-3.5など)
     response = openai.ChatCompletion.create(
-        model="gpt-3.5-turbo",
+        model="gpt-4",
         temperature=0.2,
         messages=[
             {"role": "system", "content": system_prompt},
