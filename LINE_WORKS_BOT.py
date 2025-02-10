@@ -25,9 +25,7 @@ from linebot.models import (
     BoxComponent,
     TextComponent,
     ButtonComponent,
-    # ▼▼ 追加 ▼▼
     ImageMessage
-    # ▲▲ 追加 ▲▲
 )
 
 #############################
@@ -596,9 +594,8 @@ def handle_text_message(event):
 def handle_image_message(event):
     user_id = event.source.user_id
 
-    # 状態が "await_order_form_photo" 以外の場合はスキップ
+    # 状態が "await_order_form_photo" 以外の場合はスルー
     if user_id not in user_states or user_states[user_id].get("state") != "await_order_form_photo":
-        # 通常は何もしない（もしくは別対応）
         return
 
     # 画像取得
@@ -622,7 +619,7 @@ def handle_image_message(event):
     # 推定結果をユーザーごとの状態に保持しておき、フォーム表示の際に使う
     user_states[user_id]["paper_form_data"] = form_estimated_data
     # ステート終了
-    del user_states[user_id]["state"]  # または "completed_paper_order_ocr" 等にしてもOK
+    del user_states[user_id]["state"]
 
     # ユーザーにフォームURLを案内し、修正・送信を促す
     paper_form_url = f"https://{request.host}/paper_order_form?user_id={user_id}"
@@ -637,7 +634,7 @@ def handle_image_message(event):
         )
     )
 
-    # （必要に応じてローカルファイルを削除）
+    # ローカルファイル削除(任意)
     try:
         os.remove(temp_filename)
     except Exception:
@@ -682,8 +679,6 @@ def handle_postback(event):
         return
 
     if data == "paper_order":
-        # ▼▼ 追加 ▼▼
-        # 「注文用紙の写真を送ってください」と依頼し、ステートを設定
         user_states[user_id] = {
             "state": "await_order_form_photo"
         }
@@ -692,9 +687,7 @@ def handle_postback(event):
             TextSendMessage(text="注文用紙の写真を送ってください。\n(スマホで撮影したものでもOKです)")
         )
         return
-        # ▲▲ 追加 ▲▲
 
-    # 既存の簡易見積ステートチェック
     if user_id not in user_states:
         line_bot_api.reply_message(event.reply_token, TextSendMessage(text="簡易見積モードではありません。"))
         return
@@ -775,7 +768,7 @@ def handle_postback(event):
     line_bot_api.reply_message(event.reply_token, TextSendMessage(text=f"不明なアクション: {data}"))
 
 ###################################
-# (L) WEBフォーム (既存)
+# (L) WEBフォーム (修正後HTML)
 ###################################
 FORM_HTML = """
 <!DOCTYPE html>
@@ -857,8 +850,37 @@ FORM_HTML = """
     <p>サイズ(LL): <input type="number" name="size_ll"></p>
     <p>サイズ(LLL): <input type="number" name="size_lll"></p>
 
+    <h3>プリント位置: 前</h3>
+    <p>プリントサイズ(前):
+      <input type="radio" name="print_size_front" value="おまかせ (最大:横28cm x 縦35cm以内)" checked> おまかせ
+      <input type="radio" name="print_size_front" value="custom"> ヨコcm x タテcmくらい(入力する):
+      <input type="text" name="print_size_front_custom" placeholder="例: 20cm x 15cm">
+    </p>
+    <p>プリントカラー(前): <input type="text" name="print_color_front" placeholder="全てのカラーをご記入ください。計xx色"></p>
+    <p>フォントNo.(前): <input type="text" name="font_no_front" placeholder="例: X-XX"></p>
+    <p>プリントデザインサンプル(前): <input type="text" name="design_sample_front" placeholder="例: D-XXX"></p>
     <p>プリントデザインイメージデータ(前): <input type="file" name="design_image_front"></p>
+
+    <h3>プリント位置: 後</h3>
+    <p>プリントサイズ(後):
+      <input type="radio" name="print_size_back" value="おまかせ (最大:横28cm x 縦35cm以内)" checked> おまかせ
+      <input type="radio" name="print_size_back" value="custom"> ヨコcm x タテcmくらい(入力する):
+      <input type="text" name="print_size_back_custom" placeholder="例: 20cm x 15cm">
+    </p>
+    <p>プリントカラー(後): <input type="text" name="print_color_back" placeholder="全てのカラーをご記入ください。計xx色"></p>
+    <p>フォントNo.(後): <input type="text" name="font_no_back" placeholder="例: X-XX"></p>
+    <p>プリントデザインサンプル(後): <input type="text" name="design_sample_back" placeholder="例: D-XXX"></p>
     <p>プリントデザインイメージデータ(後): <input type="file" name="design_image_back"></p>
+
+    <h3>プリント位置: その他</h3>
+    <p>プリントサイズ(その他):
+      <input type="radio" name="print_size_other" value="おまかせ (最大:横28cm x 縦35cm以内)" checked> おまかせ
+      <input type="radio" name="print_size_other" value="custom"> ヨコcm x タテcmくらい(入力する):
+      <input type="text" name="print_size_other_custom" placeholder="例: 20cm x 15cm">
+    </p>
+    <p>プリントカラー(その他): <input type="text" name="print_color_other" placeholder="全てのカラーをご記入ください。計xx色"></p>
+    <p>フォントNo.(その他): <input type="text" name="font_no_other" placeholder="例: X-XX"></p>
+    <p>プリントデザインサンプル(その他): <input type="text" name="design_sample_other" placeholder="例: D-XXX"></p>
     <p>プリントデザインイメージデータ(その他): <input type="file" name="design_image_other"></p>
 
     <p><button type="submit">送信</button></p>
@@ -877,12 +899,12 @@ def show_webform():
 ###################################
 def none_if_empty_str(val: str):
     """文字列入力が空なら None, そうでなければ文字列を返す"""
-    if not val:  # '' or None
+    if not val:
         return None
     return val
 
 def none_if_empty_date(val: str):
-    """日付カラム用: 空なら None、そうでなければそのまま文字列として渡す (Postgresがdate型に変換)"""
+    """日付カラム用: 空なら None、そうでなければそのまま文字列として渡す"""
     if not val:
         return None
     return val
@@ -895,7 +917,6 @@ def none_if_empty_int(val: str):
 
 ###################################
 # (N) /webform_submit: フォーム送信
-#     (既存)
 ###################################
 @app.route("/webform_submit", methods=["POST"])
 def webform_submit():
@@ -926,13 +947,33 @@ def webform_submit():
     product_name = none_if_empty_str(form.get("product_name"))
     product_color = none_if_empty_str(form.get("product_color"))
 
-    # サイズは数値カラムの場合、intかNone
     size_ss = none_if_empty_int(form.get("size_ss"))
     size_s = none_if_empty_int(form.get("size_s"))
     size_m = none_if_empty_int(form.get("size_m"))
     size_l = none_if_empty_int(form.get("size_l"))
     size_ll = none_if_empty_int(form.get("size_ll"))
     size_lll = none_if_empty_int(form.get("size_lll"))
+
+    # ▼▼ 新規追加項目(前) ▼▼
+    print_size_front = none_if_empty_str(form.get("print_size_front"))
+    print_size_front_custom = none_if_empty_str(form.get("print_size_front_custom"))
+    print_color_front = none_if_empty_str(form.get("print_color_front"))
+    font_no_front = none_if_empty_str(form.get("font_no_front"))
+    design_sample_front = none_if_empty_str(form.get("design_sample_front"))
+
+    # ▼▼ 新規追加項目(後) ▼▼
+    print_size_back = none_if_empty_str(form.get("print_size_back"))
+    print_size_back_custom = none_if_empty_str(form.get("print_size_back_custom"))
+    print_color_back = none_if_empty_str(form.get("print_color_back"))
+    font_no_back = none_if_empty_str(form.get("font_no_back"))
+    design_sample_back = none_if_empty_str(form.get("design_sample_back"))
+
+    # ▼▼ 新規追加項目(その他) ▼▼
+    print_size_other = none_if_empty_str(form.get("print_size_other"))
+    print_size_other_custom = none_if_empty_str(form.get("print_size_other_custom"))
+    print_color_other = none_if_empty_str(form.get("print_color_other"))
+    font_no_other = none_if_empty_str(form.get("font_no_other"))
+    design_sample_other = none_if_empty_str(form.get("design_sample_other"))
 
     # ---------- 画像ファイル ----------
     img_front = files.get("design_image_front")
@@ -975,9 +1016,28 @@ def webform_submit():
                 size_l,
                 size_ll,
                 size_lll,
+
+                print_size_front,
+                print_size_front_custom,
+                print_color_front,
+                font_no_front,
+                design_sample_front,
                 design_image_front_url,
+
+                print_size_back,
+                print_size_back_custom,
+                print_color_back,
+                font_no_back,
+                design_sample_back,
                 design_image_back_url,
+
+                print_size_other,
+                print_size_other_custom,
+                print_color_other,
+                font_no_other,
+                design_sample_other,
                 design_image_other_url,
+
                 created_at
             ) VALUES (
                 %s, %s, %s, %s, %s,
@@ -985,7 +1045,15 @@ def webform_submit():
                 %s, %s, %s, %s, %s,
                 %s, %s, %s, %s, %s,
                 %s, %s, %s, %s, %s,
-                %s, %s, %s, %s, NOW()
+                %s,
+
+                %s, %s, %s, %s, %s, %s,
+
+                %s, %s, %s, %s, %s, %s,
+
+                %s, %s, %s, %s, %s, %s,
+
+                NOW()
             )
             RETURNING id
             """
@@ -1016,8 +1084,26 @@ def webform_submit():
                 size_l,
                 size_ll,
                 size_lll,
+
+                print_size_front,
+                print_size_front_custom,
+                print_color_front,
+                font_no_front,
+                design_sample_front,
                 front_url,
+
+                print_size_back,
+                print_size_back_custom,
+                print_color_back,
+                font_no_back,
+                design_sample_back,
                 back_url,
+
+                print_size_other,
+                print_size_other_custom,
+                print_color_other,
+                font_no_other,
+                design_sample_other,
                 other_url
             )
             cur.execute(sql, params)
@@ -1040,8 +1126,102 @@ def webform_submit():
     return "フォーム送信完了。LINEに通知を送りました。"
 
 ###################################
-# ▼▼ 追加: 注文用紙フロー用のフォーム表示
-# (紙の写真をOCR→OpenAIで推定した項目を初期値に埋め込む)
+# (O) 例: CSV出力関数 (任意, 既存)
+###################################
+import csv
+
+def export_orders_to_csv():
+    """DBの orders テーブルをCSV形式で出力する例(ローカルファイル書き込み想定)"""
+    with get_db_connection() as conn:
+        with conn.cursor() as cur:
+            cur.execute("SELECT * FROM orders ORDER BY id")
+            rows = cur.fetchall()
+            col_names = [desc[0] for desc in cur.description]
+
+    file_path = "orders_export.csv"
+    with open(file_path, mode="w", encoding="utf-8", newline="") as f:
+        writer = csv.writer(f)
+        writer.writerow(col_names)
+        for row in rows:
+            writer.writerow(row)
+    logger.info(f"CSV Export Done: {file_path}")
+
+###################################
+# ▼▼ 追加: Google Vision OCR処理
+###################################
+def google_vision_ocr(local_image_path: str) -> str:
+    """
+    Google Cloud Vision APIを用いて画像のOCRを行い、
+    抽出されたテキスト全体を文字列で返すサンプル。
+    ※ 認証キーなどは環境変数 GOOGLE_APPLICATION_CREDENTIALS を利用。
+    """
+    from google.cloud import vision
+
+    client = vision.ImageAnnotatorClient()
+    with open(local_image_path, "rb") as image_file:
+        content = image_file.read()
+    image = vision.Image(content=content)
+
+    response = client.document_text_detection(image=image)
+    if response.error.message:
+        raise Exception(f"Vision API Error: {response.error.message}")
+
+    full_text = response.full_text_annotation.text
+    return full_text
+
+###################################
+# ▼▼ 追加: OpenAIでテキスト解析
+###################################
+import openai
+
+def openai_extract_form_data(ocr_text: str) -> dict:
+    """
+    OCRテキストから注文フォーム項目を推定し、JSONを返す例。
+    ここは既存のままです。
+    """
+    openai.api_key = OPENAI_API_KEY
+
+    system_prompt = """あなたは注文用紙のOCR結果から必要な項目を抽出するアシスタントです。
+    入力として渡されるテキスト（OCR結果）を解析し、次のフォーム項目に合致する値を抽出してJSONで返してください。
+    必ず JSON のみを返し、余計な文章は一切出力しないでください。
+    キー一覧: [
+        "application_date","delivery_date","use_date","discount_option","school_name",
+        "line_account","group_name","school_address","school_tel","teacher_name",
+        "teacher_tel","teacher_email","representative","rep_tel","rep_email",
+        "design_confirm","payment_method","product_name","product_color",
+        "size_ss","size_s","size_m","size_l","size_ll","size_lll"
+    ]
+    追加で (前/後/その他) のプリントサイズ、カラー、フォントNo.,デザインサンプル等があれば推定してください。
+    """
+
+    user_prompt = f"""
+以下OCRテキストです:
+{ocr_text}
+上記に基づき、フォーム項目に合致する値をJSONのみで返してください。
+    """
+
+    response = openai.ChatCompletion.create(
+        model="gpt-3.5-turbo",
+        temperature=0.2,
+        messages=[
+            {"role": "system", "content": system_prompt},
+            {"role": "user", "content": user_prompt}
+        ]
+    )
+    content = response["choices"][0]["message"]["content"]
+    logger.info(f"OpenAI raw content: {content}")
+
+    # JSONとしてパースを試みる
+    try:
+        result = json.loads(content)
+    except json.JSONDecodeError:
+        result = {}
+
+    # 必要そうなキーが無い場合は空文字にするなど
+    return result
+
+###################################
+# ▼▼ 修正後: 注文用紙フロー用フォーム
 ###################################
 PAPER_FORM_HTML = """
 <!DOCTYPE html>
@@ -1123,8 +1303,73 @@ PAPER_FORM_HTML = """
     <p>サイズ(LL): <input type="number" name="size_ll" value="{{ data['size_ll'] or '' }}"></p>
     <p>サイズ(LLL): <input type="number" name="size_lll" value="{{ data['size_lll'] or '' }}"></p>
 
+    <h3>プリント位置: 前</h3>
+    <p>プリントサイズ(前):
+      <input type="radio" name="print_size_front" value="おまかせ (最大:横28cm x 縦35cm以内)"
+        {% if data['print_size_front'] == 'おまかせ (最大:横28cm x 縦35cm以内)' %}checked{% endif %}> おまかせ
+      <input type="radio" name="print_size_front" value="custom"
+        {% if data['print_size_front'] == 'custom' %}checked{% endif %}> ヨコcm x タテcmくらい(入力する):
+      <input type="text" name="print_size_front_custom" placeholder="例: 20cm x 15cm"
+        value="{{ data['print_size_front_custom'] or '' }}">
+    </p>
+    <p>プリントカラー(前):
+      <input type="text" name="print_color_front" placeholder="全てのカラーをご記入ください。計xx色"
+        value="{{ data['print_color_front'] or '' }}">
+    </p>
+    <p>フォントNo.(前):
+      <input type="text" name="font_no_front" placeholder="例: X-XX"
+        value="{{ data['font_no_front'] or '' }}">
+    </p>
+    <p>プリントデザインサンプル(前):
+      <input type="text" name="design_sample_front" placeholder="例: D-XXX"
+        value="{{ data['design_sample_front'] or '' }}">
+    </p>
     <p>プリントデザインイメージデータ(前): <input type="file" name="design_image_front"></p>
+
+    <h3>プリント位置: 後</h3>
+    <p>プリントサイズ(後):
+      <input type="radio" name="print_size_back" value="おまかせ (最大:横28cm x 縦35cm以内)"
+        {% if data['print_size_back'] == 'おまかせ (最大:横28cm x 縦35cm以内)' %}checked{% endif %}> おまかせ
+      <input type="radio" name="print_size_back" value="custom"
+        {% if data['print_size_back'] == 'custom' %}checked{% endif %}> ヨコcm x タテcmくらい(入力する):
+      <input type="text" name="print_size_back_custom" placeholder="例: 20cm x 15cm"
+        value="{{ data['print_size_back_custom'] or '' }}">
+    </p>
+    <p>プリントカラー(後):
+      <input type="text" name="print_color_back" placeholder="全てのカラーをご記入ください。計xx色"
+        value="{{ data['print_color_back'] or '' }}">
+    </p>
+    <p>フォントNo.(後):
+      <input type="text" name="font_no_back" placeholder="例: X-XX"
+        value="{{ data['font_no_back'] or '' }}">
+    </p>
+    <p>プリントデザインサンプル(後):
+      <input type="text" name="design_sample_back" placeholder="例: D-XXX"
+        value="{{ data['design_sample_back'] or '' }}">
+    </p>
     <p>プリントデザインイメージデータ(後): <input type="file" name="design_image_back"></p>
+
+    <h3>プリント位置: その他</h3>
+    <p>プリントサイズ(その他):
+      <input type="radio" name="print_size_other" value="おまかせ (最大:横28cm x 縦35cm以内)"
+        {% if data['print_size_other'] == 'おまかせ (最大:横28cm x 縦35cm以内)' %}checked{% endif %}> おまかせ
+      <input type="radio" name="print_size_other" value="custom"
+        {% if data['print_size_other'] == 'custom' %}checked{% endif %}> ヨコcm x タテcmくらい(入力する):
+      <input type="text" name="print_size_other_custom" placeholder="例: 20cm x 15cm"
+        value="{{ data['print_size_other_custom'] or '' }}">
+    </p>
+    <p>プリントカラー(その他):
+      <input type="text" name="print_color_other" placeholder="全てのカラーをご記入ください。計xx色"
+        value="{{ data['print_color_other'] or '' }}">
+    </p>
+    <p>フォントNo.(その他):
+      <input type="text" name="font_no_other" placeholder="例: X-XX"
+        value="{{ data['font_no_other'] or '' }}">
+    </p>
+    <p>プリントデザインサンプル(その他):
+      <input type="text" name="design_sample_other" placeholder="例: D-XXX"
+        value="{{ data['design_sample_other'] or '' }}">
+    </p>
     <p>プリントデザインイメージデータ(その他): <input type="file" name="design_image_other"></p>
 
     <p><button type="submit">送信</button></p>
@@ -1136,15 +1381,13 @@ PAPER_FORM_HTML = """
 @app.route("/paper_order_form", methods=["GET"])
 def paper_order_form():
     user_id = request.args.get("user_id", "")
-    # OCR + OpenAI で推定したデータを user_states から取得
     guessed_data = {}
     if user_id in user_states and "paper_form_data" in user_states[user_id]:
         guessed_data = user_states[user_id]["paper_form_data"]
     return render_template_string(PAPER_FORM_HTML, user_id=user_id, data=guessed_data)
 
 ###################################
-# ▼▼ 追加: 注文用紙(写真)→フォーム
-#          ユーザーが修正・送信したときの受け口
+# ▼▼ 紙の注文用フォーム送信
 ###################################
 @app.route("/paper_order_form_submit", methods=["POST"])
 def paper_order_form_submit():
@@ -1152,7 +1395,6 @@ def paper_order_form_submit():
     files = request.files
     user_id = form.get("user_id", "")
 
-    # webform_submit とほぼ同様
     application_date = none_if_empty_date(form.get("application_date"))
     delivery_date = none_if_empty_date(form.get("delivery_date"))
     use_date = none_if_empty_date(form.get("use_date"))
@@ -1181,6 +1423,27 @@ def paper_order_form_submit():
     size_l = none_if_empty_int(form.get("size_l"))
     size_ll = none_if_empty_int(form.get("size_ll"))
     size_lll = none_if_empty_int(form.get("size_lll"))
+
+    # ▼▼ 新規追加項目(前) ▼▼
+    print_size_front = none_if_empty_str(form.get("print_size_front"))
+    print_size_front_custom = none_if_empty_str(form.get("print_size_front_custom"))
+    print_color_front = none_if_empty_str(form.get("print_color_front"))
+    font_no_front = none_if_empty_str(form.get("font_no_front"))
+    design_sample_front = none_if_empty_str(form.get("design_sample_front"))
+
+    # ▼▼ 新規追加項目(後) ▼▼
+    print_size_back = none_if_empty_str(form.get("print_size_back"))
+    print_size_back_custom = none_if_empty_str(form.get("print_size_back_custom"))
+    print_color_back = none_if_empty_str(form.get("print_color_back"))
+    font_no_back = none_if_empty_str(form.get("font_no_back"))
+    design_sample_back = none_if_empty_str(form.get("design_sample_back"))
+
+    # ▼▼ 新規追加項目(その他) ▼▼
+    print_size_other = none_if_empty_str(form.get("print_size_other"))
+    print_size_other_custom = none_if_empty_str(form.get("print_size_other_custom"))
+    print_color_other = none_if_empty_str(form.get("print_color_other"))
+    font_no_other = none_if_empty_str(form.get("font_no_other"))
+    design_sample_other = none_if_empty_str(form.get("design_sample_other"))
 
     img_front = files.get("design_image_front")
     img_back = files.get("design_image_back")
@@ -1220,9 +1483,28 @@ def paper_order_form_submit():
                 size_l,
                 size_ll,
                 size_lll,
+
+                print_size_front,
+                print_size_front_custom,
+                print_color_front,
+                font_no_front,
+                design_sample_front,
                 design_image_front_url,
+
+                print_size_back,
+                print_size_back_custom,
+                print_color_back,
+                font_no_back,
+                design_sample_back,
                 design_image_back_url,
+
+                print_size_other,
+                print_size_other_custom,
+                print_color_other,
+                font_no_other,
+                design_sample_other,
                 design_image_other_url,
+
                 created_at
             ) VALUES (
                 %s, %s, %s, %s, %s,
@@ -1230,7 +1512,15 @@ def paper_order_form_submit():
                 %s, %s, %s, %s, %s,
                 %s, %s, %s, %s, %s,
                 %s, %s, %s, %s, %s,
-                %s, %s, %s, %s, NOW()
+                %s,
+
+                %s, %s, %s, %s, %s, %s,
+
+                %s, %s, %s, %s, %s, %s,
+
+                %s, %s, %s, %s, %s, %s,
+
+                NOW()
             )
             RETURNING id
             """
@@ -1261,8 +1551,26 @@ def paper_order_form_submit():
                 size_l,
                 size_ll,
                 size_lll,
+
+                print_size_front,
+                print_size_front_custom,
+                print_color_front,
+                font_no_front,
+                design_sample_front,
                 front_url,
+
+                print_size_back,
+                print_size_back_custom,
+                print_color_back,
+                font_no_back,
+                design_sample_back,
                 back_url,
+
+                print_size_other,
+                print_size_other_custom,
+                print_color_other,
+                font_no_other,
+                design_sample_other,
                 other_url
             )
             cur.execute(sql, params)
@@ -1270,7 +1578,6 @@ def paper_order_form_submit():
         conn.commit()
         logger.info(f"Inserted paper_order id={new_id}")
 
-    # Push通知
     push_text = (
         "注文用紙(写真)からの注文を受け付けました！\n"
         f"学校名: {school_name}\n"
@@ -1285,167 +1592,7 @@ def paper_order_form_submit():
     return "紙の注文フォーム送信完了。LINEに通知を送りました。"
 
 ###################################
-# (O) 例: CSV出力関数 (任意, 既存)
-###################################
-import csv
-
-def export_orders_to_csv():
-    """DBの orders テーブルをCSV形式で出力する例(ローカルファイル書き込み想定)"""
-    with get_db_connection() as conn:
-        with conn.cursor() as cur:
-            cur.execute("SELECT * FROM orders ORDER BY id")
-            rows = cur.fetchall()
-            col_names = [desc[0] for desc in cur.description]
-
-    file_path = "orders_export.csv"
-    with open(file_path, mode="w", encoding="utf-8", newline="") as f:
-        writer = csv.writer(f)
-        writer.writerow(col_names)
-        for row in rows:
-            writer.writerow(row)
-    logger.info(f"CSV Export Done: {file_path}")
-
-###################################
-# ▼▼ 追加: Google Vision OCR処理
-###################################
-def google_vision_ocr(local_image_path: str) -> str:
-    """
-    Google Cloud Vision APIを用いて画像のOCRを行い、
-    抽出されたテキスト全体を文字列で返すサンプル。
-    ※ 認証キーなどは環境変数 GOOGLE_APPLICATION_CREDENTIALS を利用。
-    """
-    from google.cloud import vision
-
-    # 環境変数 GOOGLE_APPLICATION_CREDENTIALS でサービスアカウントキーを指定済みとする
-    client = vision.ImageAnnotatorClient()
-    with open(local_image_path, "rb") as image_file:
-        content = image_file.read()
-    image = vision.Image(content=content)
-
-    response = client.document_text_detection(image=image)
-    if response.error.message:
-        raise Exception(f"Vision API Error: {response.error.message}")
-
-    full_text = response.full_text_annotation.text
-    return full_text
-
-###################################
-# ▼▼ 追加: OpenAIでテキスト解析
-###################################
-import openai
-
-def openai_extract_form_data(ocr_text: str) -> dict:
-    """
-    あなたは注文用紙のOCR結果から必要な項目を抽出するアシスタントです。
-    入力として渡されるテキスト（OCR結果）を解析し、次のフォーム項目に合致する値を抽出してJSONで返してください。
-
-    注意・必須条件：
-    - 必ず JSON のみを返し、余計な文章は一切出力しないでください。
-    - JSONのキーは以下の通りです（必ず存在させてください）:
-      [
-        "application_date", "delivery_date", "use_date", "discount_option", 
-        "school_name", "line_account", "group_name", "school_address", "school_tel", 
-        "teacher_name", "teacher_tel", "teacher_email", "representative", "rep_tel", 
-        "rep_email", "design_confirm", "payment_method", "product_name", "product_color",
-        "size_ss", "size_s", "size_m", "size_l", "size_ll", "size_lll"
-      ]
-    - 値が見つからない場合は、空文字 "" または null を記載してください。
-    - 可能な範囲で似ていそうな値を抽出してください。
-    - 日付は yyyy-mm-dd 形式に変換できそうなら変換してください。変換できない場合はそのままでもかまいません。
-
-    """
-    openai.api_key = OPENAI_API_KEY
-
-    # システムプロンプト例
-    system_prompt = """    あなたは注文用紙のOCR結果から必要な項目を抽出するアシスタントです。
-    入力として渡されるテキスト（OCR結果）を解析し、次のフォーム項目に合致する値を抽出してJSONで返してください。
-
-    注意・必須条件：
-    - 必ず JSON のみを返し、余計な文章は一切出力しないでください。
-    - JSONのキーは以下の通りです（必ず存在させてください）:
-      [
-        "application_date", "delivery_date", "use_date", "discount_option", 
-        "school_name", "line_account", "group_name", "school_address", "school_tel", 
-        "teacher_name", "teacher_tel", "teacher_email", "representative", "rep_tel", 
-        "rep_email", "design_confirm", "payment_method", "product_name", "product_color",
-        "size_ss", "size_s", "size_m", "size_l", "size_ll", "size_lll"
-      ]
-    - 値が見つからない場合は、空文字 "" または null を記載してください。
-    - 可能な範囲で似ていそうな値を抽出してください。
-    - 日付は yyyy-mm-dd 形式に変換できそうなら変換してください。変換できない場合はそのままでもかまいません。。"""
-
-    # ユーザープロンプト例（フォーム項目一覧）
-    user_prompt = f"""
-以下は注文用紙をOCRした結果です（前後の説明文も含む可能性があります）。
-テキストから、上記のフォーム項目に該当しそうな値を抽出して、必ず JSON だけを返してください。
-
-- application_date
-- delivery_date
-- use_date
-- discount_option (早割, タダ割, いっしょ割り等)
-- school_name
-- line_account
-- group_name
-- school_address
-- school_tel
-- teacher_name
-- teacher_tel
-- teacher_email
-- representative
-- rep_tel
-- rep_email
-- design_confirm (LINE代表者, メール代表者, etc.)
-- payment_method (後払い, 代金引換, etc.)
-- product_name (ドライTシャツ, フーデッドライトパーカー, etc.)
-- product_color
-- size_ss, size_s, size_m, size_l, size_ll, size_lll
---------------
-OCRテキスト:
-{ocr_text}
---------------
-"""
-    logger.info("[DEBUG] GPT SYSTEM PROMPT: " + system_prompt)
-    logger.info("[DEBUG] GPT USER PROMPT: " + user_prompt[:500])  # 長すぎる場合先頭500文字だけ
-    # ChatCompletion例 (GPT-3.5など)
-    response = openai.ChatCompletion.create(
-        model="gpt-3.5-turbo",
-        temperature=0.2,
-        messages=[
-            {"role": "system", "content": system_prompt},
-            {"role": "user", "content": user_prompt}
-        ]
-    )
-
-    print("=== OpenAI RAW RESPONSE ===")
-    print(response)  # または logger.info(response)
-
-    content = response["choices"][0]["message"]["content"]
-    print("=== OpenAI CONTENT ===")
-    print(content)
-
-    # JSONパースを試みる
-    try:
-        result = json.loads(content)
-    except json.JSONDecodeError:
-        result = {}
-
-    # 必要なキーがない場合は空文字やNoneをセット
-    keys = [
-        "application_date","delivery_date","use_date","discount_option","school_name",
-        "line_account","group_name","school_address","school_tel","teacher_name",
-        "teacher_tel","teacher_email","representative","rep_tel","rep_email",
-        "design_confirm","payment_method","product_name","product_color",
-        "size_ss","size_s","size_m","size_l","size_ll","size_lll"
-    ]
-    final_data = {}
-    for k in keys:
-        final_data[k] = result.get(k, "")
-
-    return final_data
-
-###################################
 # Flask起動 (既存)
 ###################################
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=8000, debug=True)
-
