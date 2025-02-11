@@ -736,6 +736,8 @@ def handle_postback(event):
             return
 
         user_states[user_id]["color_options"] = data
+
+        # ▼▼ ここで簡易見積結果をまとめ、DBにINSERT + 見積番号発行 ▼▼
         s = user_states[user_id]
         summary = (
             f"学校/団体名: {s['school_name']}\n"
@@ -754,18 +756,107 @@ def handle_postback(event):
         pos = s['print_position']
         color_opt = s['color_options']
         total_price = calc_total_price(product, qty, early_disc, pos, color_opt)
+        
+        # 1枚あたりの単価(ざっくり整数に)
+        if qty > 0:
+            unit_price = total_price // qty
+        else:
+            unit_price = 0
 
+        # 見積番号を発行（例: "Q" + UNIXタイム とか）
+        import time
+        quote_number = f"Q{int(time.time())}"
+
+        # DBにINSERTして保存
+        insert_estimate(
+            user_id,
+            s['school_name'],
+            s['prefecture'],
+            s['early_discount'],
+            s['budget'],
+            product,
+            qty,
+            s['print_position'],
+            color_opt,
+            total_price,
+            unit_price,
+            quote_number
+        )
+
+        # これ以上ステートを追わないので削除
         del user_states[user_id]
+
+        # ▼▼ ユーザーに送るメッセージ(一括) ▼▼
         reply_text = (
             "全項目の入力が完了しました。\n\n" + summary +
             "\n\n--- 見積計算結果 ---\n"
+            f"見積番号: {quote_number}\n"
             f"合計金額: ¥{total_price:,}\n"
-            "（概算です。詳細は別途ご相談ください）"
+            f"1枚あたりの単価: ¥{unit_price:,}\n"
+            "ご注文に進まれる場合はWEBフォームから注文\n"
+            "もしくは注文用紙から注文を選択してください。"
         )
         line_bot_api.reply_message(event.reply_token, TextSendMessage(text=reply_text))
         return
 
     line_bot_api.reply_message(event.reply_token, TextSendMessage(text=f"不明なアクション: {data}"))
+
+
+# ▼▼ 追加: estimatesテーブルにINSERTする関数 ▼▼
+def insert_estimate(
+    user_id,
+    school_name,
+    prefecture,
+    early_discount,
+    budget,
+    product,
+    quantity,
+    print_position,
+    color_options,
+    total_price,
+    unit_price,
+    quote_number
+):
+    with get_db_connection() as conn:
+        with conn.cursor() as cur:
+            sql = """
+            INSERT INTO estimates (
+                user_id,
+                school_name,
+                prefecture,
+                early_discount,
+                budget,
+                product,
+                quantity,
+                print_position,
+                color_options,
+                total_price,
+                unit_price,
+                quote_number,
+                created_at
+            ) VALUES (
+                %s, %s, %s, %s, %s,
+                %s, %s, %s, %s, %s,
+                %s, %s, NOW()
+            )
+            """
+            params = (
+                user_id,
+                school_name,
+                prefecture,
+                early_discount,
+                budget,
+                product,
+                quantity,
+                print_position,
+                color_options,
+                total_price,
+                unit_price,
+                quote_number
+            )
+            cur.execute(sql, params)
+        conn.commit()
+
 
 ###################################
 # (L) WEBフォーム (修正後HTML)
@@ -775,10 +866,7 @@ FORM_HTML = """
 <html>
 <head>
   <meta charset="UTF-8">
-  <!-- ▼▼ 追加: ビューポート設定でスマホ表示を最適化 ▼▼ -->
   <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-
-  <!-- ▼▼ 追加: 最小限のレスポンシブCSS ▼▼ -->
   <style>
     body {
       margin: 16px;
@@ -791,10 +879,9 @@ FORM_HTML = """
       font-size: 1.2em;
     }
     form {
-      max-width: 600px; /* 必要に応じて調整 */
+      max-width: 600px;
       margin: 0 auto;
     }
-    /* テキストやセレクト、ボタンなどは幅100%にして画面に収まるように */
     input[type="text"],
     input[type="number"],
     input[type="email"],
@@ -808,8 +895,6 @@ FORM_HTML = """
       padding: 8px;
       font-size: 16px;
     }
-    /* ラジオボタン・チェックボックスはインライン表示にする場合が多いですが、
-       スマホで見やすいように1行に収まらない場合は折り返しさせる */
     .radio-group,
     .checkbox-group {
       margin-bottom: 16px;
@@ -822,7 +907,6 @@ FORM_HTML = """
       display: flex;
       align-items: center;
     }
-    /* セクション見出しなど間をあける */
     h3 {
       margin-top: 24px;
       margin-bottom: 8px;
@@ -832,7 +916,6 @@ FORM_HTML = """
 </head>
 <body>
   <h1>WEBフォームから注文</h1>
-  <!-- 画像アップロードに対応するため、enctypeをmultipart/form-data に設定 -->
   <form action="/webform_submit" method="POST" enctype="multipart/form-data">
     <input type="hidden" name="user_id" value="{{ user_id }}" />
 
@@ -1104,7 +1187,7 @@ def webform_submit():
     back_url = upload_file_to_s3(img_back, S3_BUCKET_NAME, prefix="uploads/")
     other_url = upload_file_to_s3(img_other, S3_BUCKET_NAME, prefix="uploads/")
 
-    # DBに保存
+    # DBに保存 (orders)
     with get_db_connection() as conn:
         with conn.cursor() as cur:
             sql = """
@@ -1230,6 +1313,9 @@ def webform_submit():
         conn.commit()
         logger.info(f"Inserted order id={new_id}")
 
+    # 見積→注文へのコンバージョンを示すため、estimatesテーブル側の order_placed = true に更新しておく例
+    mark_estimate_as_ordered(user_id)
+
     # フォーム送信完了 → Push通知
     push_text = (
         "WEBフォームの注文を受け付けました！\n"
@@ -1272,7 +1358,6 @@ def google_vision_ocr(local_image_path: str) -> str:
     """
     Google Cloud Vision APIを用いて画像のOCRを行い、
     抽出されたテキスト全体を文字列で返すサンプル。
-    ※ 認証キーなどは環境変数 GOOGLE_APPLICATION_CREDENTIALS を利用。
     """
     from google.cloud import vision
 
@@ -1296,7 +1381,7 @@ import openai
 def openai_extract_form_data(ocr_text: str) -> dict:
     """
     OCRテキストから注文フォーム項目を推定し、JSONを返す例。
-    ここは既存のままです。
+    （デモ用のため簡易的なプロンプトのみ）
     """
     openai.api_key = OPENAI_API_KEY
 
@@ -1310,7 +1395,7 @@ def openai_extract_form_data(ocr_text: str) -> dict:
         "design_confirm","payment_method","product_name","product_color",
         "size_ss","size_s","size_m","size_l","size_ll","size_lll"
     ]
-    追加で (前/後/その他) のプリントサイズ、カラー、フォントNo.,デザインサンプル等があれば推定してください。
+    また前後のプリント位置やカラー情報などが読み取れそうであれば追加で含めてください。
     """
 
     user_prompt = f"""
@@ -1336,21 +1421,17 @@ def openai_extract_form_data(ocr_text: str) -> dict:
     except json.JSONDecodeError:
         result = {}
 
-    # 必要そうなキーが無い場合は空文字にするなど
     return result
 
 ###################################
-# ▼▼ 修正後: 注文用紙フロー用フォーム
+# ▼▼ 注文用紙フロー用フォーム
 ###################################
 PAPER_FORM_HTML = """
 <!DOCTYPE html>
 <html>
 <head>
   <meta charset="UTF-8">
-  <!-- ▼▼ 追加: ビューポート設定 ▼▼ -->
   <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-
-  <!-- ▼▼ 追加: レスポンシブCSS ▼▼ -->
   <style>
     body {
       margin: 16px;
@@ -1363,7 +1444,7 @@ PAPER_FORM_HTML = """
       font-size: 1.2em;
     }
     form {
-      max-width: 600px; /* 必要に応じて調整 */
+      max-width: 600px;
       margin: 0 auto;
     }
     input[type="text"],
@@ -1637,21 +1718,18 @@ def paper_order_form_submit():
     size_ll = none_if_empty_int(form.get("size_ll"))
     size_lll = none_if_empty_int(form.get("size_lll"))
 
-    # ▼▼ 新規追加項目(前) ▼▼
     print_size_front = none_if_empty_str(form.get("print_size_front"))
     print_size_front_custom = none_if_empty_str(form.get("print_size_front_custom"))
     print_color_front = none_if_empty_str(form.get("print_color_front"))
     font_no_front = none_if_empty_str(form.get("font_no_front"))
     design_sample_front = none_if_empty_str(form.get("design_sample_front"))
 
-    # ▼▼ 新規追加項目(後) ▼▼
     print_size_back = none_if_empty_str(form.get("print_size_back"))
     print_size_back_custom = none_if_empty_str(form.get("print_size_back_custom"))
     print_color_back = none_if_empty_str(form.get("print_color_back"))
     font_no_back = none_if_empty_str(form.get("font_no_back"))
     design_sample_back = none_if_empty_str(form.get("design_sample_back"))
 
-    # ▼▼ 新規追加項目(その他) ▼▼
     print_size_other = none_if_empty_str(form.get("print_size_other"))
     print_size_other_custom = none_if_empty_str(form.get("print_size_other_custom"))
     print_color_other = none_if_empty_str(form.get("print_color_other"))
@@ -1666,6 +1744,7 @@ def paper_order_form_submit():
     back_url = upload_file_to_s3(img_back, S3_BUCKET_NAME, prefix="uploads/")
     other_url = upload_file_to_s3(img_other, S3_BUCKET_NAME, prefix="uploads/")
 
+    # DBに保存 (orders)
     with get_db_connection() as conn:
         with conn.cursor() as cur:
             sql = """
@@ -1791,6 +1870,9 @@ def paper_order_form_submit():
         conn.commit()
         logger.info(f"Inserted paper_order id={new_id}")
 
+    # 見積→注文へのコンバージョンを示すため、estimatesテーブル側の order_placed = true に更新
+    mark_estimate_as_ordered(user_id)
+
     push_text = (
         "注文用紙(写真)からの注文を受け付けました！\n"
         f"学校名: {school_name}\n"
@@ -1803,6 +1885,75 @@ def paper_order_form_submit():
         logger.error(f"Push message failed: {e}")
 
     return "紙の注文フォーム送信完了。LINEに通知を送りました。"
+
+# ▼▼ 簡易見積→注文へのコンバージョンがあった場合に estimates.order_placed を true にする関数 ▼▼
+def mark_estimate_as_ordered(user_id):
+    """
+    同一user_idで未注文のestimateがあれば order_placed=true に更新するサンプル。
+    実際は見積番号単位で管理するなど状況次第。
+    """
+    with get_db_connection() as conn:
+        with conn.cursor() as cur:
+            sql = """
+            UPDATE estimates
+               SET order_placed = true
+             WHERE user_id = %s
+               AND order_placed = false
+            """
+            cur.execute(sql, (user_id,))
+        conn.commit()
+
+###################################
+# ▼▼ 24時間ごとにリマインドを送るデモ
+###################################
+@app.route("/send_reminders", methods=["GET"])
+def send_reminders():
+    """
+    24時間経過しても注文されていない簡易見積ユーザーにリマインドを送る。
+    2回まで送信したら打ち切り。
+    ※ 実運用ではcronなどで1日1回このエンドポイントを叩くイメージ
+    """
+    with get_db_connection() as conn:
+        with conn.cursor() as cur:
+            # 24時間前より古いestimateで、order_placed=false、reminder_count<2
+            sql = """
+            SELECT id, user_id, quote_number, total_price
+              FROM estimates
+             WHERE order_placed = false
+               AND reminder_count < 2
+               AND created_at < (NOW() - INTERVAL '24 hours')
+            """
+            cur.execute(sql)
+            rows = cur.fetchall()
+
+            for (est_id, user_id, quote_number, total_price) in rows:
+                # リマインドメッセージ送信
+                reminder_text = (
+                    f"【リマインド】\n"
+                    f"先日の簡易見積（見積番号: {quote_number}）\n"
+                    f"合計金額: ¥{total_price:,}\n"
+                    "ご注文はお済みでしょうか？\n"
+                    "ご検討中の場合は、WEBフォーム or 注文用紙からいつでもお申し込みください。"
+                )
+                try:
+                    line_bot_api.push_message(
+                        to=user_id,
+                        messages=TextSendMessage(text=reminder_text)
+                    )
+                    # reminder_countを+1
+                    cur2 = conn.cursor()
+                    cur2.execute(
+                        "UPDATE estimates SET reminder_count = reminder_count + 1 WHERE id = %s",
+                        (est_id,)
+                    )
+                    cur2.close()
+                    logger.info(f"Sent reminder to user_id={user_id}, estimate_id={est_id}")
+                except Exception as e:
+                    logger.error(f"Push reminder failed for user_id={user_id}: {e}")
+
+        conn.commit()
+
+    return "リマインド送信完了"
 
 ###################################
 # Flask起動 (既存)
