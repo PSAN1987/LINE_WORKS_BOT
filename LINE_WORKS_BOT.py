@@ -109,55 +109,8 @@ def upload_file_to_s3(file_storage, s3_bucket, prefix="uploads/"):
     url = f"https://{s3_bucket}.s3.amazonaws.com/{s3_key}"
     return url
 
-### Base64をS3にアップロードする関数 (JPEG対応) ###
-import base64
-
-def upload_base64_to_s3(base64_data, s3_bucket, prefix="uploads/"):
-    """
-    Base64文字列 (data:image/...base64,...) をデコードしてS3にアップロードし、URLを返す。
-    base64_data: dataURL形式の文字列 (例: "data:image/jpeg;base64,....")
-    s3_bucket: S3バケット名
-    prefix: S3のプレフィックス
-    戻り値: アップロード後のS3ファイルURL (失敗時は None)
-    """
-    if not base64_data.startswith("data:image/"):
-        return None
-
-    header, encoded = base64_data.split(",", 1)
-    mime_type = header.split(";")[0].split(":")[1]  # 例 "image/jpeg" 等
-
-    # MIMEタイプに応じて拡張子を決定
-    if mime_type == "image/png":
-        ext = "png"
-    elif mime_type == "image/jpeg":
-        ext = "jpg"
-    else:
-        ext = "dat"
-
-    image_data = base64.b64decode(encoded)
-
-    s3 = boto3.client(
-        's3',
-        aws_access_key_id=AWS_ACCESS_KEY_ID,
-        aws_secret_access_key=AWS_SECRET_ACCESS_KEY
-    )
-
-    unique_id = str(uuid.uuid4())
-    s3_key = prefix + unique_id + f".{ext}"
-
-    s3.put_object(
-        Bucket=s3_bucket,
-        Key=s3_key,
-        Body=image_data,
-        ContentType=mime_type,
-        ACL='public-read'
-    )
-
-    url = f"https://{s3_bucket}.s3.amazonaws.com/{s3_key}"
-    return url
-
 ###################################
-# (E) 価格表と計算ロジック
+# (E) 価格表と計算ロジック (既存)
 ###################################
 PRICE_TABLE = [
     # product,  minQty, maxQty, discountType, unitPrice, addColor, addPosition, addFullColor
@@ -371,11 +324,10 @@ PRICE_TABLE = [
     ("ジップアップライトパーカー", 100, 500, "通常", 2910, 300, 300, 550),
 ]
 
-
 def calc_total_price(
     product_name: str,
     quantity: int,
-    early_discount_str: str, 
+    early_discount_str: str,  # "14日前以上" => "早割", それ以外 => "通常"
     print_position: str,
     color_option: str
 ) -> int:
@@ -431,7 +383,7 @@ def create_mode_selection_flex():
     return FlexSendMessage(alt_text='モードを選択してください', contents=bubble)
 
 ###################################
-# (G) 簡易見積フロー 
+# (G) 簡易見積フロー (既存機能)
 ###################################
 def create_quick_estimate_intro_flex():
     bubble = BubbleContainer(
@@ -579,17 +531,18 @@ def handle_text_message(event):
         line_bot_api.reply_message(event.reply_token, flex)
         return
 
-    # ガード: 注文用紙から注文モードでまだ写真待ちの場合
+    # ▼▼ 追加: 「注文用紙から注文」で写真待ちの状態でテキストを受け取った場合のガード ▼▼
     if user_id in user_states and user_states[user_id].get("state") == "await_order_form_photo":
         line_bot_api.reply_message(
             event.reply_token,
             TextSendMessage(text="注文用紙の写真を送ってください。テキストはまだ受け付けていません。")
         )
         return
+    # ▲▲ 追加 ▲▲
 
-    # ステートマシンに応じた処理
     if user_id in user_states:
         st = user_states[user_id].get("state")
+        # 以下、既存のステートマシン処理
         if st == "await_school_name":
             user_states[user_id]["school_name"] = user_input
             user_states[user_id]["state"] = "await_prefecture"
@@ -620,14 +573,14 @@ def handle_text_message(event):
             line_bot_api.reply_message(event.reply_token, pos_flex)
             return
 
-        # 想定外の場合
+        # 想定外
         line_bot_api.reply_message(
             event.reply_token,
             TextSendMessage(text=f"現在の状態({st})でテキスト入力は想定外です。")
         )
         return
 
-    # ステート管理外の通常メッセージ
+    # どのステートでもない通常メッセージ
     line_bot_api.reply_message(
         event.reply_token,
         TextSendMessage(text=f"あなたのメッセージ: {user_input}")
@@ -635,35 +588,40 @@ def handle_text_message(event):
 
 ###################################
 # (J') LINEハンドラ: ImageMessage
+#     (注文用紙からの注文で写真をアップロードさせる機能)
 ###################################
 @handler.add(MessageEvent, message=ImageMessage)
 def handle_image_message(event):
     user_id = event.source.user_id
 
+    # 状態が "await_order_form_photo" 以外の場合はスルー
     if user_id not in user_states or user_states[user_id].get("state") != "await_order_form_photo":
         return
 
-    # 画像を取得してローカルに保存
+    # 画像取得
     message_id = event.message.id
     message_content = line_bot_api.get_message_content(message_id)
+    
+    # 一時的にローカル保存する
     temp_filename = f"temp_{user_id}_{message_id}.jpg"
     with open(temp_filename, "wb") as fd:
         for chunk in message_content.iter_content():
             fd.write(chunk)
 
-    # Google Vision でOCR
+    # ローカルに保存した画像を使って Google Vision API OCR 処理
     ocr_text = google_vision_ocr(temp_filename)
     logger.info(f"[DEBUG] OCR result: {ocr_text}")
 
-    # OpenAIでフォーム項目を推定
+    # OpenAI API を呼び出して、webフォーム各項目に対応しそうな値を推定
     form_estimated_data = openai_extract_form_data(ocr_text)
     logger.info(f"[DEBUG] form_estimated_data from OpenAI: {form_estimated_data}")
 
-    # 推定データをユーザーステートに保存
+    # 推定結果をユーザーごとの状態に保持しておき、フォーム表示の際に使う
     user_states[user_id]["paper_form_data"] = form_estimated_data
+    # ステート終了
     del user_states[user_id]["state"]
 
-    # 紙注文フォームURLを案内
+    # ユーザーにフォームURLを案内し、修正・送信を促す
     paper_form_url = f"https://{request.host}/paper_order_form?user_id={user_id}"
     line_bot_api.reply_message(
         event.reply_token,
@@ -779,7 +737,7 @@ def handle_postback(event):
 
         user_states[user_id]["color_options"] = data
 
-        # 簡易見積結果まとめ + DB保存
+        # ▼▼ ここで簡易見積結果をまとめ、DBにINSERT + 見積番号発行 ▼▼
         s = user_states[user_id]
         summary = (
             f"学校/団体名: {s['school_name']}\n"
@@ -798,15 +756,18 @@ def handle_postback(event):
         pos = s['print_position']
         color_opt = s['color_options']
         total_price = calc_total_price(product, qty, early_disc, pos, color_opt)
-
+        
+        # 1枚あたりの単価(ざっくり整数に)
         if qty > 0:
             unit_price = total_price // qty
         else:
             unit_price = 0
 
+        # 見積番号を発行（例: "Q" + UNIXタイム とか）
         import time
         quote_number = f"Q{int(time.time())}"
 
+        # DBにINSERTして保存
         insert_estimate(
             user_id,
             s['school_name'],
@@ -822,8 +783,10 @@ def handle_postback(event):
             quote_number
         )
 
+        # これ以上ステートを追わないので削除
         del user_states[user_id]
 
+        # ▼▼ ユーザーに送るメッセージ(一括) ▼▼
         reply_text = (
             "全項目の入力が完了しました。\n\n" + summary +
             "\n\n--- 見積計算結果 ---\n"
@@ -838,6 +801,8 @@ def handle_postback(event):
 
     line_bot_api.reply_message(event.reply_token, TextSendMessage(text=f"不明なアクション: {data}"))
 
+
+# ▼▼ 追加: estimatesテーブルにINSERTする関数 ▼▼
 def insert_estimate(
     user_id,
     school_name,
@@ -892,8 +857,9 @@ def insert_estimate(
             cur.execute(sql, params)
         conn.commit()
 
+
 ###################################
-# (L) WEBフォーム (修正版HTML)
+# (L) WEBフォーム (修正後HTML)
 ###################################
 FORM_HTML = """
 <!DOCTYPE html>
@@ -946,21 +912,6 @@ FORM_HTML = """
       margin-bottom: 8px;
       font-size: 1.1em;
     }
-    .canvas-container {
-      position: relative;
-      margin-bottom: 16px;
-      text-align: center;
-    }
-    canvas {
-      border: 1px solid #ccc;
-      max-width: 100%;
-      touch-action: none; /* スマホでのスクロール干渉を防ぐ */
-    }
-    .buttons-inline {
-      display: flex;
-      gap: 8px;
-      margin-bottom: 16px;
-    }
   </style>
 </head>
 <body>
@@ -968,7 +919,6 @@ FORM_HTML = """
   <form action="/webform_submit" method="POST" enctype="multipart/form-data">
     <input type="hidden" name="user_id" value="{{ user_id }}" />
 
-    <!-- 既存のテキスト・select入力を省略せずフル掲載 -->
     <label>申込日:</label>
     <input type="date" name="application_date">
 
@@ -1072,339 +1022,71 @@ FORM_HTML = """
     <label>サイズ(LLL):</label>
     <input type="number" name="size_lll">
 
-    <!-- ==== 前面 ==== -->
     <h3>プリント位置: 前</h3>
     <div class="radio-group">
       <label>
         <input type="radio" name="print_size_front" value="おまかせ (最大:横28cm x 縦35cm以内)" checked>
-        おまかせ
+        おまかせ (最大:横28cm x 縦35cm以内)
       </label>
       <label>
         <input type="radio" name="print_size_front" value="custom">
-        ヨコ×タテ(入力):
+        ヨコcm x タテcmくらい(入力する):
       </label>
     </div>
-    <input type="text" name="print_size_front_custom">
+    <input type="text" name="print_size_front_custom" placeholder="例: 20cm x 15cm">
     <label>プリントカラー(前):</label>
-    <input type="text" name="print_color_front">
+    <input type="text" name="print_color_front" placeholder="全てのカラーをご記入ください。計xx色">
     <label>フォントNo.(前):</label>
-    <input type="text" name="font_no_front">
+    <input type="text" name="font_no_front" placeholder="例: X-XX">
     <label>プリントデザインサンプル(前):</label>
-    <input type="text" name="design_sample_front">
+    <input type="text" name="design_sample_front" placeholder="例: D-XXX">
+    <label>プリントデザインイメージデータ(前):</label>
+    <input type="file" name="design_image_front">
 
-    <label>プリント位置データ(前):</label>
-    <div class="canvas-container">
-      <canvas id="canvas_front" width="300" height="400"></canvas>
-    </div>
-    <input type="hidden" name="print_position_data_front" id="print_position_data_front">
-    <div class="buttons-inline">
-      <button type="button" onclick="saveCanvasFront()">前デザイン保存</button>
-      <button type="button" onclick="resetCanvasFront()">前リセット</button>
-    </div>
-
-    <!-- ==== 後面 ==== -->
     <h3>プリント位置: 後</h3>
     <div class="radio-group">
       <label>
         <input type="radio" name="print_size_back" value="おまかせ (最大:横28cm x 縦35cm以内)" checked>
-        おまかせ
+        おまかせ (最大:横28cm x 縦35cm以内)
       </label>
       <label>
         <input type="radio" name="print_size_back" value="custom">
-        ヨコ×タテ(入力):
+        ヨコcm x タテcmくらい(入力する):
       </label>
     </div>
-    <input type="text" name="print_size_back_custom">
+    <input type="text" name="print_size_back_custom" placeholder="例: 20cm x 15cm">
     <label>プリントカラー(後):</label>
-    <input type="text" name="print_color_back">
+    <input type="text" name="print_color_back" placeholder="全てのカラーをご記入ください。計xx色">
     <label>フォントNo.(後):</label>
-    <input type="text" name="font_no_back">
+    <input type="text" name="font_no_back" placeholder="例: X-XX">
     <label>プリントデザインサンプル(後):</label>
-    <input type="text" name="design_sample_back">
+    <input type="text" name="design_sample_back" placeholder="例: D-XXX">
+    <label>プリントデザインイメージデータ(後):</label>
+    <input type="file" name="design_image_back">
 
-    <label>プリント位置データ(後):</label>
-    <div class="canvas-container">
-      <canvas id="canvas_back" width="300" height="400"></canvas>
-    </div>
-    <input type="hidden" name="print_position_data_back" id="print_position_data_back">
-    <div class="buttons-inline">
-      <button type="button" onclick="saveCanvasBack()">後デザイン保存</button>
-      <button type="button" onclick="resetCanvasBack()">後リセット</button>
-    </div>
-
-    <!-- ==== その他 ==== -->
     <h3>プリント位置: その他</h3>
     <div class="radio-group">
       <label>
         <input type="radio" name="print_size_other" value="おまかせ (最大:横28cm x 縦35cm以内)" checked>
-        おまかせ
+        おまかせ (最大:横28cm x 縦35cm以内)
       </label>
       <label>
         <input type="radio" name="print_size_other" value="custom">
-        ヨコ×タテ(入力):
+        ヨコcm x タテcmくらい(入力する):
       </label>
     </div>
-    <input type="text" name="print_size_other_custom">
+    <input type="text" name="print_size_other_custom" placeholder="例: 20cm x 15cm">
     <label>プリントカラー(その他):</label>
-    <input type="text" name="print_color_other">
+    <input type="text" name="print_color_other" placeholder="全てのカラーをご記入ください。計xx色">
     <label>フォントNo.(その他):</label>
-    <input type="text" name="font_no_other">
+    <input type="text" name="font_no_other" placeholder="例: X-XX">
     <label>プリントデザインサンプル(その他):</label>
-    <input type="text" name="design_sample_other">
-
-    <label>プリント位置データ(その他):</label>
-    <div class="canvas-container">
-      <canvas id="canvas_other" width="300" height="400"></canvas>
-    </div>
-    <input type="hidden" name="print_position_data_other" id="print_position_data_other">
-    <div class="buttons-inline">
-      <button type="button" onclick="saveCanvasOther()">その他デザイン保存</button>
-      <button type="button" onclick="resetCanvasOther()">その他リセット</button>
-    </div>
+    <input type="text" name="design_sample_other" placeholder="例: D-XXX">
+    <label>プリントデザインイメージデータ(その他):</label>
+    <input type="file" name="design_image_other">
 
     <button type="submit">送信</button>
   </form>
-
-  <script>
-    /* 前面キャンバス (赤線) */
-    let drawingFront = false;
-    let lastXFront = 0, lastYFront = 0;
-
-    function initCanvasFront() {
-      const canvas = document.getElementById("canvas_front");
-      const ctx = canvas.getContext("2d");
-      const img = new Image();
-      // デフォルト: Tシャツ(前)
-      img.src = "https://via.placeholder.com/300x400.jpg?text=T-Shirt(Front)";
-      img.onload = () => {
-        ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
-      };
-
-      // マウス
-      canvas.addEventListener("mousedown", e => {
-        drawingFront = true;
-        [lastXFront, lastYFront] = [e.offsetX, e.offsetY];
-      });
-      canvas.addEventListener("mousemove", e => {
-        if (!drawingFront) return;
-        ctx.beginPath();
-        ctx.moveTo(lastXFront, lastYFront);
-        ctx.lineTo(e.offsetX, e.offsetY);
-        ctx.strokeStyle = "red";
-        ctx.lineWidth = 2;
-        ctx.stroke();
-        [lastXFront, lastYFront] = [e.offsetX, e.offsetY];
-      });
-      canvas.addEventListener("mouseup", () => (drawingFront = false));
-      canvas.addEventListener("mouseout", () => (drawingFront = false));
-
-      // タッチ
-      canvas.addEventListener("touchstart", e => {
-        e.preventDefault();
-        drawingFront = true;
-        const touch = e.touches[0];
-        const rect = canvas.getBoundingClientRect();
-        [lastXFront, lastYFront] = [touch.clientX - rect.left, touch.clientY - rect.top];
-      }, {passive: false});
-      canvas.addEventListener("touchmove", e => {
-        if (!drawingFront) return;
-        e.preventDefault();
-        const touch = e.touches[0];
-        const rect = canvas.getBoundingClientRect();
-        const x = touch.clientX - rect.left;
-        const y = touch.clientY - rect.top;
-        ctx.beginPath();
-        ctx.moveTo(lastXFront, lastYFront);
-        ctx.lineTo(x, y);
-        ctx.strokeStyle = "red";
-        ctx.lineWidth = 2;
-        ctx.stroke();
-        [lastXFront, lastYFront] = [x, y];
-      }, {passive: false});
-      canvas.addEventListener("touchend", () => {
-        drawingFront = false;
-      });
-    }
-
-    function saveCanvasFront() {
-      const canvas = document.getElementById("canvas_front");
-      // JPEG (品質0.8)
-      const dataURL = canvas.toDataURL("image/jpeg", 0.8);
-      document.getElementById("print_position_data_front").value = dataURL;
-      alert("前面のキャンバス内容を保存しました。");
-    }
-
-    function resetCanvasFront() {
-      const canvas = document.getElementById("canvas_front");
-      const ctx = canvas.getContext("2d");
-      const img = new Image();
-      img.src = "https://via.placeholder.com/300x400.jpg?text=T-Shirt(Front)";
-      img.onload = () => {
-        ctx.clearRect(0, 0, canvas.width, canvas.height); // まず消去
-        ctx.drawImage(img, 0, 0, canvas.width, canvas.height); // 初期Tシャツ画像を再描画
-      };
-    }
-
-    /* 後面キャンバス (青線) */
-    let drawingBack = false;
-    let lastXBack = 0, lastYBack = 0;
-
-    function initCanvasBack() {
-      const canvas = document.getElementById("canvas_back");
-      const ctx = canvas.getContext("2d");
-      const img = new Image();
-      // デフォルト: Tシャツ(Back)
-      img.src = "https://via.placeholder.com/300x400.jpg?text=T-Shirt(Back)";
-      img.onload = () => {
-        ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
-      };
-
-      canvas.addEventListener("mousedown", e => {
-        drawingBack = true;
-        [lastXBack, lastYBack] = [e.offsetX, e.offsetY];
-      });
-      canvas.addEventListener("mousemove", e => {
-        if (!drawingBack) return;
-        ctx.beginPath();
-        ctx.moveTo(lastXBack, lastYBack);
-        ctx.lineTo(e.offsetX, e.offsetY);
-        ctx.strokeStyle = "blue";
-        ctx.lineWidth = 2;
-        ctx.stroke();
-        [lastXBack, lastYBack] = [e.offsetX, e.offsetY];
-      });
-      canvas.addEventListener("mouseup", () => (drawingBack = false));
-      canvas.addEventListener("mouseout", () => (drawingBack = false));
-
-      // タッチ
-      canvas.addEventListener("touchstart", e => {
-        e.preventDefault();
-        drawingBack = true;
-        const touch = e.touches[0];
-        const rect = canvas.getBoundingClientRect();
-        [lastXBack, lastYBack] = [touch.clientX - rect.left, touch.clientY - rect.top];
-      }, {passive: false});
-      canvas.addEventListener("touchmove", e => {
-        if (!drawingBack) return;
-        e.preventDefault();
-        const touch = e.touches[0];
-        const rect = canvas.getBoundingClientRect();
-        const x = touch.clientX - rect.left;
-        const y = touch.clientY - rect.top;
-        ctx.beginPath();
-        ctx.moveTo(lastXBack, lastYBack);
-        ctx.lineTo(x, y);
-        ctx.strokeStyle = "blue";
-        ctx.lineWidth = 2;
-        ctx.stroke();
-        [lastXBack, lastYBack] = [x, y];
-      }, {passive: false});
-      canvas.addEventListener("touchend", () => {
-        drawingBack = false;
-      });
-    }
-
-    function saveCanvasBack() {
-      const canvas = document.getElementById("canvas_back");
-      const dataURL = canvas.toDataURL("image/jpeg", 0.8);
-      document.getElementById("print_position_data_back").value = dataURL;
-      alert("後面のキャンバス内容を保存しました。");
-    }
-
-    function resetCanvasBack() {
-      const canvas = document.getElementById("canvas_back");
-      const ctx = canvas.getContext("2d");
-      const img = new Image();
-      img.src = "https://via.placeholder.com/300x400.jpg?text=T-Shirt(Back)";
-      img.onload = () => {
-        ctx.clearRect(0, 0, canvas.width, canvas.height);
-        ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
-      };
-    }
-
-    /* その他キャンバス (緑線) */
-    let drawingOther = false;
-    let lastXOther = 0, lastYOther = 0;
-
-    function initCanvasOther() {
-      const canvas = document.getElementById("canvas_other");
-      const ctx = canvas.getContext("2d");
-      const img = new Image();
-      // デフォルト: Tシャツ(Other)
-      img.src = "https://via.placeholder.com/300x400.jpg?text=T-Shirt(Other)";
-      img.onload = () => {
-        ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
-      };
-
-      canvas.addEventListener("mousedown", e => {
-        drawingOther = true;
-        [lastXOther, lastYOther] = [e.offsetX, e.offsetY];
-      });
-      canvas.addEventListener("mousemove", e => {
-        if (!drawingOther) return;
-        ctx.beginPath();
-        ctx.moveTo(lastXOther, lastYOther);
-        ctx.lineTo(e.offsetX, e.offsetY);
-        ctx.strokeStyle = "green";
-        ctx.lineWidth = 2;
-        ctx.stroke();
-        [lastXOther, lastYOther] = [e.offsetX, e.offsetY];
-      });
-      canvas.addEventListener("mouseup", () => (drawingOther = false));
-      canvas.addEventListener("mouseout", () => (drawingOther = false));
-
-      // タッチ
-      canvas.addEventListener("touchstart", e => {
-        e.preventDefault();
-        drawingOther = true;
-        const touch = e.touches[0];
-        const rect = canvas.getBoundingClientRect();
-        [lastXOther, lastYOther] = [touch.clientX - rect.left, touch.clientY - rect.top];
-      }, {passive: false});
-      canvas.addEventListener("touchmove", e => {
-        if (!drawingOther) return;
-        e.preventDefault();
-        const touch = e.touches[0];
-        const rect = canvas.getBoundingClientRect();
-        const x = touch.clientX - rect.left;
-        const y = touch.clientY - rect.top;
-        ctx.beginPath();
-        ctx.moveTo(lastXOther, lastYOther);
-        ctx.lineTo(x, y);
-        ctx.strokeStyle = "green";
-        ctx.lineWidth = 2;
-        ctx.stroke();
-        [lastXOther, lastYOther] = [x, y];
-      }, {passive: false});
-      canvas.addEventListener("touchend", () => {
-        drawingOther = false;
-      });
-    }
-
-    function saveCanvasOther() {
-      const canvas = document.getElementById("canvas_other");
-      const dataURL = canvas.toDataURL("image/jpeg", 0.8);
-      document.getElementById("print_position_data_other").value = dataURL;
-      alert("その他のキャンバス内容を保存しました。");
-    }
-
-    function resetCanvasOther() {
-      const canvas = document.getElementById("canvas_other");
-      const ctx = canvas.getContext("2d");
-      const img = new Image();
-      img.src = "https://via.placeholder.com/300x400.jpg?text=T-Shirt(Other)";
-      img.onload = () => {
-        ctx.clearRect(0, 0, canvas.width, canvas.height);
-        ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
-      };
-    }
-
-    window.addEventListener('load', function(){
-      initCanvasFront();
-      initCanvasBack();
-      initCanvasOther();
-    });
-  </script>
 </body>
 </html>
 """
@@ -1415,19 +1097,22 @@ def show_webform():
     return render_template_string(FORM_HTML, user_id=user_id)
 
 ###################################
-# (M) 空文字→None 変換
+# (M) 空文字を None にする関数
 ###################################
 def none_if_empty_str(val: str):
+    """文字列入力が空なら None, そうでなければ文字列を返す"""
     if not val:
         return None
     return val
 
 def none_if_empty_date(val: str):
+    """日付カラム用: 空なら None、そうでなければそのまま文字列として渡す"""
     if not val:
         return None
     return val
 
 def none_if_empty_int(val: str):
+    """数値カラム用: 空なら None, それ以外はintに変換"""
     if not val:
         return None
     return int(val)
@@ -1441,7 +1126,7 @@ def webform_submit():
     files = request.files
     user_id = form.get("user_id", "")
 
-    # テキスト項目
+    # ---------- テキスト項目を取得 (空文字はNone化) ----------
     application_date = none_if_empty_date(form.get("application_date"))
     delivery_date = none_if_empty_date(form.get("delivery_date"))
     use_date = none_if_empty_date(form.get("use_date"))
@@ -1471,63 +1156,38 @@ def webform_submit():
     size_ll = none_if_empty_int(form.get("size_ll"))
     size_lll = none_if_empty_int(form.get("size_lll"))
 
+    # ▼▼ 新規追加項目(前) ▼▼
     print_size_front = none_if_empty_str(form.get("print_size_front"))
     print_size_front_custom = none_if_empty_str(form.get("print_size_front_custom"))
     print_color_front = none_if_empty_str(form.get("print_color_front"))
     font_no_front = none_if_empty_str(form.get("font_no_front"))
     design_sample_front = none_if_empty_str(form.get("design_sample_front"))
 
+    # ▼▼ 新規追加項目(後) ▼▼
     print_size_back = none_if_empty_str(form.get("print_size_back"))
     print_size_back_custom = none_if_empty_str(form.get("print_size_back_custom"))
     print_color_back = none_if_empty_str(form.get("print_color_back"))
     font_no_back = none_if_empty_str(form.get("font_no_back"))
     design_sample_back = none_if_empty_str(form.get("design_sample_back"))
 
+    # ▼▼ 新規追加項目(その他) ▼▼
     print_size_other = none_if_empty_str(form.get("print_size_other"))
     print_size_other_custom = none_if_empty_str(form.get("print_size_other_custom"))
     print_color_other = none_if_empty_str(form.get("print_color_other"))
     font_no_other = none_if_empty_str(form.get("font_no_other"))
     design_sample_other = none_if_empty_str(form.get("design_sample_other"))
 
-    # Base64受け取り (前/後/その他)
-    img_front_base64 = none_if_empty_str(form.get("print_position_data_front"))
-    img_back_base64 = none_if_empty_str(form.get("print_position_data_back"))
-    img_other_base64 = none_if_empty_str(form.get("print_position_data_other"))
+    # ---------- 画像ファイル ----------
+    img_front = files.get("design_image_front")
+    img_back = files.get("design_image_back")
+    img_other = files.get("design_image_other")
 
-    # もしファイルアップロードがあるなら(例: 従来機能)
-    img_front_file = files.get("design_image_front")
-    img_back_file = files.get("design_image_back")
-    img_other_file = files.get("design_image_other")
+    # S3にアップロード → URL取得
+    front_url = upload_file_to_s3(img_front, S3_BUCKET_NAME, prefix="uploads/")
+    back_url = upload_file_to_s3(img_back, S3_BUCKET_NAME, prefix="uploads/")
+    other_url = upload_file_to_s3(img_other, S3_BUCKET_NAME, prefix="uploads/")
 
-    front_url = None
-    back_url = None
-    other_url = None
-
-    # 前面 Base64 → S3
-    if img_front_base64:
-        front_url = upload_base64_to_s3(img_front_base64, S3_BUCKET_NAME, prefix="uploads/")
-    # 後面 Base64 → S3
-    if img_back_base64:
-        back_url = upload_base64_to_s3(img_back_base64, S3_BUCKET_NAME, prefix="uploads/")
-    # その他 Base64 → S3
-    if img_other_base64:
-        other_url = upload_base64_to_s3(img_other_base64, S3_BUCKET_NAME, prefix="uploads/")
-
-    # fallback: 従来のファイルアップロード
-    if not front_url:
-        fufront = upload_file_to_s3(img_front_file, S3_BUCKET_NAME, prefix="uploads/")
-        if fufront:
-            front_url = fufront
-    if not back_url:
-        fuback = upload_file_to_s3(img_back_file, S3_BUCKET_NAME, prefix="uploads/")
-        if fuback:
-            back_url = fuback
-    if not other_url:
-        fuother = upload_file_to_s3(img_other_file, S3_BUCKET_NAME, prefix="uploads/")
-        if fuother:
-            other_url = fuother
-
-    # DBへINSERT
+    # DBに保存 (orders)
     with get_db_connection() as conn:
         with conn.cursor() as cur:
             sql = """
@@ -1653,10 +1313,10 @@ def webform_submit():
         conn.commit()
         logger.info(f"Inserted order id={new_id}")
 
-    # 見積→注文のDBフラグなど
+    # 見積→注文へのコンバージョンを示すため、estimatesテーブル側の order_placed = true に更新しておく例
     mark_estimate_as_ordered(user_id)
 
-    # LINE通知
+    # フォーム送信完了 → Push通知
     push_text = (
         "WEBフォームの注文を受け付けました！\n"
         f"学校名: {school_name}\n"
@@ -1671,11 +1331,12 @@ def webform_submit():
     return "フォーム送信完了。LINEに通知を送りました。"
 
 ###################################
-# (O) CSV出力 (任意)
+# (O) 例: CSV出力関数 (任意, 既存)
 ###################################
 import csv
 
 def export_orders_to_csv():
+    """DBの orders テーブルをCSV形式で出力する例(ローカルファイル書き込み想定)"""
     with get_db_connection() as conn:
         with conn.cursor() as cur:
             cur.execute("SELECT * FROM orders ORDER BY id")
@@ -1691,9 +1352,13 @@ def export_orders_to_csv():
     logger.info(f"CSV Export Done: {file_path}")
 
 ###################################
-# Google Vision OCR処理
+# ▼▼ 追加: Google Vision OCR処理
 ###################################
 def google_vision_ocr(local_image_path: str) -> str:
+    """
+    Google Cloud Vision APIを用いて画像のOCRを行い、
+    抽出されたテキスト全体を文字列で返すサンプル。
+    """
     from google.cloud import vision
 
     client = vision.ImageAnnotatorClient()
@@ -1709,15 +1374,19 @@ def google_vision_ocr(local_image_path: str) -> str:
     return full_text
 
 ###################################
-# OpenAIでテキスト解析
+# ▼▼ 追加: OpenAIでテキスト解析
 ###################################
 import openai
 
 def openai_extract_form_data(ocr_text: str) -> dict:
+    """
+    OCRテキストから注文フォーム項目を推定し、JSONを返す例。
+    （デモ用のため簡易的なプロンプトのみ）
+    """
     openai.api_key = OPENAI_API_KEY
 
     system_prompt = """あなたは注文用紙のOCR結果から必要な項目を抽出するアシスタントです。
-    入力として渡されるテキスト（OCR結果）を解析し、次のフォーム項目に合致する値をJSONで返してください。
+    入力として渡されるテキスト（OCR結果）を解析し、次のフォーム項目に合致する値を抽出してJSONで返してください。
     必ず JSON のみを返し、余計な文章は一切出力しないでください。
     キー一覧: [
         "application_date","delivery_date","use_date","discount_option","school_name",
@@ -1746,6 +1415,7 @@ def openai_extract_form_data(ocr_text: str) -> dict:
     content = response["choices"][0]["message"]["content"]
     logger.info(f"OpenAI raw content: {content}")
 
+    # JSONとしてパースを試みる
     try:
         result = json.loads(content)
     except json.JSONDecodeError:
@@ -1754,7 +1424,7 @@ def openai_extract_form_data(ocr_text: str) -> dict:
     return result
 
 ###################################
-# 紙の注文用フォーム
+# ▼▼ 注文用紙フロー用フォーム
 ###################################
 PAPER_FORM_HTML = """
 <!DOCTYPE html>
@@ -1805,21 +1475,6 @@ PAPER_FORM_HTML = """
       margin-bottom: 8px;
       font-size: 1.1em;
     }
-    .canvas-container {
-      position: relative;
-      margin-bottom: 16px;
-      text-align: center;
-    }
-    canvas {
-      border: 1px solid #ccc;
-      max-width: 100%;
-      touch-action: none;
-    }
-    .buttons-inline {
-      display: flex;
-      gap: 8px;
-      margin-bottom: 16px;
-    }
   </style>
 </head>
 <body>
@@ -1827,8 +1482,6 @@ PAPER_FORM_HTML = """
   <form action="/paper_order_form_submit" method="POST" enctype="multipart/form-data">
     <input type="hidden" name="user_id" value="{{ user_id }}" />
 
-    <!-- 既存の紙注文フォームも同様に、前/後/その他のキャンバスを追加 -->
-    <!-- 省略せずフル実装 (webformとほぼ同じ内容) -->
     <label>申込日:</label>
     <input type="date" name="application_date" value="{{ data['application_date'] or '' }}">
 
@@ -1838,45 +1491,183 @@ PAPER_FORM_HTML = """
     <label>使用日:</label>
     <input type="date" name="use_date" value="{{ data['use_date'] or '' }}">
 
-    <!-- ...中略: webform と同様の入力項目... -->
+    <label>利用する学割特典:</label>
+    <select name="discount_option">
+      <option value="早割" {% if data['discount_option'] == '早割' %}selected{% endif %}>早割</option>
+      <option value="タダ割" {% if data['discount_option'] == 'タダ割' %}selected{% endif %}>タダ割</option>
+      <option value="いっしょ割り" {% if data['discount_option'] == 'いっしょ割り' %}selected{% endif %}>いっしょ割り</option>
+    </select>
+
+    <label>学校名:</label>
+    <input type="text" name="school_name" value="{{ data['school_name'] or '' }}">
+
+    <label>LINEアカウント名:</label>
+    <input type="text" name="line_account" value="{{ data['line_account'] or '' }}">
+
+    <label>団体名:</label>
+    <input type="text" name="group_name" value="{{ data['group_name'] or '' }}">
+
+    <label>学校住所:</label>
+    <input type="text" name="school_address" value="{{ data['school_address'] or '' }}">
+
+    <label>学校TEL:</label>
+    <input type="text" name="school_tel" value="{{ data['school_tel'] or '' }}">
+
+    <label>担任名:</label>
+    <input type="text" name="teacher_name" value="{{ data['teacher_name'] or '' }}">
+
+    <label>担任携帯:</label>
+    <input type="text" name="teacher_tel" value="{{ data['teacher_tel'] or '' }}">
+
+    <label>担任メール:</label>
+    <input type="email" name="teacher_email" value="{{ data['teacher_email'] or '' }}">
+
+    <label>代表者:</label>
+    <input type="text" name="representative" value="{{ data['representative'] or '' }}">
+
+    <label>代表者TEL:</label>
+    <input type="text" name="rep_tel" value="{{ data['rep_tel'] or '' }}">
+
+    <label>代表者メール:</label>
+    <input type="email" name="rep_email" value="{{ data['rep_email'] or '' }}">
+
+    <label>デザイン確認方法:</label>
+    <select name="design_confirm">
+      <option value="LINE代表者" {% if data['design_confirm'] == 'LINE代表者' %}selected{% endif %}>LINE代表者</option>
+      <option value="LINEご担任(保護者)" {% if data['design_confirm'] == 'LINEご担任(保護者)' %}selected{% endif %}>LINEご担任(保護者)</option>
+      <option value="メール代表者" {% if data['design_confirm'] == 'メール代表者' %}selected{% endif %}>メール代表者</option>
+      <option value="メールご担任(保護者)" {% if data['design_confirm'] == 'メールご担任(保護者)' %}selected{% endif %}>メールご担任(保護者)</option>
+    </select>
+
+    <label>お支払い方法:</label>
+    <select name="payment_method">
+      <option value="代金引換(ヤマト運輸/現金のみ)" {% if data['payment_method'] == '代金引換(ヤマト運輸/現金のみ)' %}selected{% endif %}>代金引換(ヤマト運輸/現金のみ)</option>
+      <option value="後払い(コンビニ/郵便振替)" {% if data['payment_method'] == '後払い(コンビニ/郵便振替)' %}selected{% endif %}>後払い(コンビニ/郵便振替)</option>
+      <option value="後払い(銀行振込)" {% if data['payment_method'] == '後払い(銀行振込)' %}selected{% endif %}>後払い(銀行振込)</option>
+      <option value="先払い(銀行振込)" {% if data['payment_method'] == '先払い(銀行振込)' %}selected{% endif %}>先払い(銀行振込)</option>
+    </select>
+
+    <label>商品名:</label>
+    <select name="product_name">
+      <option value="ドライTシャツ" {% if data['product_name'] == 'ドライTシャツ' %}selected{% endif %}>ドライTシャツ</option>
+      <option value="ヘビーウェイトTシャツ" {% if data['product_name'] == 'ヘビーウェイトTシャツ' %}selected{% endif %}>ヘビーウェイトTシャツ</option>
+      <option value="ドライポロシャツ" {% if data['product_name'] == 'ドライポロシャツ' %}selected{% endif %}>ドライポロシャツ</option>
+      <option value="ドライメッシュビブス" {% if data['product_name'] == 'ドライメッシュビブス' %}selected{% endif %}>ドライメッシュビブス</option>
+      <option value="ドライベースボールシャツ" {% if data['product_name'] == 'ドライベースボールシャツ' %}selected{% endif %}>ドライベースボールシャツ</option>
+      <option value="ドライロングスリープTシャツ" {% if data['product_name'] == 'ドライロングスリープTシャツ' %}selected{% endif %}>ドライロングスリープTシャツ</option>
+      <option value="ドライハーフパンツ" {% if data['product_name'] == 'ドライハーフパンツ' %}selected{% endif %}>ドライハーフパンツ</option>
+      <option value="ヘビーウェイトロングスリープTシャツ" {% if data['product_name'] == 'ヘビーウェイトロングスリープTシャツ' %}selected{% endif %}>ヘビーウェイトロングスリープTシャツ</option>
+      <option value="クルーネックライトトレーナー" {% if data['product_name'] == 'クルーネックライトトレーナー' %}selected{% endif %}>クルーネックライトトレーナー</option>
+      <option value="フーデッドライトパーカー" {% if data['product_name'] == 'フーデッドライトパーカー' %}selected{% endif %}>フーデッドライトパーカー</option>
+      <option value="スタンダードトレーナー" {% if data['product_name'] == 'スタンダードトレーナー' %}selected{% endif %}>スタンダードトレーナー</option>
+      <option value="スタンダードWフードパーカー" {% if data['product_name'] == 'スタンダードWフードパーカー' %}selected{% endif %}>スタンダードWフードパーカー</option>
+      <option value="ジップアップライトパーカー" {% if data['product_name'] == 'ジップアップライトパーカー' %}selected{% endif %}>ジップアップライトパーカー</option>
+    </select>
+
+    <label>商品カラー:</label>
+    <input type="text" name="product_color" value="{{ data['product_color'] or '' }}">
+
+    <label>サイズ(SS):</label>
+    <input type="number" name="size_ss" value="{{ data['size_ss'] or '' }}">
+
+    <label>サイズ(S):</label>
+    <input type="number" name="size_s" value="{{ data['size_s'] or '' }}">
+
+    <label>サイズ(M):</label>
+    <input type="number" name="size_m" value="{{ data['size_m'] or '' }}">
+
+    <label>サイズ(L):</label>
+    <input type="number" name="size_l" value="{{ data['size_l'] or '' }}">
+
+    <label>サイズ(LL):</label>
+    <input type="number" name="size_ll" value="{{ data['size_ll'] or '' }}">
+
+    <label>サイズ(LLL):</label>
+    <input type="number" name="size_lll" value="{{ data['size_lll'] or '' }}">
 
     <h3>プリント位置: 前</h3>
-    <div class="canvas-container">
-      <canvas id="canvas_front" width="300" height="400"></canvas>
+    <div class="radio-group">
+      <label>
+        <input type="radio" name="print_size_front" value="おまかせ (最大:横28cm x 縦35cm以内)"
+          {% if data['print_size_front'] == 'おまかせ (最大:横28cm x 縦35cm以内)' %}checked{% endif %}>
+        おまかせ (最大:横28cm x 縦35cm以内)
+      </label>
+      <label>
+        <input type="radio" name="print_size_front" value="custom"
+          {% if data['print_size_front'] == 'custom' %}checked{% endif %}>
+        ヨコcm x タテcmくらい(入力する):
+      </label>
     </div>
-    <input type="hidden" name="print_position_data_front" id="print_position_data_front">
-    <div class="buttons-inline">
-      <button type="button" onclick="saveCanvasFront()">前デザイン保存</button>
-      <button type="button" onclick="resetCanvasFront()">前リセット</button>
-    </div>
+    <input type="text" name="print_size_front_custom" placeholder="例: 20cm x 15cm"
+      value="{{ data['print_size_front_custom'] or '' }}">
+    <label>プリントカラー(前):</label>
+    <input type="text" name="print_color_front" placeholder="全てのカラーをご記入ください。計xx色"
+      value="{{ data['print_color_front'] or '' }}">
+    <label>フォントNo.(前):</label>
+    <input type="text" name="font_no_front" placeholder="例: X-XX"
+      value="{{ data['font_no_front'] or '' }}">
+    <label>プリントデザインサンプル(前):</label>
+    <input type="text" name="design_sample_front" placeholder="例: D-XXX"
+      value="{{ data['design_sample_front'] or '' }}">
+    <label>プリントデザインイメージデータ(前):</label>
+    <input type="file" name="design_image_front">
 
     <h3>プリント位置: 後</h3>
-    <div class="canvas-container">
-      <canvas id="canvas_back" width="300" height="400"></canvas>
+    <div class="radio-group">
+      <label>
+        <input type="radio" name="print_size_back" value="おまかせ (最大:横28cm x 縦35cm以内)"
+          {% if data['print_size_back'] == 'おまかせ (最大:横28cm x 縦35cm以内)' %}checked{% endif %}>
+        おまかせ (最大:横28cm x 縦35cm以内)
+      </label>
+      <label>
+        <input type="radio" name="print_size_back" value="custom"
+          {% if data['print_size_back'] == 'custom' %}checked{% endif %}>
+        ヨコcm x タテcmくらい(入力する):
+      </label>
     </div>
-    <input type="hidden" name="print_position_data_back" id="print_position_data_back">
-    <div class="buttons-inline">
-      <button type="button" onclick="saveCanvasBack()">後デザイン保存</button>
-      <button type="button" onclick="resetCanvasBack()">後リセット</button>
-    </div>
+    <input type="text" name="print_size_back_custom" placeholder="例: 20cm x 15cm"
+      value="{{ data['print_size_back_custom'] or '' }}">
+    <label>プリントカラー(後):</label>
+    <input type="text" name="print_color_back" placeholder="全てのカラーをご記入ください。計xx色"
+      value="{{ data['print_color_back'] or '' }}">
+    <label>フォントNo.(後):</label>
+    <input type="text" name="font_no_back" placeholder="例: X-XX"
+      value="{{ data['font_no_back'] or '' }}">
+    <label>プリントデザインサンプル(後):</label>
+    <input type="text" name="design_sample_back" placeholder="例: D-XXX"
+      value="{{ data['design_sample_back'] or '' }}">
+    <label>プリントデザインイメージデータ(後):</label>
+    <input type="file" name="design_image_back">
 
     <h3>プリント位置: その他</h3>
-    <div class="canvas-container">
-      <canvas id="canvas_other" width="300" height="400"></canvas>
+    <div class="radio-group">
+      <label>
+        <input type="radio" name="print_size_other" value="おまかせ (最大:横28cm x 縦35cm以内)"
+          {% if data['print_size_other'] == 'おまかせ (最大:横28cm x 縦35cm以内)' %}checked{% endif %}>
+        おまかせ (最大:横28cm x 縦35cm以内)
+      </label>
+      <label>
+        <input type="radio" name="print_size_other" value="custom"
+          {% if data['print_size_other'] == 'custom' %}checked{% endif %}>
+        ヨコcm x タテcmくらい(入力する):
+      </label>
     </div>
-    <input type="hidden" name="print_position_data_other" id="print_position_data_other">
-    <div class="buttons-inline">
-      <button type="button" onclick="saveCanvasOther()">その他デザイン保存</button>
-      <button type="button" onclick="resetCanvasOther()">その他リセット</button>
-    </div>
+    <input type="text" name="print_size_other_custom" placeholder="例: 20cm x 15cm"
+      value="{{ data['print_size_other_custom'] or '' }}">
+    <label>プリントカラー(その他):</label>
+    <input type="text" name="print_color_other" placeholder="全てのカラーをご記入ください。計xx色"
+      value="{{ data['print_color_other'] or '' }}">
+    <label>フォントNo.(その他):</label>
+    <input type="text" name="font_no_other" placeholder="例: X-XX"
+      value="{{ data['font_no_other'] or '' }}">
+    <label>プリントデザインサンプル(その他):</label>
+    <input type="text" name="design_sample_other" placeholder="例: D-XXX"
+      value="{{ data['design_sample_other'] or '' }}">
+    <label>プリントデザインイメージデータ(その他):</label>
+    <input type="file" name="design_image_other">
 
     <button type="submit">送信</button>
   </form>
-
-  <script>
-    /* webform と同じく、initCanvasFront/Back/Other, saveCanvas..., resetCanvas...をコピペ */
-    /* 例: 線色を変えるなら個別に設定 */
-  </script>
 </body>
 </html>
 """
@@ -1890,7 +1681,7 @@ def paper_order_form():
     return render_template_string(PAPER_FORM_HTML, user_id=user_id, data=guessed_data)
 
 ###################################
-# 紙注文フォーム送信
+# ▼▼ 紙の注文用フォーム送信
 ###################################
 @app.route("/paper_order_form_submit", methods=["POST"])
 def paper_order_form_submit():
@@ -1898,7 +1689,6 @@ def paper_order_form_submit():
     files = request.files
     user_id = form.get("user_id", "")
 
-    # webform_submit と同様の処理で Base64 → S3アップロード & DB保存
     application_date = none_if_empty_date(form.get("application_date"))
     delivery_date = none_if_empty_date(form.get("delivery_date"))
     use_date = none_if_empty_date(form.get("use_date"))
@@ -1946,43 +1736,15 @@ def paper_order_form_submit():
     font_no_other = none_if_empty_str(form.get("font_no_other"))
     design_sample_other = none_if_empty_str(form.get("design_sample_other"))
 
-    img_front_base64 = none_if_empty_str(form.get("print_position_data_front"))
-    img_back_base64 = none_if_empty_str(form.get("print_position_data_back"))
-    img_other_base64 = none_if_empty_str(form.get("print_position_data_other"))
+    img_front = files.get("design_image_front")
+    img_back = files.get("design_image_back")
+    img_other = files.get("design_image_other")
 
-    img_front_file = files.get("design_image_front")
-    img_back_file = files.get("design_image_back")
-    img_other_file = files.get("design_image_other")
+    front_url = upload_file_to_s3(img_front, S3_BUCKET_NAME, prefix="uploads/")
+    back_url = upload_file_to_s3(img_back, S3_BUCKET_NAME, prefix="uploads/")
+    other_url = upload_file_to_s3(img_other, S3_BUCKET_NAME, prefix="uploads/")
 
-    front_url = None
-    back_url = None
-    other_url = None
-
-    # 前面 Base64
-    if img_front_base64:
-        front_url = upload_base64_to_s3(img_front_base64, S3_BUCKET_NAME, prefix="uploads/")
-    # 後面 Base64
-    if img_back_base64:
-        back_url = upload_base64_to_s3(img_back_base64, S3_BUCKET_NAME, prefix="uploads/")
-    # その他 Base64
-    if img_other_base64:
-        other_url = upload_base64_to_s3(img_other_base64, S3_BUCKET_NAME, prefix="uploads/")
-
-    # fallback: ファイルアップロード
-    if not front_url:
-        fu_front = upload_file_to_s3(img_front_file, S3_BUCKET_NAME, prefix="uploads/")
-        if fu_front:
-            front_url = fu_front
-    if not back_url:
-        fu_back = upload_file_to_s3(img_back_file, S3_BUCKET_NAME, prefix="uploads/")
-        if fu_back:
-            back_url = fu_back
-    if not other_url:
-        fu_other = upload_file_to_s3(img_other_file, S3_BUCKET_NAME, prefix="uploads/")
-        if fu_other:
-            other_url = fu_other
-
-    # DBへINSERT
+    # DBに保存 (orders)
     with get_db_connection() as conn:
         with conn.cursor() as cur:
             sql = """
@@ -2108,6 +1870,7 @@ def paper_order_form_submit():
         conn.commit()
         logger.info(f"Inserted paper_order id={new_id}")
 
+    # 見積→注文へのコンバージョンを示すため、estimatesテーブル側の order_placed = true に更新
     mark_estimate_as_ordered(user_id)
 
     push_text = (
@@ -2123,7 +1886,12 @@ def paper_order_form_submit():
 
     return "紙の注文フォーム送信完了。LINEに通知を送りました。"
 
+# ▼▼ 簡易見積→注文へのコンバージョンがあった場合に estimates.order_placed を true にする関数 ▼▼
 def mark_estimate_as_ordered(user_id):
+    """
+    同一user_idで未注文のestimateがあれば order_placed=true に更新するサンプル。
+    実際は見積番号単位で管理するなど状況次第。
+    """
     with get_db_connection() as conn:
         with conn.cursor() as cur:
             sql = """
@@ -2136,12 +1904,18 @@ def mark_estimate_as_ordered(user_id):
         conn.commit()
 
 ###################################
-# ▼▼ 24時間ごとにリマインドを送る
+# ▼▼ 24時間ごとにリマインドを送るデモ
 ###################################
 @app.route("/send_reminders", methods=["GET"])
 def send_reminders():
+    """
+    24時間経過しても注文されていない簡易見積ユーザーにリマインドを送る。
+    2回まで送信したら打ち切り。
+    ※ 実運用ではcronなどで1日1回このエンドポイントを叩くイメージ
+    """
     with get_db_connection() as conn:
         with conn.cursor() as cur:
+            # 24時間前より古いestimateで、order_placed=false、reminder_count<2
             sql = """
             SELECT id, user_id, quote_number, total_price
               FROM estimates
@@ -2152,7 +1926,8 @@ def send_reminders():
             cur.execute(sql)
             rows = cur.fetchall()
 
-            for (est_id, uid, quote_number, total_price) in rows:
+            for (est_id, user_id, quote_number, total_price) in rows:
+                # リマインドメッセージ送信
                 reminder_text = (
                     f"【リマインド】\n"
                     f"先日の簡易見積（見積番号: {quote_number}）\n"
@@ -2161,23 +1936,27 @@ def send_reminders():
                     "ご検討中の場合は、WEBフォーム or 注文用紙からいつでもお申し込みください。"
                 )
                 try:
-                    line_bot_api.push_message(to=uid, messages=TextSendMessage(text=reminder_text))
+                    line_bot_api.push_message(
+                        to=user_id,
+                        messages=TextSendMessage(text=reminder_text)
+                    )
+                    # reminder_countを+1
                     cur2 = conn.cursor()
                     cur2.execute(
                         "UPDATE estimates SET reminder_count = reminder_count + 1 WHERE id = %s",
                         (est_id,)
                     )
                     cur2.close()
-                    logger.info(f"Sent reminder to user_id={uid}, estimate_id={est_id}")
+                    logger.info(f"Sent reminder to user_id={user_id}, estimate_id={est_id}")
                 except Exception as e:
-                    logger.error(f"Push reminder failed for user_id={uid}: {e}")
+                    logger.error(f"Push reminder failed for user_id={user_id}: {e}")
 
         conn.commit()
 
     return "リマインド送信完了"
 
 ###################################
-# Flask起動
+# Flask起動 (既存)
 ###################################
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=8000, debug=True)
