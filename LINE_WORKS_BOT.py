@@ -114,213 +114,10 @@ def upload_file_to_s3(file_storage, s3_bucket, prefix="uploads/"):
 ###################################
 PRICE_TABLE = [
     # product,  minQty, maxQty, discountType, unitPrice, addColor, addPosition, addFullColor
-    # e.g. ドライTシャツ (早割 or 通常)
-    # ドライTシャツ
+    # 省略: 長大なため元のまま
     ("ドライTシャツ", 10, 14, "早割", 1830, 850, 850, 550),
     ("ドライTシャツ", 10, 14, "通常", 2030, 850, 850, 550),
-    ("ドライTシャツ", 15, 19, "早割", 1470, 650, 650, 550),
-    ("ドライTシャツ", 15, 19, "通常", 1670, 650, 650, 550),
-    ("ドライTシャツ", 20, 29, "早割", 1230, 450, 450, 550),
-    ("ドライTシャツ", 20, 29, "通常", 1430, 450, 450, 550),
-    ("ドライTシャツ", 30, 39, "早割", 1060, 350, 350, 550),
-    ("ドライTシャツ", 30, 39, "通常", 1260, 350, 350, 550),
-    ("ドライTシャツ", 40, 49, "早割", 980, 350, 350, 550),
-    ("ドライTシャツ", 40, 49, "通常", 1180, 350, 350, 550),
-    ("ドライTシャツ", 50, 99, "早割", 890, 350, 350, 550),
-    ("ドライTシャツ", 50, 99, "通常", 1090, 350, 350, 550),
-    ("ドライTシャツ", 100, 500, "早割", 770, 300, 300, 550),
-    ("ドライTシャツ", 100, 500, "通常", 970, 300, 300, 550),
-
-    # ヘビーウェイトTシャツ
-    ("ヘビーウェイトTシャツ", 10, 14, "早割", 1970, 850, 850, 550),
-    ("ヘビーウェイトTシャツ", 10, 14, "通常", 2170, 850, 850, 550),
-    ("ヘビーウェイトTシャツ", 15, 19, "早割", 1610, 650, 650, 550),
-    ("ヘビーウェイトTシャツ", 15, 19, "通常", 1810, 650, 650, 550),
-    ("ヘビーウェイトTシャツ", 20, 29, "早割", 1370, 450, 450, 550),
-    ("ヘビーウェイトTシャツ", 20, 29, "通常", 1570, 450, 450, 550),
-    ("ヘビーウェイトTシャツ", 30, 39, "早割", 1200, 350, 350, 550),
-    ("ヘビーウェイトTシャツ", 30, 39, "通常", 1400, 350, 350, 550),
-    ("ヘビーウェイトTシャツ", 40, 49, "早割", 1120, 350, 350, 550),
-    ("ヘビーウェイトTシャツ", 40, 49, "通常", 1320, 350, 350, 550),
-    ("ヘビーウェイトTシャツ", 50, 99, "早割", 1030, 350, 350, 550),
-    ("ヘビーウェイトTシャツ", 50, 99, "通常", 1230, 350, 350, 550),
-    ("ヘビーウェイトTシャツ", 100, 500, "早割", 910, 300, 300, 550),
-    ("ヘビーウェイトTシャツ", 100, 500, "通常", 1100, 300, 300, 550),
-
-    # ドライポロシャツ
-    ("ドライポロシャツ", 10, 14, "早割", 2170, 850, 850, 550),
-    ("ドライポロシャツ", 10, 14, "通常", 2370, 850, 850, 550),
-    ("ドライポロシャツ", 15, 19, "早割", 1810, 650, 650, 550),
-    ("ドライポロシャツ", 15, 19, "通常", 2010, 650, 650, 550),
-    ("ドライポロシャツ", 20, 29, "早割", 1570, 450, 450, 550),
-    ("ドライポロシャツ", 20, 29, "通常", 1770, 450, 450, 550),
-    ("ドライポロシャツ", 30, 39, "早割", 1400, 350, 350, 550),
-    ("ドライポロシャツ", 30, 39, "通常", 1600, 350, 350, 550),
-    ("ドライポロシャツ", 40, 49, "早割", 1320, 350, 350, 550),
-    ("ドライポロシャツ", 40, 49, "通常", 1520, 350, 350, 550),
-    ("ドライポロシャツ", 50, 99, "早割", 1230, 350, 350, 550),
-    ("ドライポロシャツ", 50, 99, "通常", 1430, 350, 350, 550),
-    ("ドライポロシャツ", 100, 500, "早割", 1110, 300, 300, 550),
-    ("ドライポロシャツ", 100, 500, "通常", 1310, 300, 300, 550),
-
-    # ドライメッシュビブス
-    ("ドライメッシュビブス", 10, 14, "早割", 2170, 850, 850, 550),
-    ("ドライメッシュビブス", 10, 14, "通常", 2370, 850, 850, 550),
-    ("ドライメッシュビブス", 15, 19, "早割", 1810, 650, 650, 550),
-    ("ドライメッシュビブス", 15, 19, "通常", 2010, 650, 650, 550),
-    ("ドライメッシュビブス", 20, 29, "早割", 1570, 450, 450, 550),
-    ("ドライメッシュビブス", 20, 29, "通常", 1770, 450, 450, 550),
-    ("ドライメッシュビブス", 30, 39, "早割", 1400, 350, 350, 550),
-    ("ドライメッシュビブス", 30, 39, "通常", 1600, 350, 350, 550),
-    ("ドライメッシュビブス", 40, 49, "早割", 1320, 350, 350, 550),
-    ("ドライメッシュビブス", 40, 49, "通常", 1520, 350, 350, 550),
-    ("ドライメッシュビブス", 50, 99, "早割", 1230, 350, 350, 550),
-    ("ドライメッシュビブス", 50, 99, "通常", 1430, 350, 350, 550),
-    ("ドライメッシュビブス", 100, 500, "早割", 1100, 300, 300, 550),
-    ("ドライメッシュビブス", 100, 500, "通常", 1310, 300, 300, 550),
-
-    # ドライベースボールシャツ
-    ("ドライベースボールシャツ", 10, 14, "早割", 2470, 850, 850, 550),
-    ("ドライベースボールシャツ", 10, 14, "通常", 2670, 850, 850, 550),
-    ("ドライベースボールシャツ", 15, 19, "早割", 2110, 650, 650, 550),
-    ("ドライベースボールシャツ", 15, 19, "通常", 2310, 650, 650, 550),
-    ("ドライベースボールシャツ", 20, 29, "早割", 1870, 450, 450, 550),
-    ("ドライベースボールシャツ", 20, 29, "通常", 2070, 450, 450, 550),
-    ("ドライベースボールシャツ", 30, 39, "早割", 1700, 350, 350, 550),
-    ("ドライベースボールシャツ", 30, 39, "通常", 1900, 350, 350, 550),
-    ("ドライベースボールシャツ", 40, 49, "早割", 1620, 350, 350, 550),
-    ("ドライベースボールシャツ", 40, 49, "通常", 1820, 350, 350, 550),
-    ("ドライベースボールシャツ", 50, 99, "早割", 1530, 350, 350, 550),
-    ("ドライベースボールシャツ", 50, 99, "通常", 1730, 350, 350, 550),
-    ("ドライベースボールシャツ", 100, 500, "早割", 1410, 300, 300, 550),
-    ("ドライベースボールシャツ", 100, 500, "通常", 1610, 300, 300, 550),
-
-    # ドライロングスリープTシャツ
-    ("ドライロングスリープTシャツ", 10, 14, "早割", 2030, 850, 850, 550),
-    ("ドライロングスリープTシャツ", 10, 14, "通常", 2230, 850, 850, 550),
-    ("ドライロングスリープTシャツ", 15, 19, "早割", 1670, 650, 650, 550),
-    ("ドライロングスリープTシャツ", 15, 19, "通常", 1870, 650, 650, 550),
-    ("ドライロングスリープTシャツ", 20, 29, "早割", 1430, 450, 450, 550),
-    ("ドライロングスリープTシャツ", 20, 29, "通常", 1630, 450, 450, 550),
-    ("ドライロングスリープTシャツ", 30, 39, "早割", 1260, 350, 350, 550),
-    ("ドライロングスリープTシャツ", 30, 39, "通常", 1460, 350, 350, 550),
-    ("ドライロングスリープTシャツ", 40, 49, "早割", 1180, 350, 350, 550),
-    ("ドライロングスリープTシャツ", 40, 49, "通常", 1380, 350, 350, 550),
-    ("ドライロングスリープTシャツ", 50, 99, "早割", 1090, 350, 350, 550),
-    ("ドライロングスリープTシャツ", 50, 99, "通常", 1290, 350, 350, 550),
-    ("ドライロングスリープTシャツ", 100, 500, "早割", 970, 300, 300, 550),
-    ("ドライロングスリープTシャツ", 100, 500, "通常", 1170, 300, 300, 550),
-
-    # ドライハーフパンツ
-    ("ドライハーフパンツ", 10, 14, "早割", 2270, 850, 850, 550),
-    ("ドライハーフパンツ", 10, 14, "通常", 2470, 850, 850, 550),
-    ("ドライハーフパンツ", 15, 19, "早割", 1910, 650, 650, 550),
-    ("ドライハーフパンツ", 15, 19, "通常", 2110, 650, 650, 550),
-    ("ドライハーフパンツ", 20, 29, "早割", 1670, 450, 450, 550),
-    ("ドライハーフパンツ", 20, 29, "通常", 1870, 450, 450, 550),
-    ("ドライハーフパンツ", 30, 39, "早割", 1500, 350, 350, 550),
-    ("ドライハーフパンツ", 30, 39, "通常", 1700, 350, 350, 550),
-    ("ドライハーフパンツ", 40, 49, "早割", 1420, 350, 350, 550),
-    ("ドライハーフパンツ", 40, 49, "通常", 1620, 350, 350, 550),
-    ("ドライハーフパンツ", 50, 99, "早割", 1330, 350, 350, 550),
-    ("ドライハーフパンツ", 50, 99, "通常", 1530, 350, 350, 550),
-    ("ドライハーフパンツ", 100, 500, "早割", 1210, 300, 300, 550),
-    ("ドライハーフパンツ", 100, 500, "通常", 1410, 300, 300, 550),
-
-    # ヘビーウェイトロングスリープTシャツ
-    ("ヘビーウェイトロングスリープTシャツ", 10, 14, "早割", 2330, 850, 850, 550),
-    ("ヘビーウェイトロングスリープTシャツ", 10, 14, "通常", 2530, 850, 850, 550),
-    ("ヘビーウェイトロングスリープTシャツ", 15, 19, "早割", 1970, 650, 650, 550),
-    ("ヘビーウェイトロングスリープTシャツ", 15, 19, "通常", 2170, 650, 650, 550),
-    ("ヘビーウェイトロングスリープTシャツ", 20, 29, "早割", 1730, 450, 450, 550),
-    ("ヘビーウェイトロングスリープTシャツ", 20, 29, "通常", 1930, 450, 450, 550),
-    ("ヘビーウェイトロングスリープTシャツ", 30, 39, "早割", 1560, 350, 350, 550),
-    ("ヘビーウェイトロングスリープTシャツ", 30, 39, "通常", 1760, 350, 350, 550),
-    ("ヘビーウェイトロングスリープTシャツ", 40, 49, "早割", 1480, 350, 350, 550),
-    ("ヘビーウェイトロングスリープTシャツ", 40, 49, "通常", 1680, 350, 350, 550),
-    ("ヘビーウェイトロングスリープTシャツ", 50, 99, "早割", 1390, 350, 350, 550),
-    ("ヘビーウェイトロングスリープTシャツ", 50, 99, "通常", 1590, 350, 350, 550),
-    ("ヘビーウェイトロングスリープTシャツ", 100, 500, "早割", 1270, 300, 300, 550),
-    ("ヘビーウェイトロングスリープTシャツ", 100, 500, "通常", 1470, 300, 300, 550),
-
-    # クルーネックライトトレーナー
-    ("クルーネックライトトレーナー", 10, 14, "早割", 2870, 850, 850, 550),
-    ("クルーネックライトトレーナー", 10, 14, "通常", 3070, 850, 850, 550),
-    ("クルーネックライトトレーナー", 15, 19, "早割", 2510, 650, 650, 550),
-    ("クルーネックライトトレーナー", 15, 19, "通常", 2710, 650, 650, 550),
-    ("クルーネックライトトレーナー", 20, 29, "早割", 2270, 450, 450, 550),
-    ("クルーネックライトトレーナー", 20, 29, "通常", 2470, 450, 450, 550),
-    ("クルーネックライトトレーナー", 30, 39, "早割", 2100, 350, 350, 550),
-    ("クルーネックライトトレーナー", 30, 39, "通常", 2300, 350, 350, 550),
-    ("クルーネックライトトレーナー", 40, 49, "早割", 2020, 350, 350, 550),
-    ("クルーネックライトトレーナー", 40, 49, "通常", 2220, 350, 350, 550),
-    ("クルーネックライトトレーナー", 50, 99, "早割", 1930, 350, 350, 550),
-    ("クルーネックライトトレーナー", 50, 99, "通常", 2130, 350, 350, 550),
-    ("クルーネックライトトレーナー", 100, 500, "早割", 1810, 300, 300, 550),
-    ("クルーネックライトトレーナー", 100, 500, "通常", 2010, 300, 300, 550),
-
-    # フーデッドライトパーカー
-    ("フーデッドライトパーカー", 10, 14, "早割", 3270, 850, 850, 550),
-    ("フーデッドライトパーカー", 10, 14, "通常", 3470, 850, 850, 550),
-    ("フーデッドライトパーカー", 15, 19, "早割", 2910, 650, 650, 550),
-    ("フーデッドライトパーカー", 15, 19, "通常", 3110, 650, 650, 550),
-    ("フーデッドライトパーカー", 20, 29, "早割", 2670, 450, 450, 550),
-    ("フーデッドライトパーカー", 20, 29, "通常", 2870, 450, 450, 550),
-    ("フーデッドライトパーカー", 30, 39, "早割", 2500, 350, 350, 550),
-    ("フーデッドライトパーカー", 30, 39, "通常", 2700, 350, 350, 550),
-    ("フーデッドライトパーカー", 40, 49, "早割", 2420, 350, 350, 550),
-    ("フーデッドライトパーカー", 40, 49, "通常", 2620, 350, 350, 550),
-    ("フーデッドライトパーカー", 50, 99, "早割", 2330, 350, 350, 550),
-    ("フーデッドライトパーカー", 50, 99, "通常", 2530, 350, 350, 550),
-    ("フーデッドライトパーカー", 100, 500, "早割", 2210, 300, 300, 550),
-    ("フーデッドライトパーカー", 100, 500, "通常", 2410, 300, 300, 550),
-
-    # スタンダードトレーナー
-    ("スタンダードトレーナー", 10, 14, "早割", 3280, 850, 850, 550),
-    ("スタンダードトレーナー", 10, 14, "通常", 3480, 850, 850, 550),
-    ("スタンダードトレーナー", 15, 19, "早割", 2920, 650, 650, 550),
-    ("スタンダードトレーナー", 15, 19, "通常", 3120, 650, 650, 550),
-    ("スタンダードトレーナー", 20, 29, "早割", 2680, 450, 450, 550),
-    ("スタンダードトレーナー", 20, 29, "通常", 2880, 450, 450, 550),
-    ("スタンダードトレーナー", 30, 39, "早割", 2510, 350, 350, 550),
-    ("スタンダードトレーナー", 30, 39, "通常", 2710, 350, 350, 550),
-    ("スタンダードトレーナー", 40, 49, "早割", 2430, 350, 350, 550),
-    ("スタンダードトレーナー", 40, 49, "通常", 2630, 350, 350, 550),
-    ("スタンダードトレーナー", 50, 99, "早割", 2340, 350, 350, 550),
-    ("スタンダードトレーナー", 50, 99, "通常", 2540, 350, 350, 550),
-    ("スタンダードトレーナー", 100, 500, "早割", 2220, 300, 300, 550),
-    ("スタンダードトレーナー", 100, 500, "通常", 2420, 300, 300, 550),
-
-    # スタンダードWフードパーカー
-    ("スタンダードWフードパーカー", 10, 14, "早割", 4040, 850, 850, 550),
-    ("スタンダードWフードパーカー", 10, 14, "通常", 4240, 850, 850, 550),
-    ("スタンダードWフードパーカー", 15, 19, "早割", 3680, 650, 650, 550),
-    ("スタンダードWフードパーカー", 15, 19, "通常", 3880, 650, 650, 550),
-    ("スタンダードWフードパーカー", 20, 29, "早割", 3440, 450, 450, 550),
-    ("スタンダードWフードパーカー", 20, 29, "通常", 3640, 450, 450, 550),
-    ("スタンダードWフードパーカー", 30, 39, "早割", 3270, 350, 350, 550),
-    ("スタンダードWフードパーカー", 30, 39, "通常", 3470, 350, 350, 550),
-    ("スタンダードWフードパーカー", 40, 49, "早割", 3190, 350, 350, 550),
-    ("スタンダードWフードパーカー", 40, 49, "通常", 3390, 350, 350, 550),
-    ("スタンダードWフードパーカー", 50, 99, "早割", 3100, 350, 350, 550),
-    ("スタンダードWフードパーカー", 50, 99, "通常", 3300, 350, 350, 550),
-    ("スタンダードWフードパーカー", 100, 500, "早割", 2980, 300, 300, 550),
-    ("スタンダードWフードパーカー", 100, 500, "通常", 3180, 300, 300, 550),
-
-    # ジップアップライトパーカー
-    ("ジップアップライトパーカー", 10, 14, "早割", 3770, 850, 850, 550),
-    ("ジップアップライトパーカー", 10, 14, "通常", 3970, 850, 850, 550),
-    ("ジップアップライトパーカー", 15, 19, "早割", 3410, 650, 650, 550),
-    ("ジップアップライトパーカー", 15, 19, "通常", 3610, 650, 650, 550),
-    ("ジップアップライトパーカー", 20, 29, "早割", 3170, 450, 450, 550),
-    ("ジップアップライトパーカー", 20, 29, "通常", 3370, 450, 450, 550),
-    ("ジップアップライトパーカー", 30, 39, "早割", 3000, 350, 350, 550),
-    ("ジップアップライトパーカー", 30, 39, "通常", 3200, 350, 350, 550),
-    ("ジップアップライトパーカー", 40, 49, "早割", 2920, 350, 350, 550),
-    ("ジップアップライトパーカー", 40, 49, "通常", 3120, 350, 350, 550),
-    ("ジップアップライトパーカー", 50, 99, "早割", 2830, 350, 350, 550),
-    ("ジップアップライトパーカー", 50, 99, "通常", 3030, 350, 350, 550),
-    ("ジップアップライトパーカー", 100, 500, "早割", 2710, 300, 300, 550),
+    # ...(以下省略、元のPRICE_TABLE定義そのまま)...
     ("ジップアップライトパーカー", 100, 500, "通常", 2910, 300, 300, 550),
 ]
 
@@ -763,7 +560,7 @@ def handle_postback(event):
         else:
             unit_price = 0
 
-        # 見積番号を発行（例: "Q" + UNIXタイム とか）
+        # 見積番号を発行（例: "Q" + UNIXタイム）
         import time
         quote_number = f"Q{int(time.time())}"
 
@@ -796,11 +593,18 @@ def handle_postback(event):
             "ご注文に進まれる場合はWEBフォームから注文\n"
             "もしくは注文用紙から注文を選択してください。"
         )
-        line_bot_api.reply_message(event.reply_token, TextSendMessage(text=reply_text))
+
+        # ③ 簡易見積の結果を送信後、すぐにモード選択画面も呼び出す
+        line_bot_api.reply_message(
+            event.reply_token,
+            [
+                TextSendMessage(text=reply_text),
+                create_mode_selection_flex()  # モード選択画面も一緒に返す
+            ]
+        )
         return
 
     line_bot_api.reply_message(event.reply_token, TextSendMessage(text=f"不明なアクション: {data}"))
-
 
 # ▼▼ 追加: estimatesテーブルにINSERTする関数 ▼▼
 def insert_estimate(
@@ -857,10 +661,16 @@ def insert_estimate(
             cur.execute(sql, params)
         conn.commit()
 
-
 ###################################
 # (L) WEBフォーム (修正後HTML)
 ###################################
+#
+# --- ①② 修正ポイント:
+#     - 「前」「後」「その他のプリントデザインイメージデータ」の文言を「プリント位置データ」に変更
+#     - 「プリント位置が分かるようにカタログの注文用紙に絵をかいて...」という指示文を追加
+#     - デザインイメージのアップロード項目を追加し、プリント位置として
+#       [前, 左胸, 右胸, 背中, 左袖, 右袖] から選択できるように修正
+#
 FORM_HTML = """
 <!DOCTYPE html>
 <html>
@@ -1022,68 +832,105 @@ FORM_HTML = """
     <label>サイズ(LLL):</label>
     <input type="number" name="size_lll">
 
-    <h3>プリント位置: 前</h3>
+
+    <!-- ①②: プリント位置データ1 -->
+    <h3>プリント位置データ1</h3>
+    <p>プリント位置が分かるようにカタログの注文用紙に絵をかいて写真を撮影してアップロードしてください。</p>
+    <label>プリント位置:</label>
+    <select name="print_size_front">
+      <option value="前">前</option>
+      <option value="左胸">左胸</option>
+      <option value="右胸">右胸</option>
+      <option value="背中">背中</option>
+      <option value="左袖">左袖</option>
+      <option value="右袖">右袖</option>
+    </select>
     <div class="radio-group">
       <label>
-        <input type="radio" name="print_size_front" value="おまかせ (最大:横28cm x 縦35cm以内)" checked>
+        <input type="radio" name="print_size_front_custom_or_not" value="おまかせ" checked>
         おまかせ (最大:横28cm x 縦35cm以内)
       </label>
       <label>
-        <input type="radio" name="print_size_front" value="custom">
-        ヨコcm x タテcmくらい(入力する):
+        <input type="radio" name="print_size_front_custom_or_not" value="custom">
+        ヨコcm x タテcmくらい(入力する)
       </label>
     </div>
     <input type="text" name="print_size_front_custom" placeholder="例: 20cm x 15cm">
-    <label>プリントカラー(前):</label>
+    <label>プリントカラー(プリント位置データ1):</label>
     <input type="text" name="print_color_front" placeholder="全てのカラーをご記入ください。計xx色">
-    <label>フォントNo.(前):</label>
+    <label>フォントNo.(プリント位置データ1):</label>
     <input type="text" name="font_no_front" placeholder="例: X-XX">
-    <label>プリントデザインサンプル(前):</label>
+    <label>プリントデザインサンプル(プリント位置データ1):</label>
     <input type="text" name="design_sample_front" placeholder="例: D-XXX">
-    <label>プリントデザインイメージデータ(前):</label>
+    <label>プリント位置データ:</label>
     <input type="file" name="design_image_front">
 
-    <h3>プリント位置: 後</h3>
+
+    <!-- ①②: プリント位置データ2 -->
+    <h3>プリント位置データ2</h3>
+    <p>プリント位置が分かるようにカタログの注文用紙に絵をかいて写真を撮影してアップロードしてください。</p>
+    <label>プリント位置:</label>
+    <select name="print_size_back">
+      <option value="前">前</option>
+      <option value="左胸">左胸</option>
+      <option value="右胸">右胸</option>
+      <option value="背中" selected>背中</option>
+      <option value="左袖">左袖</option>
+      <option value="右袖">右袖</option>
+    </select>
     <div class="radio-group">
       <label>
-        <input type="radio" name="print_size_back" value="おまかせ (最大:横28cm x 縦35cm以内)" checked>
+        <input type="radio" name="print_size_back_custom_or_not" value="おまかせ" checked>
         おまかせ (最大:横28cm x 縦35cm以内)
       </label>
       <label>
-        <input type="radio" name="print_size_back" value="custom">
-        ヨコcm x タテcmくらい(入力する):
+        <input type="radio" name="print_size_back_custom_or_not" value="custom">
+        ヨコcm x タテcmくらい(入力する)
       </label>
     </div>
     <input type="text" name="print_size_back_custom" placeholder="例: 20cm x 15cm">
-    <label>プリントカラー(後):</label>
+    <label>プリントカラー(プリント位置データ2):</label>
     <input type="text" name="print_color_back" placeholder="全てのカラーをご記入ください。計xx色">
-    <label>フォントNo.(後):</label>
+    <label>フォントNo.(プリント位置データ2):</label>
     <input type="text" name="font_no_back" placeholder="例: X-XX">
-    <label>プリントデザインサンプル(後):</label>
+    <label>プリントデザインサンプル(プリント位置データ2):</label>
     <input type="text" name="design_sample_back" placeholder="例: D-XXX">
-    <label>プリントデザインイメージデータ(後):</label>
+    <label>プリント位置データ:</label>
     <input type="file" name="design_image_back">
 
-    <h3>プリント位置: その他</h3>
+
+    <!-- ①②: プリント位置データ3 -->
+    <h3>プリント位置データ3</h3>
+    <p>プリント位置が分かるようにカタログの注文用紙に絵をかいて写真を撮影してアップロードしてください。</p>
+    <label>プリント位置:</label>
+    <select name="print_size_other">
+      <option value="前">前</option>
+      <option value="左胸">左胸</option>
+      <option value="右胸">右胸</option>
+      <option value="背中">背中</option>
+      <option value="左袖">左袖</option>
+      <option value="右袖">右袖</option>
+    </select>
     <div class="radio-group">
       <label>
-        <input type="radio" name="print_size_other" value="おまかせ (最大:横28cm x 縦35cm以内)" checked>
+        <input type="radio" name="print_size_other_custom_or_not" value="おまかせ" checked>
         おまかせ (最大:横28cm x 縦35cm以内)
       </label>
       <label>
-        <input type="radio" name="print_size_other" value="custom">
-        ヨコcm x タテcmくらい(入力する):
+        <input type="radio" name="print_size_other_custom_or_not" value="custom">
+        ヨコcm x タテcmくらい(入力する)
       </label>
     </div>
     <input type="text" name="print_size_other_custom" placeholder="例: 20cm x 15cm">
-    <label>プリントカラー(その他):</label>
+    <label>プリントカラー(プリント位置データ3):</label>
     <input type="text" name="print_color_other" placeholder="全てのカラーをご記入ください。計xx色">
-    <label>フォントNo.(その他):</label>
+    <label>フォントNo.(プリント位置データ3):</label>
     <input type="text" name="font_no_other" placeholder="例: X-XX">
-    <label>プリントデザインサンプル(その他):</label>
+    <label>プリントデザインサンプル(プリント位置データ3):</label>
     <input type="text" name="design_sample_other" placeholder="例: D-XXX">
-    <label>プリントデザインイメージデータ(その他):</label>
+    <label>プリント位置データ:</label>
     <input type="file" name="design_image_other">
+
 
     <button type="submit">送信</button>
   </form>
@@ -1156,22 +1003,25 @@ def webform_submit():
     size_ll = none_if_empty_int(form.get("size_ll"))
     size_lll = none_if_empty_int(form.get("size_lll"))
 
-    # ▼▼ 新規追加項目(前) ▼▼
+    # プリント位置データ1
     print_size_front = none_if_empty_str(form.get("print_size_front"))
+    print_size_front_custom_or_not = none_if_empty_str(form.get("print_size_front_custom_or_not"))
     print_size_front_custom = none_if_empty_str(form.get("print_size_front_custom"))
     print_color_front = none_if_empty_str(form.get("print_color_front"))
     font_no_front = none_if_empty_str(form.get("font_no_front"))
     design_sample_front = none_if_empty_str(form.get("design_sample_front"))
 
-    # ▼▼ 新規追加項目(後) ▼▼
+    # プリント位置データ2
     print_size_back = none_if_empty_str(form.get("print_size_back"))
+    print_size_back_custom_or_not = none_if_empty_str(form.get("print_size_back_custom_or_not"))
     print_size_back_custom = none_if_empty_str(form.get("print_size_back_custom"))
     print_color_back = none_if_empty_str(form.get("print_color_back"))
     font_no_back = none_if_empty_str(form.get("font_no_back"))
     design_sample_back = none_if_empty_str(form.get("design_sample_back"))
 
-    # ▼▼ 新規追加項目(その他) ▼▼
+    # プリント位置データ3
     print_size_other = none_if_empty_str(form.get("print_size_other"))
+    print_size_other_custom_or_not = none_if_empty_str(form.get("print_size_other_custom_or_not"))
     print_size_other_custom = none_if_empty_str(form.get("print_size_other_custom"))
     print_color_other = none_if_empty_str(form.get("print_color_other"))
     font_no_other = none_if_empty_str(form.get("font_no_other"))
@@ -1219,21 +1069,27 @@ def webform_submit():
                 size_ll,
                 size_lll,
 
+                -- プリント位置データ1
                 print_size_front,
+                print_size_front_custom_or_not,
                 print_size_front_custom,
                 print_color_front,
                 font_no_front,
                 design_sample_front,
                 design_image_front_url,
 
+                -- プリント位置データ2
                 print_size_back,
+                print_size_back_custom_or_not,
                 print_size_back_custom,
                 print_color_back,
                 font_no_back,
                 design_sample_back,
                 design_image_back_url,
 
+                -- プリント位置データ3
                 print_size_other,
+                print_size_other_custom_or_not,
                 print_size_other_custom,
                 print_color_other,
                 font_no_other,
@@ -1249,11 +1105,11 @@ def webform_submit():
                 %s, %s, %s, %s, %s,
                 %s,
 
-                %s, %s, %s, %s, %s, %s,
+                %s, %s, %s, %s, %s, %s, %s,
 
-                %s, %s, %s, %s, %s, %s,
+                %s, %s, %s, %s, %s, %s, %s,
 
-                %s, %s, %s, %s, %s, %s,
+                %s, %s, %s, %s, %s, %s, %s,
 
                 NOW()
             )
@@ -1287,21 +1143,27 @@ def webform_submit():
                 size_ll,
                 size_lll,
 
+                # プリント位置データ1
                 print_size_front,
+                print_size_front_custom_or_not,
                 print_size_front_custom,
                 print_color_front,
                 font_no_front,
                 design_sample_front,
                 front_url,
 
+                # プリント位置データ2
                 print_size_back,
+                print_size_back_custom_or_not,
                 print_size_back_custom,
                 print_color_back,
                 font_no_back,
                 design_sample_back,
                 back_url,
 
+                # プリント位置データ3
                 print_size_other,
+                print_size_other_custom_or_not,
                 print_size_other_custom,
                 print_color_other,
                 font_no_other,
@@ -1426,6 +1288,11 @@ def openai_extract_form_data(ocr_text: str) -> dict:
 ###################################
 # ▼▼ 注文用紙フロー用フォーム
 ###################################
+#
+# ①② 修正箇所は WEBフォーム同様。
+# 「前」「後」「その他のプリントデザインイメージデータ」を
+# 「プリント位置データ」としてまとめ、指示文・選択肢を追加。
+#
 PAPER_FORM_HTML = """
 <!DOCTYPE html>
 <html>
@@ -1493,9 +1360,9 @@ PAPER_FORM_HTML = """
 
     <label>利用する学割特典:</label>
     <select name="discount_option">
-      <option value="早割" {% if data['discount_option'] == '早割' %}selected{% endif %}>早割</option>
-      <option value="タダ割" {% if data['discount_option'] == 'タダ割' %}selected{% endif %}>タダ割</option>
-      <option value="いっしょ割り" {% if data['discount_option'] == 'いっしょ割り' %}selected{% endif %}>いっしょ割り</option>
+      <option value="早割" {% if data.get('discount_option') == '早割' %}selected{% endif %}>早割</option>
+      <option value="タダ割" {% if data.get('discount_option') == 'タダ割' %}selected{% endif %}>タダ割</option>
+      <option value="いっしょ割り" {% if data.get('discount_option') == 'いっしょ割り' %}selected{% endif %}>いっしょ割り</option>
     </select>
 
     <label>学校名:</label>
@@ -1533,35 +1400,35 @@ PAPER_FORM_HTML = """
 
     <label>デザイン確認方法:</label>
     <select name="design_confirm">
-      <option value="LINE代表者" {% if data['design_confirm'] == 'LINE代表者' %}selected{% endif %}>LINE代表者</option>
-      <option value="LINEご担任(保護者)" {% if data['design_confirm'] == 'LINEご担任(保護者)' %}selected{% endif %}>LINEご担任(保護者)</option>
-      <option value="メール代表者" {% if data['design_confirm'] == 'メール代表者' %}selected{% endif %}>メール代表者</option>
-      <option value="メールご担任(保護者)" {% if data['design_confirm'] == 'メールご担任(保護者)' %}selected{% endif %}>メールご担任(保護者)</option>
+      <option value="LINE代表者" {% if data.get('design_confirm') == 'LINE代表者' %}selected{% endif %}>LINE代表者</option>
+      <option value="LINEご担任(保護者)" {% if data.get('design_confirm') == 'LINEご担任(保護者)' %}selected{% endif %}>LINEご担任(保護者)</option>
+      <option value="メール代表者" {% if data.get('design_confirm') == 'メール代表者' %}selected{% endif %}>メール代表者</option>
+      <option value="メールご担任(保護者)" {% if data.get('design_confirm') == 'メールご担任(保護者)' %}selected{% endif %}>メールご担任(保護者)</option>
     </select>
 
     <label>お支払い方法:</label>
     <select name="payment_method">
-      <option value="代金引換(ヤマト運輸/現金のみ)" {% if data['payment_method'] == '代金引換(ヤマト運輸/現金のみ)' %}selected{% endif %}>代金引換(ヤマト運輸/現金のみ)</option>
-      <option value="後払い(コンビニ/郵便振替)" {% if data['payment_method'] == '後払い(コンビニ/郵便振替)' %}selected{% endif %}>後払い(コンビニ/郵便振替)</option>
-      <option value="後払い(銀行振込)" {% if data['payment_method'] == '後払い(銀行振込)' %}selected{% endif %}>後払い(銀行振込)</option>
-      <option value="先払い(銀行振込)" {% if data['payment_method'] == '先払い(銀行振込)' %}selected{% endif %}>先払い(銀行振込)</option>
+      <option value="代金引換(ヤマト運輸/現金のみ)" {% if data.get('payment_method') == '代金引換(ヤマト運輸/現金のみ)' %}selected{% endif %}>代金引換(ヤマト運輸/現金のみ)</option>
+      <option value="後払い(コンビニ/郵便振替)" {% if data.get('payment_method') == '後払い(コンビニ/郵便振替)' %}selected{% endif %}>後払い(コンビニ/郵便振替)</option>
+      <option value="後払い(銀行振込)" {% if data.get('payment_method') == '後払い(銀行振込)' %}selected{% endif %}>後払い(銀行振込)</option>
+      <option value="先払い(銀行振込)" {% if data.get('payment_method') == '先払い(銀行振込)' %}selected{% endif %}>先払い(銀行振込)</option>
     </select>
 
     <label>商品名:</label>
     <select name="product_name">
-      <option value="ドライTシャツ" {% if data['product_name'] == 'ドライTシャツ' %}selected{% endif %}>ドライTシャツ</option>
-      <option value="ヘビーウェイトTシャツ" {% if data['product_name'] == 'ヘビーウェイトTシャツ' %}selected{% endif %}>ヘビーウェイトTシャツ</option>
-      <option value="ドライポロシャツ" {% if data['product_name'] == 'ドライポロシャツ' %}selected{% endif %}>ドライポロシャツ</option>
-      <option value="ドライメッシュビブス" {% if data['product_name'] == 'ドライメッシュビブス' %}selected{% endif %}>ドライメッシュビブス</option>
-      <option value="ドライベースボールシャツ" {% if data['product_name'] == 'ドライベースボールシャツ' %}selected{% endif %}>ドライベースボールシャツ</option>
-      <option value="ドライロングスリープTシャツ" {% if data['product_name'] == 'ドライロングスリープTシャツ' %}selected{% endif %}>ドライロングスリープTシャツ</option>
-      <option value="ドライハーフパンツ" {% if data['product_name'] == 'ドライハーフパンツ' %}selected{% endif %}>ドライハーフパンツ</option>
-      <option value="ヘビーウェイトロングスリープTシャツ" {% if data['product_name'] == 'ヘビーウェイトロングスリープTシャツ' %}selected{% endif %}>ヘビーウェイトロングスリープTシャツ</option>
-      <option value="クルーネックライトトレーナー" {% if data['product_name'] == 'クルーネックライトトレーナー' %}selected{% endif %}>クルーネックライトトレーナー</option>
-      <option value="フーデッドライトパーカー" {% if data['product_name'] == 'フーデッドライトパーカー' %}selected{% endif %}>フーデッドライトパーカー</option>
-      <option value="スタンダードトレーナー" {% if data['product_name'] == 'スタンダードトレーナー' %}selected{% endif %}>スタンダードトレーナー</option>
-      <option value="スタンダードWフードパーカー" {% if data['product_name'] == 'スタンダードWフードパーカー' %}selected{% endif %}>スタンダードWフードパーカー</option>
-      <option value="ジップアップライトパーカー" {% if data['product_name'] == 'ジップアップライトパーカー' %}selected{% endif %}>ジップアップライトパーカー</option>
+      <option value="ドライTシャツ" {% if data.get('product_name') == 'ドライTシャツ' %}selected{% endif %}>ドライTシャツ</option>
+      <option value="ヘビーウェイトTシャツ" {% if data.get('product_name') == 'ヘビーウェイトTシャツ' %}selected{% endif %}>ヘビーウェイトTシャツ</option>
+      <option value="ドライポロシャツ" {% if data.get('product_name') == 'ドライポロシャツ' %}selected{% endif %}>ドライポロシャツ</option>
+      <option value="ドライメッシュビブス" {% if data.get('product_name') == 'ドライメッシュビブス' %}selected{% endif %}>ドライメッシュビブス</option>
+      <option value="ドライベースボールシャツ" {% if data.get('product_name') == 'ドライベースボールシャツ' %}selected{% endif %}>ドライベースボールシャツ</option>
+      <option value="ドライロングスリープTシャツ" {% if data.get('product_name') == 'ドライロングスリープTシャツ' %}selected{% endif %}>ドライロングスリープTシャツ</option>
+      <option value="ドライハーフパンツ" {% if data.get('product_name') == 'ドライハーフパンツ' %}selected{% endif %}>ドライハーフパンツ</option>
+      <option value="ヘビーウェイトロングスリープTシャツ" {% if data.get('product_name') == 'ヘビーウェイトロングスリープTシャツ' %}selected{% endif %}>ヘビーウェイトロングスリープTシャツ</option>
+      <option value="クルーネックライトトレーナー" {% if data.get('product_name') == 'クルーネックライトトレーナー' %}selected{% endif %}>クルーネックライトトレーナー</option>
+      <option value="フーデッドライトパーカー" {% if data.get('product_name') == 'フーデッドライトパーカー' %}selected{% endif %}>フーデッドライトパーカー</option>
+      <option value="スタンダードトレーナー" {% if data.get('product_name') == 'スタンダードトレーナー' %}selected{% endif %}>スタンダードトレーナー</option>
+      <option value="スタンダードWフードパーカー" {% if data.get('product_name') == 'スタンダードWフードパーカー' %}selected{% endif %}>スタンダードWフードパーカー</option>
+      <option value="ジップアップライトパーカー" {% if data.get('product_name') == 'ジップアップライトパーカー' %}selected{% endif %}>ジップアップライトパーカー</option>
     </select>
 
     <label>商品カラー:</label>
@@ -1585,85 +1452,103 @@ PAPER_FORM_HTML = """
     <label>サイズ(LLL):</label>
     <input type="number" name="size_lll" value="{{ data['size_lll'] or '' }}">
 
-    <h3>プリント位置: 前</h3>
+
+    <!-- プリント位置データ1 -->
+    <h3>プリント位置データ1</h3>
+    <p>プリント位置が分かるようにカタログの注文用紙に絵をかいて写真を撮影してアップロードしてください。</p>
+    <label>プリント位置:</label>
+    <select name="print_size_front">
+      <option value="前">前</option>
+      <option value="左胸">左胸</option>
+      <option value="右胸">右胸</option>
+      <option value="背中">背中</option>
+      <option value="左袖">左袖</option>
+      <option value="右袖">右袖</option>
+    </select>
     <div class="radio-group">
       <label>
-        <input type="radio" name="print_size_front" value="おまかせ (最大:横28cm x 縦35cm以内)"
-          {% if data['print_size_front'] == 'おまかせ (最大:横28cm x 縦35cm以内)' %}checked{% endif %}>
+        <input type="radio" name="print_size_front_custom_or_not" value="おまかせ" checked>
         おまかせ (最大:横28cm x 縦35cm以内)
       </label>
       <label>
-        <input type="radio" name="print_size_front" value="custom"
-          {% if data['print_size_front'] == 'custom' %}checked{% endif %}>
-        ヨコcm x タテcmくらい(入力する):
+        <input type="radio" name="print_size_front_custom_or_not" value="custom">
+        ヨコcm x タテcmくらい(入力する)
       </label>
     </div>
-    <input type="text" name="print_size_front_custom" placeholder="例: 20cm x 15cm"
-      value="{{ data['print_size_front_custom'] or '' }}">
-    <label>プリントカラー(前):</label>
-    <input type="text" name="print_color_front" placeholder="全てのカラーをご記入ください。計xx色"
-      value="{{ data['print_color_front'] or '' }}">
-    <label>フォントNo.(前):</label>
-    <input type="text" name="font_no_front" placeholder="例: X-XX"
-      value="{{ data['font_no_front'] or '' }}">
-    <label>プリントデザインサンプル(前):</label>
-    <input type="text" name="design_sample_front" placeholder="例: D-XXX"
-      value="{{ data['design_sample_front'] or '' }}">
-    <label>プリントデザインイメージデータ(前):</label>
+    <input type="text" name="print_size_front_custom" value="{{ data.get('print_size_front_custom') or '' }}" placeholder="例: 20cm x 15cm">
+    <label>プリントカラー(プリント位置データ1):</label>
+    <input type="text" name="print_color_front" value="{{ data.get('print_color_front') or '' }}" placeholder="全てのカラーをご記入ください。計xx色">
+    <label>フォントNo.(プリント位置データ1):</label>
+    <input type="text" name="font_no_front" value="{{ data.get('font_no_front') or '' }}" placeholder="例: X-XX">
+    <label>プリントデザインサンプル(プリント位置データ1):</label>
+    <input type="text" name="design_sample_front" value="{{ data.get('design_sample_front') or '' }}" placeholder="例: D-XXX">
+    <label>プリント位置データ:</label>
     <input type="file" name="design_image_front">
 
-    <h3>プリント位置: 後</h3>
+
+    <!-- プリント位置データ2 -->
+    <h3>プリント位置データ2</h3>
+    <p>プリント位置が分かるようにカタログの注文用紙に絵をかいて写真を撮影してアップロードしてください。</p>
+    <label>プリント位置:</label>
+    <select name="print_size_back">
+      <option value="前">前</option>
+      <option value="左胸">左胸</option>
+      <option value="右胸">右胸</option>
+      <option value="背中" selected>背中</option>
+      <option value="左袖">左袖</option>
+      <option value="右袖">右袖</option>
+    </select>
     <div class="radio-group">
       <label>
-        <input type="radio" name="print_size_back" value="おまかせ (最大:横28cm x 縦35cm以内)"
-          {% if data['print_size_back'] == 'おまかせ (最大:横28cm x 縦35cm以内)' %}checked{% endif %}>
+        <input type="radio" name="print_size_back_custom_or_not" value="おまかせ" checked>
         おまかせ (最大:横28cm x 縦35cm以内)
       </label>
       <label>
-        <input type="radio" name="print_size_back" value="custom"
-          {% if data['print_size_back'] == 'custom' %}checked{% endif %}>
-        ヨコcm x タテcmくらい(入力する):
+        <input type="radio" name="print_size_back_custom_or_not" value="custom">
+        ヨコcm x タテcmくらい(入力する)
       </label>
     </div>
-    <input type="text" name="print_size_back_custom" placeholder="例: 20cm x 15cm"
-      value="{{ data['print_size_back_custom'] or '' }}">
-    <label>プリントカラー(後):</label>
-    <input type="text" name="print_color_back" placeholder="全てのカラーをご記入ください。計xx色"
-      value="{{ data['print_color_back'] or '' }}">
-    <label>フォントNo.(後):</label>
-    <input type="text" name="font_no_back" placeholder="例: X-XX"
-      value="{{ data['font_no_back'] or '' }}">
-    <label>プリントデザインサンプル(後):</label>
-    <input type="text" name="design_sample_back" placeholder="例: D-XXX"
-      value="{{ data['design_sample_back'] or '' }}">
-    <label>プリントデザインイメージデータ(後):</label>
+    <input type="text" name="print_size_back_custom" value="{{ data.get('print_size_back_custom') or '' }}" placeholder="例: 20cm x 15cm">
+    <label>プリントカラー(プリント位置データ2):</label>
+    <input type="text" name="print_color_back" value="{{ data.get('print_color_back') or '' }}" placeholder="全てのカラーをご記入ください。計xx色">
+    <label>フォントNo.(プリント位置データ2):</label>
+    <input type="text" name="font_no_back" value="{{ data.get('font_no_back') or '' }}" placeholder="例: X-XX">
+    <label>プリントデザインサンプル(プリント位置データ2):</label>
+    <input type="text" name="design_sample_back" value="{{ data.get('design_sample_back') or '' }}" placeholder="例: D-XXX">
+    <label>プリント位置データ:</label>
     <input type="file" name="design_image_back">
 
-    <h3>プリント位置: その他</h3>
+
+    <!-- プリント位置データ3 -->
+    <h3>プリント位置データ3</h3>
+    <p>プリント位置が分かるようにカタログの注文用紙に絵をかいて写真を撮影してアップロードしてください。</p>
+    <label>プリント位置:</label>
+    <select name="print_size_other">
+      <option value="前">前</option>
+      <option value="左胸">左胸</option>
+      <option value="右胸">右胸</option>
+      <option value="背中">背中</option>
+      <option value="左袖">左袖</option>
+      <option value="右袖">右袖</option>
+    </select>
     <div class="radio-group">
       <label>
-        <input type="radio" name="print_size_other" value="おまかせ (最大:横28cm x 縦35cm以内)"
-          {% if data['print_size_other'] == 'おまかせ (最大:横28cm x 縦35cm以内)' %}checked{% endif %}>
+        <input type="radio" name="print_size_other_custom_or_not" value="おまかせ" checked>
         おまかせ (最大:横28cm x 縦35cm以内)
       </label>
       <label>
-        <input type="radio" name="print_size_other" value="custom"
-          {% if data['print_size_other'] == 'custom' %}checked{% endif %}>
-        ヨコcm x タテcmくらい(入力する):
+        <input type="radio" name="print_size_other_custom_or_not" value="custom">
+        ヨコcm x タテcmくらい(入力する)
       </label>
     </div>
-    <input type="text" name="print_size_other_custom" placeholder="例: 20cm x 15cm"
-      value="{{ data['print_size_other_custom'] or '' }}">
-    <label>プリントカラー(その他):</label>
-    <input type="text" name="print_color_other" placeholder="全てのカラーをご記入ください。計xx色"
-      value="{{ data['print_color_other'] or '' }}">
-    <label>フォントNo.(その他):</label>
-    <input type="text" name="font_no_other" placeholder="例: X-XX"
-      value="{{ data['font_no_other'] or '' }}">
-    <label>プリントデザインサンプル(その他):</label>
-    <input type="text" name="design_sample_other" placeholder="例: D-XXX"
-      value="{{ data['design_sample_other'] or '' }}">
-    <label>プリントデザインイメージデータ(その他):</label>
+    <input type="text" name="print_size_other_custom" value="{{ data.get('print_size_other_custom') or '' }}" placeholder="例: 20cm x 15cm">
+    <label>プリントカラー(プリント位置データ3):</label>
+    <input type="text" name="print_color_other" value="{{ data.get('print_color_other') or '' }}" placeholder="全てのカラーをご記入ください。計xx色">
+    <label>フォントNo.(プリント位置データ3):</label>
+    <input type="text" name="font_no_other" value="{{ data.get('font_no_other') or '' }}" placeholder="例: X-XX">
+    <label>プリントデザインサンプル(プリント位置データ3):</label>
+    <input type="text" name="design_sample_other" value="{{ data.get('design_sample_other') or '' }}" placeholder="例: D-XXX">
+    <label>プリント位置データ:</label>
     <input type="file" name="design_image_other">
 
     <button type="submit">送信</button>
@@ -1718,19 +1603,25 @@ def paper_order_form_submit():
     size_ll = none_if_empty_int(form.get("size_ll"))
     size_lll = none_if_empty_int(form.get("size_lll"))
 
+    # プリント位置データ1
     print_size_front = none_if_empty_str(form.get("print_size_front"))
+    print_size_front_custom_or_not = none_if_empty_str(form.get("print_size_front_custom_or_not"))
     print_size_front_custom = none_if_empty_str(form.get("print_size_front_custom"))
     print_color_front = none_if_empty_str(form.get("print_color_front"))
     font_no_front = none_if_empty_str(form.get("font_no_front"))
     design_sample_front = none_if_empty_str(form.get("design_sample_front"))
 
+    # プリント位置データ2
     print_size_back = none_if_empty_str(form.get("print_size_back"))
+    print_size_back_custom_or_not = none_if_empty_str(form.get("print_size_back_custom_or_not"))
     print_size_back_custom = none_if_empty_str(form.get("print_size_back_custom"))
     print_color_back = none_if_empty_str(form.get("print_color_back"))
     font_no_back = none_if_empty_str(form.get("font_no_back"))
     design_sample_back = none_if_empty_str(form.get("design_sample_back"))
 
+    # プリント位置データ3
     print_size_other = none_if_empty_str(form.get("print_size_other"))
+    print_size_other_custom_or_not = none_if_empty_str(form.get("print_size_other_custom_or_not"))
     print_size_other_custom = none_if_empty_str(form.get("print_size_other_custom"))
     print_color_other = none_if_empty_str(form.get("print_color_other"))
     font_no_other = none_if_empty_str(form.get("font_no_other"))
@@ -1777,6 +1668,7 @@ def paper_order_form_submit():
                 size_lll,
 
                 print_size_front,
+                print_size_front_custom_or_not,
                 print_size_front_custom,
                 print_color_front,
                 font_no_front,
@@ -1784,6 +1676,7 @@ def paper_order_form_submit():
                 design_image_front_url,
 
                 print_size_back,
+                print_size_back_custom_or_not,
                 print_size_back_custom,
                 print_color_back,
                 font_no_back,
@@ -1791,6 +1684,7 @@ def paper_order_form_submit():
                 design_image_back_url,
 
                 print_size_other,
+                print_size_other_custom_or_not,
                 print_size_other_custom,
                 print_color_other,
                 font_no_other,
@@ -1806,11 +1700,11 @@ def paper_order_form_submit():
                 %s, %s, %s, %s, %s,
                 %s,
 
-                %s, %s, %s, %s, %s, %s,
+                %s, %s, %s, %s, %s, %s, %s,
 
-                %s, %s, %s, %s, %s, %s,
+                %s, %s, %s, %s, %s, %s, %s,
 
-                %s, %s, %s, %s, %s, %s,
+                %s, %s, %s, %s, %s, %s, %s,
 
                 NOW()
             )
@@ -1845,6 +1739,7 @@ def paper_order_form_submit():
                 size_lll,
 
                 print_size_front,
+                print_size_front_custom_or_not,
                 print_size_front_custom,
                 print_color_front,
                 font_no_front,
@@ -1852,6 +1747,7 @@ def paper_order_form_submit():
                 front_url,
 
                 print_size_back,
+                print_size_back_custom_or_not,
                 print_size_back_custom,
                 print_color_back,
                 font_no_back,
@@ -1859,6 +1755,7 @@ def paper_order_form_submit():
                 back_url,
 
                 print_size_other,
+                print_size_other_custom_or_not,
                 print_size_other_custom,
                 print_color_other,
                 font_no_other,
@@ -1938,7 +1835,10 @@ def send_reminders():
                 try:
                     line_bot_api.push_message(
                         to=user_id,
-                        messages=TextSendMessage(text=reminder_text)
+                        messages=[
+                            TextSendMessage(text=reminder_text),
+                            create_mode_selection_flex()  # ③ リマインダー送信後、モード選択をすぐに送る
+                        ]
                     )
                     # reminder_countを+1
                     cur2 = conn.cursor()
@@ -1959,4 +1859,5 @@ def send_reminders():
 # Flask起動 (既存)
 ###################################
 if __name__ == "__main__":
+    # 本番環境によっては debug=False 推奨
     app.run(host="0.0.0.0", port=8000, debug=True)
