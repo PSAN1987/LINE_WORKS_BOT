@@ -109,6 +109,57 @@ def upload_file_to_s3(file_storage, s3_bucket, prefix="uploads/"):
     url = f"https://{s3_bucket}.s3.amazonaws.com/{s3_key}"
     return url
 
+### 変更箇所ここから: Base64データをS3にアップロードする関数を追加 ###
+import base64
+
+def upload_base64_to_s3(base64_data, s3_bucket, prefix="uploads/"):
+    """
+    Base64文字列 (data:image/png;base64,...) をデコードしてS3にアップロードし、URLを返す。
+    base64_data: dataURL形式の文字列 (例: "data:image/png;base64,....")
+    s3_bucket: S3バケット名
+    prefix: S3のプレフィックス
+    戻り値: アップロード後のS3ファイルURL (失敗時は None)
+    """
+    # dataURL形式かどうかチェック
+    if not base64_data.startswith("data:image/"):
+        return None
+
+    # MIMEタイプを抜き出し、拡張子に反映させる例
+    # "data:image/png;base64," の部分を解析
+    header, encoded = base64_data.split(",", 1)
+    mime_type = header.split(";")[0].split(":")[1]  # "image/png"など
+    if mime_type == "image/png":
+        ext = "png"
+    elif mime_type == "image/jpeg":
+        ext = "jpg"
+    else:
+        ext = "dat"  # その他
+
+    # デコード
+    image_data = base64.b64decode(encoded)
+
+    s3 = boto3.client(
+        's3',
+        aws_access_key_id=AWS_ACCESS_KEY_ID,
+        aws_secret_access_key=AWS_SECRET_ACCESS_KEY
+    )
+
+    unique_id = str(uuid.uuid4())
+    s3_key = prefix + unique_id + f".{ext}"
+
+    # バイト列をS3にアップロード
+    s3.put_object(
+        Bucket=s3_bucket,
+        Key=s3_key,
+        Body=image_data,
+        ContentType=mime_type,
+        ACL='public-read'  # 公開設定(必要に応じて変更)
+    )
+
+    url = f"https://{s3_bucket}.s3.amazonaws.com/{s3_key}"
+    return url
+### 変更箇所ここまで ###
+
 ###################################
 # (E) 価格表と計算ロジック (既存)
 ###################################
@@ -327,7 +378,7 @@ PRICE_TABLE = [
 def calc_total_price(
     product_name: str,
     quantity: int,
-    early_discount_str: str,  # "14日前以上" => "早割", それ以外 => "通常"
+    early_discount_str: str,
     print_position: str,
     color_option: str
 ) -> int:
@@ -801,7 +852,6 @@ def handle_postback(event):
 
     line_bot_api.reply_message(event.reply_token, TextSendMessage(text=f"不明なアクション: {data}"))
 
-
 # ▼▼ 追加: estimatesテーブルにINSERTする関数 ▼▼
 def insert_estimate(
     user_id,
@@ -857,10 +907,12 @@ def insert_estimate(
             cur.execute(sql, params)
         conn.commit()
 
-
 ###################################
 # (L) WEBフォーム (修正後HTML)
 ###################################
+### 変更箇所ここから: プリントデザインイメージデータ → プリント位置データ ###
+### また、Tシャツ画像付きCanvasで位置指定できるようにするJSを追加 ###
+
 FORM_HTML = """
 <!DOCTYPE html>
 <html>
@@ -911,6 +963,17 @@ FORM_HTML = """
       margin-top: 24px;
       margin-bottom: 8px;
       font-size: 1.1em;
+    }
+
+    /* Tシャツ用canvas */
+    .canvas-container {
+      position: relative;
+      margin-bottom: 16px;
+      text-align: center;
+    }
+    canvas {
+      border: 1px solid #ccc;
+      max-width: 100%;
     }
   </style>
 </head>
@@ -1034,14 +1097,22 @@ FORM_HTML = """
       </label>
     </div>
     <input type="text" name="print_size_front_custom" placeholder="例: 20cm x 15cm">
+
     <label>プリントカラー(前):</label>
     <input type="text" name="print_color_front" placeholder="全てのカラーをご記入ください。計xx色">
     <label>フォントNo.(前):</label>
     <input type="text" name="font_no_front" placeholder="例: X-XX">
     <label>プリントデザインサンプル(前):</label>
     <input type="text" name="design_sample_front" placeholder="例: D-XXX">
-    <label>プリントデザインイメージデータ(前):</label>
-    <input type="file" name="design_image_front">
+
+    <!-- ここを「プリント位置データ(前)」に変更し、Canvasで描画 -->
+    <label>プリント位置データ(前):</label>
+    <div class="canvas-container">
+      <canvas id="canvas_front" width="300" height="400"></canvas>
+    </div>
+    <!-- Base64を送るためのhidden -->
+    <input type="hidden" name="print_position_data_front" id="print_position_data_front">
+    <button type="button" onclick="saveCanvasFront()">前デザイン保存</button>
 
     <h3>プリント位置: 後</h3>
     <div class="radio-group">
@@ -1061,8 +1132,14 @@ FORM_HTML = """
     <input type="text" name="font_no_back" placeholder="例: X-XX">
     <label>プリントデザインサンプル(後):</label>
     <input type="text" name="design_sample_back" placeholder="例: D-XXX">
-    <label>プリントデザインイメージデータ(後):</label>
-    <input type="file" name="design_image_back">
+
+    <!-- ここを「プリント位置データ(後)」に変更し、Canvasで描画 -->
+    <label>プリント位置データ(後):</label>
+    <div class="canvas-container">
+      <canvas id="canvas_back" width="300" height="400"></canvas>
+    </div>
+    <input type="hidden" name="print_position_data_back" id="print_position_data_back">
+    <button type="button" onclick="saveCanvasBack()">後デザイン保存</button>
 
     <h3>プリント位置: その他</h3>
     <div class="radio-group">
@@ -1082,14 +1159,81 @@ FORM_HTML = """
     <input type="text" name="font_no_other" placeholder="例: X-XX">
     <label>プリントデザインサンプル(その他):</label>
     <input type="text" name="design_sample_other" placeholder="例: D-XXX">
-    <label>プリントデザインイメージデータ(その他):</label>
-    <input type="file" name="design_image_other">
+
+    <!-- ここを「プリント位置データ(その他)」に変更し、Canvasで描画 -->
+    <label>プリント位置データ(その他):</label>
+    <div class="canvas-container">
+      <canvas id="canvas_other" width="300" height="400"></canvas>
+    </div>
+    <input type="hidden" name="print_position_data_other" id="print_position_data_other">
+    <button type="button" onclick="saveCanvasOther()">その他デザイン保存</button>
 
     <button type="submit">送信</button>
   </form>
+
+  <script>
+    // 簡易的にTシャツ画像を背景に敷いて、クリックで赤い丸を描くデモ
+
+    function initCanvas(canvasId, imageUrl) {
+      const canvas = document.getElementById(canvasId);
+      const ctx = canvas.getContext('2d');
+      const img = new Image();
+      img.src = imageUrl;
+      img.onload = function() {
+        // 画像読み込み後、canvasに描画
+        ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+      };
+
+      // クリックでマークをつける
+      canvas.addEventListener('click', function(e) {
+        const rect = canvas.getBoundingClientRect();
+        const x = e.clientX - rect.left;
+        const y = e.clientY - rect.top;
+        // 小さな赤丸を描画
+        ctx.beginPath();
+        ctx.arc(x, y, 5, 0, 2*Math.PI);
+        ctx.fillStyle = 'red';
+        ctx.fill();
+      });
+    }
+
+    function saveCanvas(canvasId, hiddenInputId, imageUrl) {
+      const canvas = document.getElementById(canvasId);
+      const ctx = canvas.getContext('2d');
+
+      // 背景Tシャツ画像を再描画してから書き込み済みのマークも含めてBase64化
+      // (上記 initCanvas で既に画像とマークを描画しているので現状このままでもOK)
+      // ただし再描画が必要な場合はここでimg.onload→描画→toDataURLという処理を入れる
+
+      const dataURL = canvas.toDataURL("image/png");
+      document.getElementById(hiddenInputId).value = dataURL;
+      alert("キャンバス内容を保存しました。");
+    }
+
+    function saveCanvasFront() {
+      saveCanvas("canvas_front", "print_position_data_front");
+    }
+    function saveCanvasBack() {
+      saveCanvas("canvas_back", "print_position_data_back");
+    }
+    function saveCanvasOther() {
+      saveCanvas("canvas_other", "print_position_data_other");
+    }
+
+    // ページ読み込み時にCanvas初期化
+    window.addEventListener('load', function(){
+      // サンプル用Tシャツ画像(仮)
+      const tshirtImageUrl = "https://via.placeholder.com/300x400.png?text=T-Shirt+Sample";
+
+      initCanvas("canvas_front", tshirtImageUrl);
+      initCanvas("canvas_back", tshirtImageUrl);
+      initCanvas("canvas_other", tshirtImageUrl);
+    });
+  </script>
 </body>
 </html>
 """
+### 変更箇所ここまで ###
 
 @app.route("/webform", methods=["GET"])
 def show_webform():
@@ -1156,36 +1300,61 @@ def webform_submit():
     size_ll = none_if_empty_int(form.get("size_ll"))
     size_lll = none_if_empty_int(form.get("size_lll"))
 
-    # ▼▼ 新規追加項目(前) ▼▼
     print_size_front = none_if_empty_str(form.get("print_size_front"))
     print_size_front_custom = none_if_empty_str(form.get("print_size_front_custom"))
     print_color_front = none_if_empty_str(form.get("print_color_front"))
     font_no_front = none_if_empty_str(form.get("font_no_front"))
     design_sample_front = none_if_empty_str(form.get("design_sample_front"))
 
-    # ▼▼ 新規追加項目(後) ▼▼
     print_size_back = none_if_empty_str(form.get("print_size_back"))
     print_size_back_custom = none_if_empty_str(form.get("print_size_back_custom"))
     print_color_back = none_if_empty_str(form.get("print_color_back"))
     font_no_back = none_if_empty_str(form.get("font_no_back"))
     design_sample_back = none_if_empty_str(form.get("design_sample_back"))
 
-    # ▼▼ 新規追加項目(その他) ▼▼
     print_size_other = none_if_empty_str(form.get("print_size_other"))
     print_size_other_custom = none_if_empty_str(form.get("print_size_other_custom"))
     print_color_other = none_if_empty_str(form.get("print_color_other"))
     font_no_other = none_if_empty_str(form.get("font_no_other"))
     design_sample_other = none_if_empty_str(form.get("design_sample_other"))
 
-    # ---------- 画像ファイル ----------
-    img_front = files.get("design_image_front")
+    # ---------- ここから 画像(Base64)項目を取得 ----------
+    img_front_base64 = none_if_empty_str(form.get("print_position_data_front"))
+    img_back_base64 = none_if_empty_str(form.get("print_position_data_back"))
+    img_other_base64 = none_if_empty_str(form.get("print_position_data_other"))
+
+    # ---------- 従来のファイルアップロード(不要なら削除可能) ----------
+    img_front = files.get("design_image_front")  # 既存コードではまだ存在しますが、使わないなら可
     img_back = files.get("design_image_back")
     img_other = files.get("design_image_other")
 
-    # S3にアップロード → URL取得
-    front_url = upload_file_to_s3(img_front, S3_BUCKET_NAME, prefix="uploads/")
-    back_url = upload_file_to_s3(img_back, S3_BUCKET_NAME, prefix="uploads/")
-    other_url = upload_file_to_s3(img_other, S3_BUCKET_NAME, prefix="uploads/")
+    # ▼▼ Base64データをS3にアップロードし、URLを取得 (前/後/その他) ▼▼
+    front_url = None
+    back_url = None
+    other_url = None
+
+    if img_front_base64:
+        front_url = upload_base64_to_s3(img_front_base64, S3_BUCKET_NAME, prefix="uploads/")
+    if img_back_base64:
+        back_url = upload_base64_to_s3(img_back_base64, S3_BUCKET_NAME, prefix="uploads/")
+    if img_other_base64:
+        other_url = upload_base64_to_s3(img_other_base64, S3_BUCKET_NAME, prefix="uploads/")
+
+    # ---------- もし従来のファイルアップロードも併用するなら以下の処理で取得 ----------
+    # fallbackとしてファイルがあればそちらを優先する...など
+    # ここでは単純に「Base64がなければファイルアップロードを使う」例を示す
+    if not front_url:
+        fu = upload_file_to_s3(img_front, S3_BUCKET_NAME, prefix="uploads/")
+        if fu:
+            front_url = fu
+    if not back_url:
+        fu = upload_file_to_s3(img_back, S3_BUCKET_NAME, prefix="uploads/")
+        if fu:
+            back_url = fu
+    if not other_url:
+        fu = upload_file_to_s3(img_other, S3_BUCKET_NAME, prefix="uploads/")
+        if fu:
+            other_url = fu
 
     # DBに保存 (orders)
     with get_db_connection() as conn:
@@ -1224,7 +1393,7 @@ def webform_submit():
                 print_color_front,
                 font_no_front,
                 design_sample_front,
-                design_image_front_url,
+                design_image_front_url,  -- DBカラムは既存のまま利用
 
                 print_size_back,
                 print_size_back_custom,
@@ -1426,6 +1595,7 @@ def openai_extract_form_data(ocr_text: str) -> dict:
 ###################################
 # ▼▼ 注文用紙フロー用フォーム
 ###################################
+### 変更箇所ここから: プリントデザインイメージデータ → プリント位置データ + Canvas操作 ###
 PAPER_FORM_HTML = """
 <!DOCTYPE html>
 <html>
@@ -1474,6 +1644,15 @@ PAPER_FORM_HTML = """
       margin-top: 24px;
       margin-bottom: 8px;
       font-size: 1.1em;
+    }
+    .canvas-container {
+      position: relative;
+      margin-bottom: 16px;
+      text-align: center;
+    }
+    canvas {
+      border: 1px solid #ccc;
+      max-width: 100%;
     }
   </style>
 </head>
@@ -1609,8 +1788,14 @@ PAPER_FORM_HTML = """
     <label>プリントデザインサンプル(前):</label>
     <input type="text" name="design_sample_front" placeholder="例: D-XXX"
       value="{{ data['design_sample_front'] or '' }}">
-    <label>プリントデザインイメージデータ(前):</label>
-    <input type="file" name="design_image_front">
+
+    <!-- プリント位置データ(前) -->
+    <label>プリント位置データ(前):</label>
+    <div class="canvas-container">
+      <canvas id="canvas_front" width="300" height="400"></canvas>
+    </div>
+    <input type="hidden" name="print_position_data_front" id="print_position_data_front">
+    <button type="button" onclick="saveCanvasFront()">前デザイン保存</button>
 
     <h3>プリント位置: 後</h3>
     <div class="radio-group">
@@ -1636,8 +1821,14 @@ PAPER_FORM_HTML = """
     <label>プリントデザインサンプル(後):</label>
     <input type="text" name="design_sample_back" placeholder="例: D-XXX"
       value="{{ data['design_sample_back'] or '' }}">
-    <label>プリントデザインイメージデータ(後):</label>
-    <input type="file" name="design_image_back">
+
+    <!-- プリント位置データ(後) -->
+    <label>プリント位置データ(後):</label>
+    <div class="canvas-container">
+      <canvas id="canvas_back" width="300" height="400"></canvas>
+    </div>
+    <input type="hidden" name="print_position_data_back" id="print_position_data_back">
+    <button type="button" onclick="saveCanvasBack()">後デザイン保存</button>
 
     <h3>プリント位置: その他</h3>
     <div class="radio-group">
@@ -1663,14 +1854,66 @@ PAPER_FORM_HTML = """
     <label>プリントデザインサンプル(その他):</label>
     <input type="text" name="design_sample_other" placeholder="例: D-XXX"
       value="{{ data['design_sample_other'] or '' }}">
-    <label>プリントデザインイメージデータ(その他):</label>
-    <input type="file" name="design_image_other">
+
+    <!-- プリント位置データ(その他) -->
+    <label>プリント位置データ(その他):</label>
+    <div class="canvas-container">
+      <canvas id="canvas_other" width="300" height="400"></canvas>
+    </div>
+    <input type="hidden" name="print_position_data_other" id="print_position_data_other">
+    <button type="button" onclick="saveCanvasOther()">その他デザイン保存</button>
 
     <button type="submit">送信</button>
   </form>
+
+  <script>
+    function initCanvas(canvasId, imageUrl) {
+      const canvas = document.getElementById(canvasId);
+      const ctx = canvas.getContext('2d');
+      const img = new Image();
+      img.src = imageUrl;
+      img.onload = function() {
+        ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+      };
+      canvas.addEventListener('click', function(e) {
+        const rect = canvas.getBoundingClientRect();
+        const x = e.clientX - rect.left;
+        const y = e.clientY - rect.top;
+        ctx.beginPath();
+        ctx.arc(x, y, 5, 0, 2*Math.PI);
+        ctx.fillStyle = 'red';
+        ctx.fill();
+      });
+    }
+
+    function saveCanvas(canvasId, hiddenInputId) {
+      const canvas = document.getElementById(canvasId);
+      const dataURL = canvas.toDataURL("image/png");
+      document.getElementById(hiddenInputId).value = dataURL;
+      alert("キャンバス内容を保存しました。");
+    }
+
+    function saveCanvasFront() {
+      saveCanvas("canvas_front", "print_position_data_front");
+    }
+    function saveCanvasBack() {
+      saveCanvas("canvas_back", "print_position_data_back");
+    }
+    function saveCanvasOther() {
+      saveCanvas("canvas_other", "print_position_data_other");
+    }
+
+    window.addEventListener('load', function(){
+      const tshirtImageUrl = "https://via.placeholder.com/300x400.png?text=T-Shirt+Sample";
+      initCanvas("canvas_front", tshirtImageUrl);
+      initCanvas("canvas_back", tshirtImageUrl);
+      initCanvas("canvas_other", tshirtImageUrl);
+    });
+  </script>
 </body>
 </html>
 """
+### 変更箇所ここまで ###
 
 @app.route("/paper_order_form", methods=["GET"])
 def paper_order_form():
@@ -1736,13 +1979,40 @@ def paper_order_form_submit():
     font_no_other = none_if_empty_str(form.get("font_no_other"))
     design_sample_other = none_if_empty_str(form.get("design_sample_other"))
 
+    # Base64データ (前/後/その他)
+    img_front_base64 = none_if_empty_str(form.get("print_position_data_front"))
+    img_back_base64 = none_if_empty_str(form.get("print_position_data_back"))
+    img_other_base64 = none_if_empty_str(form.get("print_position_data_other"))
+
+    # 従来のファイルアップロード
     img_front = files.get("design_image_front")
     img_back = files.get("design_image_back")
     img_other = files.get("design_image_other")
 
-    front_url = upload_file_to_s3(img_front, S3_BUCKET_NAME, prefix="uploads/")
-    back_url = upload_file_to_s3(img_back, S3_BUCKET_NAME, prefix="uploads/")
-    other_url = upload_file_to_s3(img_other, S3_BUCKET_NAME, prefix="uploads/")
+    front_url = None
+    back_url = None
+    other_url = None
+
+    if img_front_base64:
+        front_url = upload_base64_to_s3(img_front_base64, S3_BUCKET_NAME, prefix="uploads/")
+    if img_back_base64:
+        back_url = upload_base64_to_s3(img_back_base64, S3_BUCKET_NAME, prefix="uploads/")
+    if img_other_base64:
+        other_url = upload_base64_to_s3(img_other_base64, S3_BUCKET_NAME, prefix="uploads/")
+
+    # fallback: ファイルアップロードの方もチェック
+    if not front_url:
+        fu = upload_file_to_s3(img_front, S3_BUCKET_NAME, prefix="uploads/")
+        if fu:
+            front_url = fu
+    if not back_url:
+        fu = upload_file_to_s3(img_back, S3_BUCKET_NAME, prefix="uploads/")
+        if fu:
+            back_url = fu
+    if not other_url:
+        fu = upload_file_to_s3(img_other, S3_BUCKET_NAME, prefix="uploads/")
+        if fu:
+            other_url = fu
 
     # DBに保存 (orders)
     with get_db_connection() as conn:
