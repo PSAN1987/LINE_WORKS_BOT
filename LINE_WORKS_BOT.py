@@ -775,7 +775,60 @@ FORM_HTML = """
 <html>
 <head>
   <meta charset="UTF-8">
-  <title>WEBフォームから注文</title>
+  <!-- ▼▼ 追加: ビューポート設定でスマホ表示を最適化 ▼▼ -->
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+
+  <!-- ▼▼ 追加: 最小限のレスポンシブCSS ▼▼ -->
+  <style>
+    body {
+      margin: 16px;
+      font-family: sans-serif;
+      font-size: 16px;
+      line-height: 1.5;
+    }
+    h1 {
+      margin-bottom: 24px;
+      font-size: 1.2em;
+    }
+    form {
+      max-width: 600px; /* 必要に応じて調整 */
+      margin: 0 auto;
+    }
+    /* テキストやセレクト、ボタンなどは幅100%にして画面に収まるように */
+    input[type="text"],
+    input[type="number"],
+    input[type="email"],
+    input[type="date"],
+    select,
+    button {
+      display: block;
+      width: 100%;
+      box-sizing: border-box;
+      margin-bottom: 16px;
+      padding: 8px;
+      font-size: 16px;
+    }
+    /* ラジオボタン・チェックボックスはインライン表示にする場合が多いですが、
+       スマホで見やすいように1行に収まらない場合は折り返しさせる */
+    .radio-group,
+    .checkbox-group {
+      margin-bottom: 16px;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+    }
+    .radio-group label,
+    .checkbox-group label {
+      display: flex;
+      align-items: center;
+    }
+    /* セクション見出しなど間をあける */
+    h3 {
+      margin-top: 24px;
+      margin-bottom: 8px;
+      font-size: 1.1em;
+    }
+  </style>
 </head>
 <body>
   <h1>WEBフォームから注文</h1>
@@ -783,107 +836,173 @@ FORM_HTML = """
   <form action="/webform_submit" method="POST" enctype="multipart/form-data">
     <input type="hidden" name="user_id" value="{{ user_id }}" />
 
-    <p>申込日: <input type="date" name="application_date"></p>
-    <p>配達日: <input type="date" name="delivery_date"></p>
-    <p>使用日: <input type="date" name="use_date"></p>
+    <label>申込日:</label>
+    <input type="date" name="application_date">
 
-    <p>利用する学割特典:
-      <select name="discount_option">
-        <option value="早割">早割</option>
-        <option value="タダ割">タダ割</option>
-        <option value="いっしょ割り">いっしょ割り</option>
-      </select>
-    </p>
+    <label>配達日:</label>
+    <input type="date" name="delivery_date">
 
-    <p>学校名: <input type="text" name="school_name"></p>
-    <p>LINEアカウント名: <input type="text" name="line_account"></p>
-    <p>団体名: <input type="text" name="group_name"></p>
-    <p>学校住所: <input type="text" name="school_address"></p>
-    <p>学校TEL: <input type="text" name="school_tel"></p>
-    <p>担任名: <input type="text" name="teacher_name"></p>
-    <p>担任携帯: <input type="text" name="teacher_tel"></p>
-    <p>担任メール: <input type="email" name="teacher_email"></p>
-    <p>代表者: <input type="text" name="representative"></p>
-    <p>代表者TEL: <input type="text" name="rep_tel"></p>
-    <p>代表者メール: <input type="email" name="rep_email"></p>
+    <label>使用日:</label>
+    <input type="date" name="use_date">
 
-    <p>デザイン確認方法:
-      <select name="design_confirm">
-        <option value="LINE代表者">LINE代表者</option>
-        <option value="LINEご担任(保護者)">LINEご担任(保護者)</option>
-        <option value="メール代表者">メール代表者</option>
-        <option value="メールご担任(保護者)">メールご担任(保護者)</option>
-      </select>
-    </p>
+    <label>利用する学割特典:</label>
+    <select name="discount_option">
+      <option value="早割">早割</option>
+      <option value="タダ割">タダ割</option>
+      <option value="いっしょ割り">いっしょ割り</option>
+    </select>
 
-    <p>お支払い方法:
-      <select name="payment_method">
-        <option value="代金引換(ヤマト運輸/現金のみ)">代金引換(ヤマト運輸/現金のみ)</option>
-        <option value="後払い(コンビニ/郵便振替)">後払い(コンビニ/郵便振替)</option>
-        <option value="後払い(銀行振込)">後払い(銀行振込)</option>
-        <option value="先払い(銀行振込)">先払い(銀行振込)</option>
-      </select>
-    </p>
+    <label>学校名:</label>
+    <input type="text" name="school_name">
 
-    <p>商品名:
-      <select name="product_name">
-        <option value="ドライTシャツ">ドライTシャツ</option>
-        <option value="ヘビーウェイトTシャツ">ヘビーウェイトTシャツ</option>
-        <option value="ドライポロシャツ">ドライポロシャツ</option>
-        <option value="ドライメッシュビブス">ドライメッシュビブス</option>
-        <option value="ドライベースボールシャツ">ドライベースボールシャツ</option>
-        <option value="ドライロングスリープTシャツ">ドライロングスリープTシャツ</option>
-        <option value="ドライハーフパンツ">ドライハーフパンツ</option>
-        <option value="ヘビーウェイトロングスリープTシャツ">ヘビーウェイトロングスリープTシャツ</option>
-        <option value="クルーネックライトトレーナー">クルーネックライトトレーナー</option>
-        <option value="フーデッドライトパーカー">フーデッドライトパーカー</option>
-        <option value="スタンダードトレーナー">スタンダードトレーナー</option>
-        <option value="スタンダードWフードパーカー">スタンダードWフードパーカー</option>
-        <option value="ジップアップライトパーカー">ジップアップライトパーカー</option>
-      </select>
-    </p>
-    <p>商品カラー: <input type="text" name="product_color"></p>
-    <p>サイズ(SS): <input type="number" name="size_ss"></p>
-    <p>サイズ(S): <input type="number" name="size_s"></p>
-    <p>サイズ(M): <input type="number" name="size_m"></p>
-    <p>サイズ(L): <input type="number" name="size_l"></p>
-    <p>サイズ(LL): <input type="number" name="size_ll"></p>
-    <p>サイズ(LLL): <input type="number" name="size_lll"></p>
+    <label>LINEアカウント名:</label>
+    <input type="text" name="line_account">
+
+    <label>団体名:</label>
+    <input type="text" name="group_name">
+
+    <label>学校住所:</label>
+    <input type="text" name="school_address">
+
+    <label>学校TEL:</label>
+    <input type="text" name="school_tel">
+
+    <label>担任名:</label>
+    <input type="text" name="teacher_name">
+
+    <label>担任携帯:</label>
+    <input type="text" name="teacher_tel">
+
+    <label>担任メール:</label>
+    <input type="email" name="teacher_email">
+
+    <label>代表者:</label>
+    <input type="text" name="representative">
+
+    <label>代表者TEL:</label>
+    <input type="text" name="rep_tel">
+
+    <label>代表者メール:</label>
+    <input type="email" name="rep_email">
+
+    <label>デザイン確認方法:</label>
+    <select name="design_confirm">
+      <option value="LINE代表者">LINE代表者</option>
+      <option value="LINEご担任(保護者)">LINEご担任(保護者)</option>
+      <option value="メール代表者">メール代表者</option>
+      <option value="メールご担任(保護者)">メールご担任(保護者)</option>
+    </select>
+
+    <label>お支払い方法:</label>
+    <select name="payment_method">
+      <option value="代金引換(ヤマト運輸/現金のみ)">代金引換(ヤマト運輸/現金のみ)</option>
+      <option value="後払い(コンビニ/郵便振替)">後払い(コンビニ/郵便振替)</option>
+      <option value="後払い(銀行振込)">後払い(銀行振込)</option>
+      <option value="先払い(銀行振込)">先払い(銀行振込)</option>
+    </select>
+
+    <label>商品名:</label>
+    <select name="product_name">
+      <option value="ドライTシャツ">ドライTシャツ</option>
+      <option value="ヘビーウェイトTシャツ">ヘビーウェイトTシャツ</option>
+      <option value="ドライポロシャツ">ドライポロシャツ</option>
+      <option value="ドライメッシュビブス">ドライメッシュビブス</option>
+      <option value="ドライベースボールシャツ">ドライベースボールシャツ</option>
+      <option value="ドライロングスリープTシャツ">ドライロングスリープTシャツ</option>
+      <option value="ドライハーフパンツ">ドライハーフパンツ</option>
+      <option value="ヘビーウェイトロングスリープTシャツ">ヘビーウェイトロングスリープTシャツ</option>
+      <option value="クルーネックライトトレーナー">クルーネックライトトレーナー</option>
+      <option value="フーデッドライトパーカー">フーデッドライトパーカー</option>
+      <option value="スタンダードトレーナー">スタンダードトレーナー</option>
+      <option value="スタンダードWフードパーカー">スタンダードWフードパーカー</option>
+      <option value="ジップアップライトパーカー">ジップアップライトパーカー</option>
+    </select>
+
+    <label>商品カラー:</label>
+    <input type="text" name="product_color">
+
+    <label>サイズ(SS):</label>
+    <input type="number" name="size_ss">
+
+    <label>サイズ(S):</label>
+    <input type="number" name="size_s">
+
+    <label>サイズ(M):</label>
+    <input type="number" name="size_m">
+
+    <label>サイズ(L):</label>
+    <input type="number" name="size_l">
+
+    <label>サイズ(LL):</label>
+    <input type="number" name="size_ll">
+
+    <label>サイズ(LLL):</label>
+    <input type="number" name="size_lll">
 
     <h3>プリント位置: 前</h3>
-    <p>プリントサイズ(前):
-      <input type="radio" name="print_size_front" value="おまかせ (最大:横28cm x 縦35cm以内)" checked> おまかせ
-      <input type="radio" name="print_size_front" value="custom"> ヨコcm x タテcmくらい(入力する):
-      <input type="text" name="print_size_front_custom" placeholder="例: 20cm x 15cm">
-    </p>
-    <p>プリントカラー(前): <input type="text" name="print_color_front" placeholder="全てのカラーをご記入ください。計xx色"></p>
-    <p>フォントNo.(前): <input type="text" name="font_no_front" placeholder="例: X-XX"></p>
-    <p>プリントデザインサンプル(前): <input type="text" name="design_sample_front" placeholder="例: D-XXX"></p>
-    <p>プリントデザインイメージデータ(前): <input type="file" name="design_image_front"></p>
+    <div class="radio-group">
+      <label>
+        <input type="radio" name="print_size_front" value="おまかせ (最大:横28cm x 縦35cm以内)" checked>
+        おまかせ (最大:横28cm x 縦35cm以内)
+      </label>
+      <label>
+        <input type="radio" name="print_size_front" value="custom">
+        ヨコcm x タテcmくらい(入力する):
+      </label>
+    </div>
+    <input type="text" name="print_size_front_custom" placeholder="例: 20cm x 15cm">
+    <label>プリントカラー(前):</label>
+    <input type="text" name="print_color_front" placeholder="全てのカラーをご記入ください。計xx色">
+    <label>フォントNo.(前):</label>
+    <input type="text" name="font_no_front" placeholder="例: X-XX">
+    <label>プリントデザインサンプル(前):</label>
+    <input type="text" name="design_sample_front" placeholder="例: D-XXX">
+    <label>プリントデザインイメージデータ(前):</label>
+    <input type="file" name="design_image_front">
 
     <h3>プリント位置: 後</h3>
-    <p>プリントサイズ(後):
-      <input type="radio" name="print_size_back" value="おまかせ (最大:横28cm x 縦35cm以内)" checked> おまかせ
-      <input type="radio" name="print_size_back" value="custom"> ヨコcm x タテcmくらい(入力する):
-      <input type="text" name="print_size_back_custom" placeholder="例: 20cm x 15cm">
-    </p>
-    <p>プリントカラー(後): <input type="text" name="print_color_back" placeholder="全てのカラーをご記入ください。計xx色"></p>
-    <p>フォントNo.(後): <input type="text" name="font_no_back" placeholder="例: X-XX"></p>
-    <p>プリントデザインサンプル(後): <input type="text" name="design_sample_back" placeholder="例: D-XXX"></p>
-    <p>プリントデザインイメージデータ(後): <input type="file" name="design_image_back"></p>
+    <div class="radio-group">
+      <label>
+        <input type="radio" name="print_size_back" value="おまかせ (最大:横28cm x 縦35cm以内)" checked>
+        おまかせ (最大:横28cm x 縦35cm以内)
+      </label>
+      <label>
+        <input type="radio" name="print_size_back" value="custom">
+        ヨコcm x タテcmくらい(入力する):
+      </label>
+    </div>
+    <input type="text" name="print_size_back_custom" placeholder="例: 20cm x 15cm">
+    <label>プリントカラー(後):</label>
+    <input type="text" name="print_color_back" placeholder="全てのカラーをご記入ください。計xx色">
+    <label>フォントNo.(後):</label>
+    <input type="text" name="font_no_back" placeholder="例: X-XX">
+    <label>プリントデザインサンプル(後):</label>
+    <input type="text" name="design_sample_back" placeholder="例: D-XXX">
+    <label>プリントデザインイメージデータ(後):</label>
+    <input type="file" name="design_image_back">
 
     <h3>プリント位置: その他</h3>
-    <p>プリントサイズ(その他):
-      <input type="radio" name="print_size_other" value="おまかせ (最大:横28cm x 縦35cm以内)" checked> おまかせ
-      <input type="radio" name="print_size_other" value="custom"> ヨコcm x タテcmくらい(入力する):
-      <input type="text" name="print_size_other_custom" placeholder="例: 20cm x 15cm">
-    </p>
-    <p>プリントカラー(その他): <input type="text" name="print_color_other" placeholder="全てのカラーをご記入ください。計xx色"></p>
-    <p>フォントNo.(その他): <input type="text" name="font_no_other" placeholder="例: X-XX"></p>
-    <p>プリントデザインサンプル(その他): <input type="text" name="design_sample_other" placeholder="例: D-XXX"></p>
-    <p>プリントデザインイメージデータ(その他): <input type="file" name="design_image_other"></p>
+    <div class="radio-group">
+      <label>
+        <input type="radio" name="print_size_other" value="おまかせ (最大:横28cm x 縦35cm以内)" checked>
+        おまかせ (最大:横28cm x 縦35cm以内)
+      </label>
+      <label>
+        <input type="radio" name="print_size_other" value="custom">
+        ヨコcm x タテcmくらい(入力する):
+      </label>
+    </div>
+    <input type="text" name="print_size_other_custom" placeholder="例: 20cm x 15cm">
+    <label>プリントカラー(その他):</label>
+    <input type="text" name="print_color_other" placeholder="全てのカラーをご記入ください。計xx色">
+    <label>フォントNo.(その他):</label>
+    <input type="text" name="font_no_other" placeholder="例: X-XX">
+    <label>プリントデザインサンプル(その他):</label>
+    <input type="text" name="design_sample_other" placeholder="例: D-XXX">
+    <label>プリントデザインイメージデータ(その他):</label>
+    <input type="file" name="design_image_other">
 
-    <p><button type="submit">送信</button></p>
+    <button type="submit">送信</button>
   </form>
 </body>
 </html>
@@ -1228,151 +1347,245 @@ PAPER_FORM_HTML = """
 <html>
 <head>
   <meta charset="UTF-8">
-  <title>注文用紙(写真)からの注文</title>
+  <!-- ▼▼ 追加: ビューポート設定 ▼▼ -->
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+
+  <!-- ▼▼ 追加: レスポンシブCSS ▼▼ -->
+  <style>
+    body {
+      margin: 16px;
+      font-family: sans-serif;
+      font-size: 16px;
+      line-height: 1.5;
+    }
+    h1 {
+      margin-bottom: 24px;
+      font-size: 1.2em;
+    }
+    form {
+      max-width: 600px; /* 必要に応じて調整 */
+      margin: 0 auto;
+    }
+    input[type="text"],
+    input[type="number"],
+    input[type="email"],
+    input[type="date"],
+    select,
+    button {
+      display: block;
+      width: 100%;
+      box-sizing: border-box;
+      margin-bottom: 16px;
+      padding: 8px;
+      font-size: 16px;
+    }
+    .radio-group {
+      margin-bottom: 16px;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+    }
+    .radio-group label {
+      display: flex;
+      align-items: center;
+    }
+    h3 {
+      margin-top: 24px;
+      margin-bottom: 8px;
+      font-size: 1.1em;
+    }
+  </style>
 </head>
 <body>
   <h1>注文用紙(写真)からの注文</h1>
   <form action="/paper_order_form_submit" method="POST" enctype="multipart/form-data">
     <input type="hidden" name="user_id" value="{{ user_id }}" />
 
-    <p>申込日: <input type="date" name="application_date" value="{{ data['application_date'] or '' }}"></p>
-    <p>配達日: <input type="date" name="delivery_date" value="{{ data['delivery_date'] or '' }}"></p>
-    <p>使用日: <input type="date" name="use_date" value="{{ data['use_date'] or '' }}"></p>
+    <label>申込日:</label>
+    <input type="date" name="application_date" value="{{ data['application_date'] or '' }}">
 
-    <p>利用する学割特典:
-      <select name="discount_option">
-        <option value="早割" {% if data['discount_option'] == '早割' %}selected{% endif %}>早割</option>
-        <option value="タダ割" {% if data['discount_option'] == 'タダ割' %}selected{% endif %}>タダ割</option>
-        <option value="いっしょ割り" {% if data['discount_option'] == 'いっしょ割り' %}selected{% endif %}>いっしょ割り</option>
-      </select>
-    </p>
+    <label>配達日:</label>
+    <input type="date" name="delivery_date" value="{{ data['delivery_date'] or '' }}">
 
-    <p>学校名: <input type="text" name="school_name" value="{{ data['school_name'] or '' }}"></p>
-    <p>LINEアカウント名: <input type="text" name="line_account" value="{{ data['line_account'] or '' }}"></p>
-    <p>団体名: <input type="text" name="group_name" value="{{ data['group_name'] or '' }}"></p>
-    <p>学校住所: <input type="text" name="school_address" value="{{ data['school_address'] or '' }}"></p>
-    <p>学校TEL: <input type="text" name="school_tel" value="{{ data['school_tel'] or '' }}"></p>
-    <p>担任名: <input type="text" name="teacher_name" value="{{ data['teacher_name'] or '' }}"></p>
-    <p>担任携帯: <input type="text" name="teacher_tel" value="{{ data['teacher_tel'] or '' }}"></p>
-    <p>担任メール: <input type="email" name="teacher_email" value="{{ data['teacher_email'] or '' }}"></p>
-    <p>代表者: <input type="text" name="representative" value="{{ data['representative'] or '' }}"></p>
-    <p>代表者TEL: <input type="text" name="rep_tel" value="{{ data['rep_tel'] or '' }}"></p>
-    <p>代表者メール: <input type="email" name="rep_email" value="{{ data['rep_email'] or '' }}"></p>
+    <label>使用日:</label>
+    <input type="date" name="use_date" value="{{ data['use_date'] or '' }}">
 
-    <p>デザイン確認方法:
-      <select name="design_confirm">
-        <option value="LINE代表者" {% if data['design_confirm'] == 'LINE代表者' %}selected{% endif %}>LINE代表者</option>
-        <option value="LINEご担任(保護者)" {% if data['design_confirm'] == 'LINEご担任(保護者)' %}selected{% endif %}>LINEご担任(保護者)</option>
-        <option value="メール代表者" {% if data['design_confirm'] == 'メール代表者' %}selected{% endif %}>メール代表者</option>
-        <option value="メールご担任(保護者)" {% if data['design_confirm'] == 'メールご担任(保護者)' %}selected{% endif %}>メールご担任(保護者)</option>
-      </select>
-    </p>
+    <label>利用する学割特典:</label>
+    <select name="discount_option">
+      <option value="早割" {% if data['discount_option'] == '早割' %}selected{% endif %}>早割</option>
+      <option value="タダ割" {% if data['discount_option'] == 'タダ割' %}selected{% endif %}>タダ割</option>
+      <option value="いっしょ割り" {% if data['discount_option'] == 'いっしょ割り' %}selected{% endif %}>いっしょ割り</option>
+    </select>
 
-    <p>お支払い方法:
-      <select name="payment_method">
-        <option value="代金引換(ヤマト運輸/現金のみ)" {% if data['payment_method'] == '代金引換(ヤマト運輸/現金のみ)' %}selected{% endif %}>代金引換(ヤマト運輸/現金のみ)</option>
-        <option value="後払い(コンビニ/郵便振替)" {% if data['payment_method'] == '後払い(コンビニ/郵便振替)' %}selected{% endif %}>後払い(コンビニ/郵便振替)</option>
-        <option value="後払い(銀行振込)" {% if data['payment_method'] == '後払い(銀行振込)' %}selected{% endif %}>後払い(銀行振込)</option>
-        <option value="先払い(銀行振込)" {% if data['payment_method'] == '先払い(銀行振込)' %}selected{% endif %}>先払い(銀行振込)</option>
-      </select>
-    </p>
+    <label>学校名:</label>
+    <input type="text" name="school_name" value="{{ data['school_name'] or '' }}">
 
-    <p>商品名:
-      <select name="product_name">
-        <option value="ドライTシャツ" {% if data['product_name'] == 'ドライTシャツ' %}selected{% endif %}>ドライTシャツ</option>
-        <option value="ヘビーウェイトTシャツ" {% if data['product_name'] == 'ヘビーウェイトTシャツ' %}selected{% endif %}>ヘビーウェイトTシャツ</option>
-        <option value="ドライポロシャツ" {% if data['product_name'] == 'ドライポロシャツ' %}selected{% endif %}>ドライポロシャツ</option>
-        <option value="ドライメッシュビブス" {% if data['product_name'] == 'ドライメッシュビブス' %}selected{% endif %}>ドライメッシュビブス</option>
-        <option value="ドライベースボールシャツ" {% if data['product_name'] == 'ドライベースボールシャツ' %}selected{% endif %}>ドライベースボールシャツ</option>
-        <option value="ドライロングスリープTシャツ" {% if data['product_name'] == 'ドライロングスリープTシャツ' %}selected{% endif %}>ドライロングスリープTシャツ</option>
-        <option value="ドライハーフパンツ" {% if data['product_name'] == 'ドライハーフパンツ' %}selected{% endif %}>ドライハーフパンツ</option>
-        <option value="ヘビーウェイトロングスリープTシャツ" {% if data['product_name'] == 'ヘビーウェイトロングスリープTシャツ' %}selected{% endif %}>ヘビーウェイトロングスリープTシャツ</option>
-        <option value="クルーネックライトトレーナー" {% if data['product_name'] == 'クルーネックライトトレーナー' %}selected{% endif %}>クルーネックライトトレーナー</option>
-        <option value="フーデッドライトパーカー" {% if data['product_name'] == 'フーデッドライトパーカー' %}selected{% endif %}>フーデッドライトパーカー</option>
-        <option value="スタンダードトレーナー" {% if data['product_name'] == 'スタンダードトレーナー' %}selected{% endif %}>スタンダードトレーナー</option>
-        <option value="スタンダードWフードパーカー" {% if data['product_name'] == 'スタンダードWフードパーカー' %}selected{% endif %}>スタンダードWフードパーカー</option>
-        <option value="ジップアップライトパーカー" {% if data['product_name'] == 'ジップアップライトパーカー' %}selected{% endif %}>ジップアップライトパーカー</option>
-      </select>
-    </p>
+    <label>LINEアカウント名:</label>
+    <input type="text" name="line_account" value="{{ data['line_account'] or '' }}">
 
-    <p>商品カラー: <input type="text" name="product_color" value="{{ data['product_color'] or '' }}"></p>
-    <p>サイズ(SS): <input type="number" name="size_ss" value="{{ data['size_ss'] or '' }}"></p>
-    <p>サイズ(S): <input type="number" name="size_s" value="{{ data['size_s'] or '' }}"></p>
-    <p>サイズ(M): <input type="number" name="size_m" value="{{ data['size_m'] or '' }}"></p>
-    <p>サイズ(L): <input type="number" name="size_l" value="{{ data['size_l'] or '' }}"></p>
-    <p>サイズ(LL): <input type="number" name="size_ll" value="{{ data['size_ll'] or '' }}"></p>
-    <p>サイズ(LLL): <input type="number" name="size_lll" value="{{ data['size_lll'] or '' }}"></p>
+    <label>団体名:</label>
+    <input type="text" name="group_name" value="{{ data['group_name'] or '' }}">
+
+    <label>学校住所:</label>
+    <input type="text" name="school_address" value="{{ data['school_address'] or '' }}">
+
+    <label>学校TEL:</label>
+    <input type="text" name="school_tel" value="{{ data['school_tel'] or '' }}">
+
+    <label>担任名:</label>
+    <input type="text" name="teacher_name" value="{{ data['teacher_name'] or '' }}">
+
+    <label>担任携帯:</label>
+    <input type="text" name="teacher_tel" value="{{ data['teacher_tel'] or '' }}">
+
+    <label>担任メール:</label>
+    <input type="email" name="teacher_email" value="{{ data['teacher_email'] or '' }}">
+
+    <label>代表者:</label>
+    <input type="text" name="representative" value="{{ data['representative'] or '' }}">
+
+    <label>代表者TEL:</label>
+    <input type="text" name="rep_tel" value="{{ data['rep_tel'] or '' }}">
+
+    <label>代表者メール:</label>
+    <input type="email" name="rep_email" value="{{ data['rep_email'] or '' }}">
+
+    <label>デザイン確認方法:</label>
+    <select name="design_confirm">
+      <option value="LINE代表者" {% if data['design_confirm'] == 'LINE代表者' %}selected{% endif %}>LINE代表者</option>
+      <option value="LINEご担任(保護者)" {% if data['design_confirm'] == 'LINEご担任(保護者)' %}selected{% endif %}>LINEご担任(保護者)</option>
+      <option value="メール代表者" {% if data['design_confirm'] == 'メール代表者' %}selected{% endif %}>メール代表者</option>
+      <option value="メールご担任(保護者)" {% if data['design_confirm'] == 'メールご担任(保護者)' %}selected{% endif %}>メールご担任(保護者)</option>
+    </select>
+
+    <label>お支払い方法:</label>
+    <select name="payment_method">
+      <option value="代金引換(ヤマト運輸/現金のみ)" {% if data['payment_method'] == '代金引換(ヤマト運輸/現金のみ)' %}selected{% endif %}>代金引換(ヤマト運輸/現金のみ)</option>
+      <option value="後払い(コンビニ/郵便振替)" {% if data['payment_method'] == '後払い(コンビニ/郵便振替)' %}selected{% endif %}>後払い(コンビニ/郵便振替)</option>
+      <option value="後払い(銀行振込)" {% if data['payment_method'] == '後払い(銀行振込)' %}selected{% endif %}>後払い(銀行振込)</option>
+      <option value="先払い(銀行振込)" {% if data['payment_method'] == '先払い(銀行振込)' %}selected{% endif %}>先払い(銀行振込)</option>
+    </select>
+
+    <label>商品名:</label>
+    <select name="product_name">
+      <option value="ドライTシャツ" {% if data['product_name'] == 'ドライTシャツ' %}selected{% endif %}>ドライTシャツ</option>
+      <option value="ヘビーウェイトTシャツ" {% if data['product_name'] == 'ヘビーウェイトTシャツ' %}selected{% endif %}>ヘビーウェイトTシャツ</option>
+      <option value="ドライポロシャツ" {% if data['product_name'] == 'ドライポロシャツ' %}selected{% endif %}>ドライポロシャツ</option>
+      <option value="ドライメッシュビブス" {% if data['product_name'] == 'ドライメッシュビブス' %}selected{% endif %}>ドライメッシュビブス</option>
+      <option value="ドライベースボールシャツ" {% if data['product_name'] == 'ドライベースボールシャツ' %}selected{% endif %}>ドライベースボールシャツ</option>
+      <option value="ドライロングスリープTシャツ" {% if data['product_name'] == 'ドライロングスリープTシャツ' %}selected{% endif %}>ドライロングスリープTシャツ</option>
+      <option value="ドライハーフパンツ" {% if data['product_name'] == 'ドライハーフパンツ' %}selected{% endif %}>ドライハーフパンツ</option>
+      <option value="ヘビーウェイトロングスリープTシャツ" {% if data['product_name'] == 'ヘビーウェイトロングスリープTシャツ' %}selected{% endif %}>ヘビーウェイトロングスリープTシャツ</option>
+      <option value="クルーネックライトトレーナー" {% if data['product_name'] == 'クルーネックライトトレーナー' %}selected{% endif %}>クルーネックライトトレーナー</option>
+      <option value="フーデッドライトパーカー" {% if data['product_name'] == 'フーデッドライトパーカー' %}selected{% endif %}>フーデッドライトパーカー</option>
+      <option value="スタンダードトレーナー" {% if data['product_name'] == 'スタンダードトレーナー' %}selected{% endif %}>スタンダードトレーナー</option>
+      <option value="スタンダードWフードパーカー" {% if data['product_name'] == 'スタンダードWフードパーカー' %}selected{% endif %}>スタンダードWフードパーカー</option>
+      <option value="ジップアップライトパーカー" {% if data['product_name'] == 'ジップアップライトパーカー' %}selected{% endif %}>ジップアップライトパーカー</option>
+    </select>
+
+    <label>商品カラー:</label>
+    <input type="text" name="product_color" value="{{ data['product_color'] or '' }}">
+
+    <label>サイズ(SS):</label>
+    <input type="number" name="size_ss" value="{{ data['size_ss'] or '' }}">
+
+    <label>サイズ(S):</label>
+    <input type="number" name="size_s" value="{{ data['size_s'] or '' }}">
+
+    <label>サイズ(M):</label>
+    <input type="number" name="size_m" value="{{ data['size_m'] or '' }}">
+
+    <label>サイズ(L):</label>
+    <input type="number" name="size_l" value="{{ data['size_l'] or '' }}">
+
+    <label>サイズ(LL):</label>
+    <input type="number" name="size_ll" value="{{ data['size_ll'] or '' }}">
+
+    <label>サイズ(LLL):</label>
+    <input type="number" name="size_lll" value="{{ data['size_lll'] or '' }}">
 
     <h3>プリント位置: 前</h3>
-    <p>プリントサイズ(前):
-      <input type="radio" name="print_size_front" value="おまかせ (最大:横28cm x 縦35cm以内)"
-        {% if data['print_size_front'] == 'おまかせ (最大:横28cm x 縦35cm以内)' %}checked{% endif %}> おまかせ
-      <input type="radio" name="print_size_front" value="custom"
-        {% if data['print_size_front'] == 'custom' %}checked{% endif %}> ヨコcm x タテcmくらい(入力する):
-      <input type="text" name="print_size_front_custom" placeholder="例: 20cm x 15cm"
-        value="{{ data['print_size_front_custom'] or '' }}">
-    </p>
-    <p>プリントカラー(前):
-      <input type="text" name="print_color_front" placeholder="全てのカラーをご記入ください。計xx色"
-        value="{{ data['print_color_front'] or '' }}">
-    </p>
-    <p>フォントNo.(前):
-      <input type="text" name="font_no_front" placeholder="例: X-XX"
-        value="{{ data['font_no_front'] or '' }}">
-    </p>
-    <p>プリントデザインサンプル(前):
-      <input type="text" name="design_sample_front" placeholder="例: D-XXX"
-        value="{{ data['design_sample_front'] or '' }}">
-    </p>
-    <p>プリントデザインイメージデータ(前): <input type="file" name="design_image_front"></p>
+    <div class="radio-group">
+      <label>
+        <input type="radio" name="print_size_front" value="おまかせ (最大:横28cm x 縦35cm以内)"
+          {% if data['print_size_front'] == 'おまかせ (最大:横28cm x 縦35cm以内)' %}checked{% endif %}>
+        おまかせ (最大:横28cm x 縦35cm以内)
+      </label>
+      <label>
+        <input type="radio" name="print_size_front" value="custom"
+          {% if data['print_size_front'] == 'custom' %}checked{% endif %}>
+        ヨコcm x タテcmくらい(入力する):
+      </label>
+    </div>
+    <input type="text" name="print_size_front_custom" placeholder="例: 20cm x 15cm"
+      value="{{ data['print_size_front_custom'] or '' }}">
+    <label>プリントカラー(前):</label>
+    <input type="text" name="print_color_front" placeholder="全てのカラーをご記入ください。計xx色"
+      value="{{ data['print_color_front'] or '' }}">
+    <label>フォントNo.(前):</label>
+    <input type="text" name="font_no_front" placeholder="例: X-XX"
+      value="{{ data['font_no_front'] or '' }}">
+    <label>プリントデザインサンプル(前):</label>
+    <input type="text" name="design_sample_front" placeholder="例: D-XXX"
+      value="{{ data['design_sample_front'] or '' }}">
+    <label>プリントデザインイメージデータ(前):</label>
+    <input type="file" name="design_image_front">
 
     <h3>プリント位置: 後</h3>
-    <p>プリントサイズ(後):
-      <input type="radio" name="print_size_back" value="おまかせ (最大:横28cm x 縦35cm以内)"
-        {% if data['print_size_back'] == 'おまかせ (最大:横28cm x 縦35cm以内)' %}checked{% endif %}> おまかせ
-      <input type="radio" name="print_size_back" value="custom"
-        {% if data['print_size_back'] == 'custom' %}checked{% endif %}> ヨコcm x タテcmくらい(入力する):
-      <input type="text" name="print_size_back_custom" placeholder="例: 20cm x 15cm"
-        value="{{ data['print_size_back_custom'] or '' }}">
-    </p>
-    <p>プリントカラー(後):
-      <input type="text" name="print_color_back" placeholder="全てのカラーをご記入ください。計xx色"
-        value="{{ data['print_color_back'] or '' }}">
-    </p>
-    <p>フォントNo.(後):
-      <input type="text" name="font_no_back" placeholder="例: X-XX"
-        value="{{ data['font_no_back'] or '' }}">
-    </p>
-    <p>プリントデザインサンプル(後):
-      <input type="text" name="design_sample_back" placeholder="例: D-XXX"
-        value="{{ data['design_sample_back'] or '' }}">
-    </p>
-    <p>プリントデザインイメージデータ(後): <input type="file" name="design_image_back"></p>
+    <div class="radio-group">
+      <label>
+        <input type="radio" name="print_size_back" value="おまかせ (最大:横28cm x 縦35cm以内)"
+          {% if data['print_size_back'] == 'おまかせ (最大:横28cm x 縦35cm以内)' %}checked{% endif %}>
+        おまかせ (最大:横28cm x 縦35cm以内)
+      </label>
+      <label>
+        <input type="radio" name="print_size_back" value="custom"
+          {% if data['print_size_back'] == 'custom' %}checked{% endif %}>
+        ヨコcm x タテcmくらい(入力する):
+      </label>
+    </div>
+    <input type="text" name="print_size_back_custom" placeholder="例: 20cm x 15cm"
+      value="{{ data['print_size_back_custom'] or '' }}">
+    <label>プリントカラー(後):</label>
+    <input type="text" name="print_color_back" placeholder="全てのカラーをご記入ください。計xx色"
+      value="{{ data['print_color_back'] or '' }}">
+    <label>フォントNo.(後):</label>
+    <input type="text" name="font_no_back" placeholder="例: X-XX"
+      value="{{ data['font_no_back'] or '' }}">
+    <label>プリントデザインサンプル(後):</label>
+    <input type="text" name="design_sample_back" placeholder="例: D-XXX"
+      value="{{ data['design_sample_back'] or '' }}">
+    <label>プリントデザインイメージデータ(後):</label>
+    <input type="file" name="design_image_back">
 
     <h3>プリント位置: その他</h3>
-    <p>プリントサイズ(その他):
-      <input type="radio" name="print_size_other" value="おまかせ (最大:横28cm x 縦35cm以内)"
-        {% if data['print_size_other'] == 'おまかせ (最大:横28cm x 縦35cm以内)' %}checked{% endif %}> おまかせ
-      <input type="radio" name="print_size_other" value="custom"
-        {% if data['print_size_other'] == 'custom' %}checked{% endif %}> ヨコcm x タテcmくらい(入力する):
-      <input type="text" name="print_size_other_custom" placeholder="例: 20cm x 15cm"
-        value="{{ data['print_size_other_custom'] or '' }}">
-    </p>
-    <p>プリントカラー(その他):
-      <input type="text" name="print_color_other" placeholder="全てのカラーをご記入ください。計xx色"
-        value="{{ data['print_color_other'] or '' }}">
-    </p>
-    <p>フォントNo.(その他):
-      <input type="text" name="font_no_other" placeholder="例: X-XX"
-        value="{{ data['font_no_other'] or '' }}">
-    </p>
-    <p>プリントデザインサンプル(その他):
-      <input type="text" name="design_sample_other" placeholder="例: D-XXX"
-        value="{{ data['design_sample_other'] or '' }}">
-    </p>
-    <p>プリントデザインイメージデータ(その他): <input type="file" name="design_image_other"></p>
+    <div class="radio-group">
+      <label>
+        <input type="radio" name="print_size_other" value="おまかせ (最大:横28cm x 縦35cm以内)"
+          {% if data['print_size_other'] == 'おまかせ (最大:横28cm x 縦35cm以内)' %}checked{% endif %}>
+        おまかせ (最大:横28cm x 縦35cm以内)
+      </label>
+      <label>
+        <input type="radio" name="print_size_other" value="custom"
+          {% if data['print_size_other'] == 'custom' %}checked{% endif %}>
+        ヨコcm x タテcmくらい(入力する):
+      </label>
+    </div>
+    <input type="text" name="print_size_other_custom" placeholder="例: 20cm x 15cm"
+      value="{{ data['print_size_other_custom'] or '' }}">
+    <label>プリントカラー(その他):</label>
+    <input type="text" name="print_color_other" placeholder="全てのカラーをご記入ください。計xx色"
+      value="{{ data['print_color_other'] or '' }}">
+    <label>フォントNo.(その他):</label>
+    <input type="text" name="font_no_other" placeholder="例: X-XX"
+      value="{{ data['font_no_other'] or '' }}">
+    <label>プリントデザインサンプル(その他):</label>
+    <input type="text" name="design_sample_other" placeholder="例: D-XXX"
+      value="{{ data['design_sample_other'] or '' }}">
+    <label>プリントデザインイメージデータ(その他):</label>
+    <input type="file" name="design_image_other">
 
-    <p><button type="submit">送信</button></p>
+    <button type="submit">送信</button>
   </form>
 </body>
 </html>
