@@ -84,18 +84,21 @@ def get_or_create_worksheet(sheet, title):
 
         elif title == "Orders":
             ws.update('A1:Z1', [[
-                "申込日","配達日","使用日","学割特典","学校名","LINEアカウント名",
-                "団体名","学校住所","学校TEL","担任名","担任携帯","担任メール",
-                "代表者名","代表者TEL","代表者メール","デザイン確認方法","お支払い方法",
-                "商品名","商品カラー","サイズ(SS)","サイズ(S)","サイズ(M)","サイズ(L)",
-                "サイズ(LL)","サイズ(LLL)","print_size_front","print_size_front_custom",
-                "print_color_front","font_no_front","design_sample_front","position_data_front",
-                "front_positions_selected","print_size_back","print_size_back_custom",
-                "print_color_back","font_no_back","design_sample_back","position_data_back",
-                "back_positions_selected","print_size_other","print_size_other_custom",
-                "print_color_other","font_no_other","design_sample_other","position_data_other",
-                "背ネーム番号プリント(複数)","追加デザイン位置","追加デザイン画像",
-                "合計金額","単価","注文番号","ユーザーID"
+                "申込日", "配達日", "使用日", "学割特典", "学校名", "LINEアカウント名",
+                "団体名", "学校住所", "学校TEL", "担任名", "担任携帯", "担任メール",
+                "代表者名", "代表者TEL", "代表者メール", "デザイン確認方法", "お支払い方法",
+                "商品名", "商品カラー",
+                "サイズ(SS)", "サイズ(S)", "サイズ(M)", "サイズ(L)", "サイズ(LL)", "サイズ(LLL)",
+                "前プリントサイズ", "前プリントサイズ指定",
+                "前プリントカラー", "前フォントNo", "前デザインサンプル", "前位置データURL",
+                "前位置選択",
+                "後プリントサイズ", "後プリントサイズ指定",
+                "後プリントカラー", "後フォントNo", "後デザインサンプル", "後位置データURL",
+                "後位置選択",
+                "その他プリントサイズ", "その他プリントサイズ指定",
+                "その他プリントカラー", "その他フォントNo", "その他デザインサンプル", "その他位置データURL",
+                "背ネーム番号プリント", "追加デザイン位置", "追加デザイン画像URL",
+                "合計金額", "単価", "注文番号", "ユーザーID"
             ]])
 
         # 可能なら全列を左揃えにする
