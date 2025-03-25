@@ -34,6 +34,7 @@ S3_BUCKET_NAME = os.environ.get("S3_BUCKET_NAME", "")
 line_bot_api = LineBotApi(LINE_CHANNEL_ACCESS_TOKEN)
 handler = WebhookHandler(LINE_CHANNEL_SECRET)
 
+
 # -----------------------
 # Google Sheets 接続
 # -----------------------
@@ -80,7 +81,6 @@ def get_or_create_worksheet(sheet, title):
                 "合計金額", "単価"
             ]])
         elif title == "Orders":
-            # Ordersシートのヘッダ
             ws.update('A1:Z1', [[
                 "申込日","配達日","使用日","学割特典","学校名","LINEアカウント名",
                 "団体名","学校住所","学校TEL","担任名","担任携帯","担任メール",
@@ -149,7 +149,7 @@ def write_to_spreadsheet_for_catalog(form_data: dict):
 
 
 # -----------------------
-# PRICE_TABLE (現行どおりペースト)
+# PRICE_TABLE
 # -----------------------
 PRICE_TABLE = [
     {"item": "ドライTシャツ", "min_qty": 10, "max_qty": 14, "discount_type": "早割", "unit_price": 1830, "pos_add": 850, "color_add": 850, "fullcolor_add": 550, "set_name_num": 900, "big_name": 550, "big_num": 550},
@@ -348,6 +348,7 @@ PRICE_TABLE = [
     {"item": "ジップアップライトパーカー", "min_qty": 100, "max_qty": 500, "discount_type": "通常", "unit_price": 2910, "pos_add": 300, "color_add": 300, "fullcolor_add": 550, "set_name_num": 900, "big_name": 550, "big_num": 550},
 ]
 
+
 COLOR_COST_MAP = {
     "前 or 背中 1色": (0, 0),
     "前 or 背中 2色": (1, 0),
@@ -435,7 +436,7 @@ def calculate_estimate(estimate_data):
 
 
 # -----------------------
-# Flexメッセージ (省略なし)
+# Flexメッセージ
 # -----------------------
 def flex_usage_date():
     bubble = {
@@ -878,6 +879,7 @@ def show_catalog_form():
 """
     return render_template_string(html_content)
 
+
 @app.route("/submit_form", methods=["POST"])
 def submit_catalog_form():
     form_data = {
@@ -901,7 +903,408 @@ def submit_catalog_form():
 # -----------------------
 # WEBフォームから注文 (GET/POST) - S3対応
 # -----------------------
-FORM_HTML = """...（省略せず完全）..."""
+FORM_HTML = r"""
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+  <style>
+    body {
+      margin: 16px;
+      font-family: sans-serif;
+      font-size: 16px;
+      line-height: 1.5;
+    }
+    h1 {
+      margin-bottom: 24px;
+      font-size: 1.2em;
+    }
+    form {
+      max-width: 600px;
+      margin: 0 auto;
+    }
+    input[type="text"],
+    input[type="number"],
+    input[type="email"],
+    input[type="date"],
+    select,
+    button {
+      display: block;
+      width: 100%;
+      box-sizing: border-box;
+      margin-bottom: 16px;
+      padding: 8px;
+      font-size: 16px;
+    }
+    .radio-group,
+    .checkbox-group {
+      margin-bottom: 16px;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+    }
+    .radio-group label,
+    .checkbox-group label {
+      display: flex;
+      align-items: center;
+    }
+    h3 {
+      margin-top: 24px;
+      margin-bottom: 8px;
+      font-size: 1.1em;
+    }
+    p.instruction {
+      font-size: 14px;
+      color: #555;
+    }
+    .tshirt-container {
+      width: 300px;
+      margin-bottom: 16px;
+      position: relative;
+    }
+    svg {
+      width: 100%;
+      height: auto;
+      display: block;
+    }
+    .tshirt-shape {
+      fill: #f5f5f5;
+      stroke: #aaa;
+      stroke-width: 2;
+    }
+    .click-area {
+      fill: white;
+      stroke: black;
+      cursor: pointer;
+      transition: 0.2s;
+    }
+    .click-area:hover {
+      fill: orange;
+    }
+    .click-area.selected {
+      fill: orange;
+    }
+    .area-label {
+      pointer-events: none;
+      font-size: 12px;
+      text-anchor: middle;
+      alignment-baseline: middle;
+      user-select: none;
+    }
+  </style>
+</head>
+<body>
+  <h1>WEBフォームから注文</h1>
+  <form action="/webform_submit" method="POST" enctype="multipart/form-data">
+    <input type="hidden" name="user_id" value="{{ user_id }}" />
+
+    <label>申込日:</label>
+    <input type="date" name="application_date">
+
+    <label>配達日:</label>
+    <input type="date" name="delivery_date">
+
+    <label>使用日:</label>
+    <input type="date" name="use_date">
+
+    <label>利用する学割特典:</label>
+    <select name="discount_option">
+      <option value="早割">早割</option>
+      <option value="タダ割">タダ割</option>
+      <option value="いっしょ割り">いっしょ割り</option>
+    </select>
+
+    <label>学校名:</label>
+    <input type="text" name="school_name">
+
+    <label>LINEアカウント名:</label>
+    <input type="text" name="line_account">
+
+    <label>団体名:</label>
+    <input type="text" name="group_name">
+
+    <label>学校住所:</label>
+    <input type="text" name="school_address">
+
+    <label>学校TEL:</label>
+    <input type="text" name="school_tel">
+
+    <label>担任名:</label>
+    <input type="text" name="teacher_name">
+
+    <label>担任携帯:</label>
+    <input type="text" name="teacher_tel">
+
+    <label>担任メール:</label>
+    <input type="email" name="teacher_email">
+
+    <label>代表者:</label>
+    <input type="text" name="representative">
+
+    <label>代表者TEL:</label>
+    <input type="text" name="rep_tel">
+
+    <label>代表者メール:</label>
+    <input type="email" name="rep_email">
+
+    <label>デザイン確認方法:</label>
+    <select name="design_confirm">
+      <option value="LINE代表者">LINE代表者</option>
+      <option value="LINEご担任(保護者)">LINEご担任(保護者)</option>
+      <option value="メール代表者">メール代表者</option>
+      <option value="メールご担任(保護者)">メールご担任(保護者)</option>
+    </select>
+
+    <label>お支払い方法:</label>
+    <select name="payment_method">
+      <option value="代金引換(ヤマト運輸/現金のみ)">代金引換(ヤマト運輸/現金のみ)</option>
+      <option value="後払い(コンビニ/郵便振替)">後払い(コンビニ/郵便振替)</option>
+      <option value="後払い(銀行振込)">後払い(銀行振込)</option>
+      <option value="先払い(銀行振込)">先払い(銀行振込)</option>
+    </select>
+
+    <label>商品名:</label>
+    <select name="product_name">
+      <option value="ドライTシャツ">ドライTシャツ</option>
+      <option value="ヘビーウェイトTシャツ">ヘビーウェイトTシャツ</option>
+      <option value="ドライポロシャツ">ドライポロシャツ</option>
+      <option value="ドライメッシュビブス">ドライメッシュビブス</option>
+      <option value="ドライベースボールシャツ">ドライベースボールシャツ</option>
+      <option value="ドライロングスリープTシャツ">ドライロングスリープTシャツ</option>
+      <option value="ドライハーフパンツ">ドライハーフパンツ</option>
+      <option value="ヘビーウェイトロングスリープTシャツ">ヘビーウェイトロングスリープTシャツ</option>
+      <option value="クルーネックライトトレーナー">クルーネックライトトレーナー</option>
+      <option value="フーデッドライトパーカー">フーデッドライトパーカー</option>
+      <option value="スタンダードトレーナー">スタンダードトレーナー</option>
+      <option value="スタンダードWフードパーカー">スタンダードWフードパーカー</option>
+      <option value="ジップアップライトパーカー">ジップアップライトパーカー</option>
+    </select>
+
+    <label>商品カラー:</label>
+    <input type="text" name="product_color">
+
+    <label>サイズ(SS):</label>
+    <input type="number" name="size_ss">
+    <label>サイズ(S):</label>
+    <input type="number" name="size_s">
+    <label>サイズ(M):</label>
+    <input type="number" name="size_m">
+    <label>サイズ(L):</label>
+    <input type="number" name="size_l">
+    <label>サイズ(LL):</label>
+    <input type="number" name="size_ll">
+    <label>サイズ(LLL):</label>
+    <input type="number" name="size_lll">
+
+
+    <!-- ▼▼ 前面プリント ▼▼ -->
+    <h3>プリント位置: 前</h3>
+    <div class="radio-group">
+      <label>
+        <input type="radio" name="print_size_front" value="おまかせ (最大:横28cm x 縦35cm以内)" checked>
+        おまかせ (最大:横28cm x 縦35cm以内)
+      </label>
+      <label>
+        <input type="radio" name="print_size_front" value="custom">
+        ヨコcm x タテcmくらい(入力する):
+      </label>
+    </div>
+    <input type="text" name="print_size_front_custom" placeholder="例: 20cm x 15cm">
+    <label>プリントカラー(前):</label>
+    <input type="text" name="print_color_front" placeholder="全てのカラーをご記入ください。計xx色">
+    <label>フォントNo.(前):</label>
+    <input type="text" name="font_no_front" placeholder="例: X-XX">
+    <label>プリントサンプル(前):</label>
+    <input type="text" name="design_sample_front" placeholder="例: D-XXX">
+
+    <label>プリント位置データ(前) (画像アップロード):</label>
+    <input type="file" name="position_data_front">
+
+    <input type="text" name="front_positions_selected" id="front_positions_selected"
+           placeholder="前面 1~9" readonly>
+
+    <div class="tshirt-container">
+      <svg viewBox="0 0 300 300">
+        <path class="tshirt-shape" d="
+          M 90,20
+          L 210,20
+          Q 220,30 210,40
+          L 210,65
+          L 270,65
+          L 270,100
+          L 210,100
+          L 210,240
+          L 90,240
+          L 90,100
+          L 30,100
+          L 30,65
+          L 90,65
+          L 90,40
+          Q 80,30 90,20
+          Z
+        "></path>
+        <circle cx="60" cy="50" r="10" class="click-area" data-num="1"></circle>
+        <text x="60" y="50" class="area-label">1</text>
+        <circle cx="240" cy="50" r="10" class="click-area" data-num="2"></circle>
+        <text x="240" y="50" class="area-label">2</text>
+        <circle cx="120" cy="80" r="10" class="click-area" data-num="3"></circle>
+        <text x="120" y="80" class="area-label">3</text>
+        <circle cx="150" cy="80" r="10" class="click-area" data-num="4"></circle>
+        <text x="150" y="80" class="area-label">4</text>
+        <circle cx="180" cy="80" r="10" class="click-area" data-num="5"></circle>
+        <text x="180" y="80" class="area-label">5</text>
+        <circle cx="150" cy="120" r="10" class="click-area" data-num="6"></circle>
+        <text x="150" y="120" class="area-label">6</text>
+        <circle cx="100" cy="200" r="10" class="click-area" data-num="7"></circle>
+        <text x="100" y="200" class="area-label">7</text>
+        <circle cx="150" cy="200" r="10" class="click-area" data-num="8"></circle>
+        <text x="150" y="200" class="area-label">8</text>
+        <circle cx="200" cy="200" r="10" class="click-area" data-num="9"></circle>
+        <text x="200" y="200" class="area-label">9</text>
+      </svg>
+    </div>
+
+    <!-- ▼▼ 背面プリント ▼▼ -->
+    <h3>プリント位置: 後</h3>
+    <div class="radio-group">
+      <label>
+        <input type="radio" name="print_size_back" value="おまかせ (最大:横28cm x 縦35cm以内)" checked>
+        おまかせ (最大:横28cm x 縦35cm以内)
+      </label>
+      <label>
+        <input type="radio" name="print_size_back" value="custom">
+        ヨコcm x タテcmくらい(入力する):
+      </label>
+    </div>
+    <input type="text" name="print_size_back_custom" placeholder="例: 20cm x 15cm">
+    <label>プリントカラー(後):</label>
+    <input type="text" name="print_color_back" placeholder="全てのカラーをご記入ください。計xx色">
+    <label>フォントNo.(後):</label>
+    <input type="text" name="font_no_back" placeholder="例: X-XX">
+    <label>プリントサンプル(後):</label>
+    <input type="text" name="design_sample_back" placeholder="例: D-XXX">
+    <label>プリント位置データ(後) (画像アップロード):</label>
+    <input type="file" name="position_data_back">
+    <input type="text" name="back_positions_selected" id="back_positions_selected"
+           placeholder="背面 10~14" readonly>
+
+    <div class="tshirt-container">
+      <svg viewBox="0 0 300 300">
+        <path class="tshirt-shape" d="
+          M 90,20
+          L 210,20
+          Q 220,30 210,40
+          L 210,65
+          L 270,65
+          L 270,100
+          L 210,100
+          L 210,240
+          L 90,240
+          L 90,100
+          L 30,100
+          L 30,65
+          L 90,65
+          L 90,40
+          Q 80,30 90,20
+          Z
+        "></path>
+
+        <circle cx="150" cy="50" r="10" class="click-area" data-num="10"></circle>
+        <text x="150" y="50" class="area-label">10</text>
+        <circle cx="150" cy="100" r="10" class="click-area" data-num="11"></circle>
+        <text x="150" y="100" class="area-label">11</text>
+        <circle cx="100" cy="200" r="10" class="click-area" data-num="12"></circle>
+        <text x="100" y="200" class="area-label">12</text>
+        <circle cx="150" cy="200" r="10" class="click-area" data-num="13"></circle>
+        <text x="150" y="200" class="area-label">13</text>
+        <circle cx="200" cy="200" r="10" class="click-area" data-num="14"></circle>
+        <text x="200" y="200" class="area-label">14</text>
+      </svg>
+    </div>
+
+
+    <!-- ▼▼ その他プリント ▼▼ -->
+    <h3>プリント位置: その他</h3>
+    <div class="radio-group">
+      <label>
+        <input type="radio" name="print_size_other" value="おまかせ (最大:横28cm x 縦35cm以内)" checked>
+        おまかせ (最大:横28cm x 縦35cm以内)
+      </label>
+      <label>
+        <input type="radio" name="print_size_other" value="custom">
+        ヨコcm x タテcmくらい(入力する):
+      </label>
+    </div>
+    <input type="text" name="print_size_other_custom" placeholder="例: 20cm x 15cm">
+    <label>プリントカラー(その他):</label>
+    <input type="text" name="print_color_other" placeholder="全てのカラーをご記入ください。計xx色">
+    <label>フォントNo.(その他):</label>
+    <input type="text" name="font_no_other" placeholder="例: X-XX">
+    <label>プリントサンプル(その他):</label>
+    <input type="text" name="design_sample_other" placeholder="例: D-XXX">
+    <label>プリント位置データ(その他):</label>
+    <input type="file" name="position_data_other">
+
+    <h3>背ネーム・背番号プリント</h3>
+    <p class="instruction">※複数選択可能</p>
+    <div class="checkbox-group">
+      <label><input type="checkbox" name="back_name_number_print[]" value="ネーム&背番号セット"> ネーム&背番号セット</label>
+      <label><input type="checkbox" name="back_name_number_print[]" value="ネーム(大)"> ネーム(大)</label>
+      <label><input type="checkbox" name="back_name_number_print[]" value="ネーム(小)"> ネーム(小)</label>
+      <label><input type="checkbox" name="back_name_number_print[]" value="番号(大)"> 番号(大)</label>
+      <label><input type="checkbox" name="back_name_number_print[]" value="番号(小)"> 番号(小)</label>
+    </div>
+
+    <h3>追加のデザインイメージデータ</h3>
+    <p class="instruction">プリント位置(前, 左胸, 右胸, 背中, 左袖, 右袖)を選択し、アップロードできます。</p>
+    <label>プリント位置:</label>
+    <select name="additional_design_position">
+      <option value="">選択してください</option>
+      <option value="前">前</option>
+      <option value="左胸">左胸</option>
+      <option value="右胸">右胸</option>
+      <option value="背中">背中</option>
+      <option value="左袖">左袖</option>
+      <option value="右袖">右袖</option>
+    </select>
+    <label>デザインイメージデータ:</label>
+    <input type="file" name="additional_design_image">
+
+    <button type="submit">送信</button>
+
+    <script>
+      // 前面(①〜⑨)
+      const frontSvg = document.querySelectorAll('.tshirt-container')[0];
+      const frontAreas = frontSvg.querySelectorAll('.click-area');
+      const frontInput = document.getElementById('front_positions_selected');
+      frontAreas.forEach(area => {
+        area.addEventListener('click', () => {
+          frontAreas.forEach(a => a.classList.remove('selected'));
+          area.classList.add('selected');
+          const num = area.getAttribute('data-num');
+          frontInput.value = num;
+        });
+      });
+
+      // 背面(⑩〜⑭)
+      const backSvg = document.querySelectorAll('.tshirt-container')[1];
+      const backAreas = backSvg.querySelectorAll('.click-area');
+      const backInput = document.getElementById('back_positions_selected');
+      backAreas.forEach(area => {
+        area.addEventListener('click', () => {
+          backAreas.forEach(a => a.classList.remove('selected'));
+          area.classList.add('selected');
+          const num = area.getAttribute('data-num');
+          backInput.value = num;
+        });
+      });
+    </script>
+
+  </form>
+</body>
+</html>
+"""
 
 @app.route("/webform", methods=["GET"])
 def show_webform():
@@ -1008,7 +1411,7 @@ def webform_submit():
         base_unit_price = 0
         total_price = 0
 
-    # 注文番号 (同時に見積番号的扱い)
+    # 注文番号
     order_number = f"O{int(time.time())}"
 
     # ★ (4) スプレッドシート書き込み
@@ -1068,7 +1471,6 @@ def webform_submit():
     ws.append_row(new_row, value_input_option="USER_ENTERED")
 
     # ★ (5) LINEに「注文番号・注文内容・合計金額・単価」を返す
-    # push_message で送信
     reply_msg = (
         f"【ご注文ありがとうございます】\n"
         f"注文番号: {order_number}\n"
