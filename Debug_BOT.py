@@ -34,7 +34,6 @@ S3_BUCKET_NAME = os.environ.get("S3_BUCKET_NAME", "")
 line_bot_api = LineBotApi(LINE_CHANNEL_ACCESS_TOKEN)
 handler = WebhookHandler(LINE_CHANNEL_SECRET)
 
-
 # -----------------------
 # Google Sheets 接続
 # -----------------------
@@ -56,23 +55,25 @@ def get_gspread_client():
     credentials = ServiceAccountCredentials.from_json_keyfile_dict(service_account_dict, scope)
     return gspread.authorize(credentials)
 
-
 def get_or_create_worksheet(sheet, title):
     """
     スプレッドシート内で該当titleのワークシートを取得。
-    なければ新規作成し、ヘッダを書き込む。
+    なければ新規作成し、ヘッダを書き込み、全列を左揃えに設定する。
     """
     try:
         ws = sheet.worksheet(title)
     except gspread.exceptions.WorksheetNotFound:
+        # 新規作成
         ws = sheet.add_worksheet(title=title, rows=2000, cols=50)
 
+        # ヘッダ行を設定
         if title == "CatalogRequests":
             ws.update('A1:H1', [[
                 "氏名", "郵便番号", "住所", "電話番号",
                 "メールアドレス", "Insta/TikTok名",
                 "在籍予定の学校名と学年", "その他(質問・要望)"
             ]])
+
         elif title == "簡易見積":
             ws.update('A1:L1', [[
                 "日時", "見積番号", "ユーザーID",
@@ -80,6 +81,7 @@ def get_or_create_worksheet(sheet, title):
                 "プリント位置", "色数", "背ネーム",
                 "合計金額", "単価"
             ]])
+
         elif title == "Orders":
             ws.update('A1:Z1', [[
                 "申込日","配達日","使用日","学割特典","学校名","LINEアカウント名",
@@ -95,8 +97,14 @@ def get_or_create_worksheet(sheet, title):
                 "背ネーム番号プリント(複数)","追加デザイン位置","追加デザイン画像",
                 "合計金額","単価","注文番号","ユーザーID"
             ]])
-    return ws
 
+        # 全列を左揃え
+        try:
+            ws.format("A:Z", {"horizontalAlignment": "LEFT"})
+        except Exception:
+            pass  # 古いgspreadだとformatに非対応の場合があるため
+
+    return ws
 
 # -----------------------
 # S3アップロード機能
@@ -126,7 +134,6 @@ def upload_file_to_s3(file_storage, s3_bucket, prefix="uploads/"):
     url = f"https://{s3_bucket}.s3.amazonaws.com/{s3_key}"
     return url
 
-
 # -----------------------
 # カタログ申し込みフォーム
 # -----------------------
@@ -149,7 +156,7 @@ def write_to_spreadsheet_for_catalog(form_data: dict):
 
 
 # -----------------------
-# PRICE_TABLE
+# PRICE_TABLE と 簡易見積
 # -----------------------
 PRICE_TABLE = [
     {"item": "ドライTシャツ", "min_qty": 10, "max_qty": 14, "discount_type": "早割", "unit_price": 1830, "pos_add": 850, "color_add": 850, "fullcolor_add": 550, "set_name_num": 900, "big_name": 550, "big_num": 550},
@@ -348,7 +355,6 @@ PRICE_TABLE = [
     {"item": "ジップアップライトパーカー", "min_qty": 100, "max_qty": 500, "discount_type": "通常", "unit_price": 2910, "pos_add": 300, "color_add": 300, "fullcolor_add": 550, "set_name_num": 900, "big_name": 550, "big_num": 550},
 ]
 
-
 COLOR_COST_MAP = {
     "前 or 背中 1色": (0, 0),
     "前 or 背中 2色": (1, 0),
@@ -363,9 +369,6 @@ COLOR_COST_MAP = {
 user_estimate_sessions = {}  # 見積フロー管理簡易セッション
 
 
-# -----------------------
-# 簡易見積ロジック
-# -----------------------
 def write_estimate_to_spreadsheet(user_id, estimate_data, total_price, unit_price):
     gc = get_gspread_client()
     sh = gc.open_by_key(SPREADSHEET_KEY)
@@ -436,8 +439,10 @@ def calculate_estimate(estimate_data):
 
 
 # -----------------------
-# Flexメッセージ
+# Flexメッセージ (見積フロー)
 # -----------------------
+from linebot.models import FlexSendMessage
+
 def flex_usage_date():
     bubble = {
         "type": "bubble",
@@ -469,7 +474,6 @@ def flex_usage_date():
     }
     return FlexSendMessage(alt_text="使用日を選択してください", contents=bubble)
 
-
 def flex_budget():
     budgets = ["1,000円", "2,000円", "3,000円", "4,000円", "5,000円"]
     buttons = []
@@ -491,7 +495,6 @@ def flex_budget():
         }
     }
     return FlexSendMessage(alt_text="予算を選択してください", contents=bubble)
-
 
 def flex_item_select():
     items = [
@@ -525,7 +528,6 @@ def flex_item_select():
     carousel = {"type":"carousel","contents":item_bubbles}
     return FlexSendMessage(alt_text="商品名を選択してください", contents=carousel)
 
-
 def flex_quantity():
     quantities = ["10","20","30","40","50","100"]
     btns = []
@@ -548,7 +550,6 @@ def flex_quantity():
     }
     return FlexSendMessage(alt_text="必要枚数を選択してください", contents=bubble)
 
-
 def flex_print_position():
     positions = ["前のみ","背中のみ","前と背中"]
     btns = []
@@ -570,7 +571,6 @@ def flex_print_position():
         }
     }
     return FlexSendMessage(alt_text="プリント位置を選択してください", contents=bubble)
-
 
 def flex_color_count():
     color_list = [
@@ -601,7 +601,6 @@ def flex_color_count():
         color_bubbles.append(bubble)
     carousel = {"type":"carousel","contents":color_bubbles}
     return FlexSendMessage(alt_text="色数を選択してください", contents=carousel)
-
 
 def flex_back_name():
     names = ["ネーム&背番号セット","ネーム(大)","番号(大)","背ネーム・番号を使わない"]
@@ -643,7 +642,6 @@ def line_callback():
         abort(400, f"Invalid signature: {e}")
     return "OK", 200
 
-
 @handler.add(MessageEvent, message=TextMessage)
 def handle_message(event: MessageEvent):
     user_id = event.source.user_id
@@ -659,7 +657,7 @@ def handle_message(event: MessageEvent):
         start_estimate_flow(event)
         return
 
-    # カタログ案内
+    # カタログ案内キーワード
     if ("カタログ" in text) or ("catalog" in text.lower()):
         reply_text = (
             "🎁 【クラTナビ最新カタログ無料プレゼント】 🎁 \n"
@@ -693,12 +691,10 @@ def handle_message(event: MessageEvent):
     # その他
     return
 
-
 def start_estimate_flow(event: MessageEvent):
     user_id = event.source.user_id
     user_estimate_sessions[user_id] = {"step":1, "answers":{}}
     line_bot_api.reply_message(event.reply_token, flex_usage_date())
-
 
 def process_estimate_flow(event: MessageEvent, text: str):
     user_id = event.source.user_id
@@ -801,43 +797,62 @@ def process_estimate_flow(event: MessageEvent, text: str):
         if user_id in user_estimate_sessions:
             del user_estimate_sessions[user_id]
 
-
 # -----------------------
 # カタログ申し込みフォーム (GET/POST)
 # -----------------------
 @app.route("/catalog_form", methods=["GET"])
 def show_catalog_form():
+    # モバイル対応のために <meta name="viewport"> を追加
     html_content = """
 <!DOCTYPE html>
 <html>
 <head>
     <meta charset="utf-8">
     <title>カタログ申し込みフォーム</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <style>
         body {
-            margin: 0; padding: 0; font-family: sans-serif;
+            margin: 0;
+            padding: 0;
+            font-family: sans-serif;
         }
         .container {
-            max-width: 600px; margin: 0 auto; padding: 1em;
+            max-width: 600px;
+            margin: 0 auto;
+            padding: 1em;
         }
-        label { display: block; margin-bottom: 0.5em; }
+        label {
+            display: block;
+            margin-bottom: 0.5em;
+        }
         input[type=text], input[type=email], textarea {
-            width: 100%; padding: 0.5em; margin-top:0.3em; box-sizing:border-box;
+            width: 100%;
+            padding: 0.5em;
+            margin-top: 0.3em;
+            box-sizing: border-box;
         }
-        input[type=submit] { padding:0.7em 1em; font-size:1em; margin-top:1em; }
+        input[type=submit] {
+            padding: 0.7em 1em;
+            font-size: 1em;
+            margin-top: 1em;
+        }
     </style>
     <script>
     async function fetchAddress() {
         let pcRaw = document.getElementById('postal_code').value.trim();
         pcRaw = pcRaw.replace('-', '');
-        if (pcRaw.length < 7) return;
+        if (pcRaw.length < 7) {
+            return;
+        }
         try {
             const response = await fetch('https://api.zipaddress.net/?zipcode='+pcRaw);
             const data = await response.json();
             if(data.code===200){
                 document.getElementById('address').value=data.data.fullAddress;
             }
-        }catch(e){console.log(e);}
+        }catch(e){
+            console.log("住所検索失敗:", e);
+        }
     }
     </script>
 </head>
@@ -849,28 +864,36 @@ def show_catalog_form():
           <label>氏名（必須）:
               <input type="text" name="name" required>
           </label>
+
           <label>郵便番号（必須）:<br>
               <small>※ハイフン無し7桁で入力すると自動で住所補完します</small><br>
               <input type="text" name="postal_code" id="postal_code" onkeyup="fetchAddress()" required>
           </label>
+
           <label>住所（必須）:
               <input type="text" name="address" id="address" required>
           </label>
+
           <label>電話番号（必須）:
               <input type="text" name="phone" required>
           </label>
+
           <label>メールアドレス（必須）:
               <input type="email" name="email" required>
           </label>
+
           <label>Insta・TikTok名（必須）:
               <input type="text" name="sns_account" required>
           </label>
+
           <label>2025年度に在籍予定の学校名と学年（未記入可）:
               <input type="text" name="school_grade">
           </label>
+
           <label>その他（質問やご要望など）:
               <textarea name="other" rows="4"></textarea>
           </label>
+
           <input type="submit" value="送信">
       </form>
     </div>
@@ -878,7 +901,6 @@ def show_catalog_form():
 </html>
 """
     return render_template_string(html_content)
-
 
 @app.route("/submit_form", methods=["POST"])
 def submit_catalog_form():
@@ -899,9 +921,8 @@ def submit_catalog_form():
 
     return "フォーム送信ありがとうございました！ カタログ送付をお待ちください。", 200
 
-
 # -----------------------
-# WEBフォームから注文 (GET/POST) - S3対応
+# WEBフォームから注文 (GET/POST) (省略なし, S3対応)
 # -----------------------
 FORM_HTML = r"""
 <!DOCTYPE html>
@@ -1223,7 +1244,6 @@ FORM_HTML = r"""
       </svg>
     </div>
 
-
     <!-- ▼▼ その他プリント ▼▼ -->
     <h3>プリント位置: その他</h3>
     <div class="radio-group">
@@ -1313,7 +1333,7 @@ def show_webform():
 
 @app.route("/webform_submit", methods=["POST"])
 def webform_submit():
-    # ★ (1) フォーム内容取得
+    # (1) フォーム内容取得
     user_id = request.form.get("user_id","")
 
     application_date = request.form.get("application_date","")
@@ -1372,7 +1392,7 @@ def webform_submit():
     additional_design_position= request.form.get("additional_design_position","")
     additional_design_image= request.files.get("additional_design_image")
 
-    # ★ (2) S3アップロード
+    # (2) S3アップロード
     pos_front_url = upload_file_to_s3(position_data_front, S3_BUCKET_NAME, prefix="uploads/")
     pos_back_url  = upload_file_to_s3(position_data_back,  S3_BUCKET_NAME, prefix="uploads/")
     pos_other_url = upload_file_to_s3(position_data_other, S3_BUCKET_NAME, prefix="uploads/")
@@ -1390,12 +1410,12 @@ def webform_submit():
         q_ss=q_s=q_m=q_l=q_ll=q_lll=0
     total_qty = q_ss + q_s + q_m + q_l + q_ll + q_lll
 
-    # ★ (3) 割引判定 "早割" or "通常"
+    # (3) discount_option => 早割/通常
     discount_type = "通常"
     if discount_option == "早割":
         discount_type = "早割"
 
-    # PRICE_TABLEで単価算出(簡易)
+    # PRICE_TABLEで単価算出(ごく簡易的: base_unit_price x total_qty)
     row = None
     for r in PRICE_TABLE:
         if (r["item"]==product_name
@@ -1414,7 +1434,7 @@ def webform_submit():
     # 注文番号
     order_number = f"O{int(time.time())}"
 
-    # ★ (4) スプレッドシート書き込み
+    # (4) スプレッドシート書き込み
     gc = get_gspread_client()
     sh = gc.open_by_key(SPREADSHEET_KEY)
     ws = get_or_create_worksheet(sh, "Orders")
@@ -1470,7 +1490,7 @@ def webform_submit():
     ]
     ws.append_row(new_row, value_input_option="USER_ENTERED")
 
-    # ★ (5) LINEに「注文番号・注文内容・合計金額・単価」を返す
+    # (5) LINEに「注文番号・注文内容・合計金額・単価」を返す
     reply_msg = (
         f"【ご注文ありがとうございます】\n"
         f"注文番号: {order_number}\n"
@@ -1492,14 +1512,12 @@ def webform_submit():
         f"合計金額: ¥{total_price:,} / 単価: ¥{base_unit_price:,}"
     ), 200
 
-
 # -----------------------
 # 動作確認用
 # -----------------------
 @app.route("/", methods=["GET"])
 def health_check():
     return "LINE Bot is running.", 200
-
 
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=5000, debug=True)
