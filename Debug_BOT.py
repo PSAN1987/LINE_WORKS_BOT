@@ -83,7 +83,6 @@ def get_or_create_worksheet(sheet, title):
             ]])
 
         elif title == "Orders":
-            ws = sheet.add_worksheet(title=title, rows=2000, cols=100)
 
             # 52 列あるので A1:Z1 ではなく A1:AZ1 が必要
             ws.update('A1:AZ1', [[
