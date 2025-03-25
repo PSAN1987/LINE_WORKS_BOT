@@ -64,7 +64,7 @@ def get_or_create_worksheet(sheet, title):
         ws = sheet.worksheet(title)
     except gspread.exceptions.WorksheetNotFound:
         # 新規作成
-        ws = sheet.add_worksheet(title=title, rows=2000, cols=50)
+        ws = sheet.add_worksheet(title=title, rows=2000, cols=100)
 
         # ヘッダ行を設定
         if title == "CatalogRequests":
