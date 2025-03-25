@@ -58,7 +58,7 @@ def get_gspread_client():
 def get_or_create_worksheet(sheet, title):
     """
     スプレッドシート内で該当titleのワークシートを取得。
-    なければ新規作成し、ヘッダを書き込み、全列を左揃えに設定する。
+    なければ新規作成し、ヘッダを書き込み、全列を左揃えに設定する(可能な場合)。
     """
     try:
         ws = sheet.worksheet(title)
@@ -98,11 +98,11 @@ def get_or_create_worksheet(sheet, title):
                 "合計金額","単価","注文番号","ユーザーID"
             ]])
 
-        # 全列を左揃え
+        # 可能なら全列を左揃えにする
         try:
             ws.format("A:Z", {"horizontalAlignment": "LEFT"})
-        except Exception:
-            pass  # 古いgspreadだとformatに非対応の場合があるため
+        except Exception as e:
+            print(f"[WARN] Unable to format sheet columns to LEFT: {e}")
 
     return ws
 
