@@ -83,7 +83,10 @@ def get_or_create_worksheet(sheet, title):
             ]])
 
         elif title == "Orders":
-            ws.update('A1:Z1', [[
+            ws = sheet.add_worksheet(title=title, rows=2000, cols=100)
+
+            # 52 列あるので A1:Z1 ではなく A1:AZ1 が必要
+            ws.update('A1:AZ1', [[
                 "申込日", "配達日", "使用日", "学割特典", "学校名", "LINEアカウント名",
                 "団体名", "学校住所", "学校TEL", "担任名", "担任携帯", "担任メール",
                 "代表者名", "代表者TEL", "代表者メール", "デザイン確認方法", "お支払い方法",
@@ -101,12 +104,11 @@ def get_or_create_worksheet(sheet, title):
                 "合計金額", "単価", "注文番号", "ユーザーID"
             ]])
 
-        # 可能なら全列を左揃えにする
-        try:
-            ws.format("A:Z", {"horizontalAlignment": "LEFT"})
-        except Exception as e:
-            print(f"[WARN] Unable to format sheet columns to LEFT: {e}")
-
+            # 全列を左寄せにする場合も A:Z → A:AZ に修正
+            try:
+                ws.format("A:AZ", {"horizontalAlignment": "LEFT"})
+            except Exception as e:
+                print(f"[WARN] Unable to format sheet columns to LEFT: {e}")
     return ws
 
 # -----------------------
