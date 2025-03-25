@@ -103,12 +103,6 @@ def get_or_create_worksheet(sheet, title):
                 "背ネーム番号プリント", "追加デザイン位置", "追加デザイン画像URL",
                 "合計金額", "単価", "注文番号", "ユーザーID"
             ]])
-
-            # 全列を左寄せにする場合も A:Z → A:AZ に修正
-            try:
-                ws.format("A:AZ", {"horizontalAlignment": "LEFT"})
-            except Exception as e:
-                print(f"[WARN] Unable to format sheet columns to LEFT: {e}")
     return ws
 
 # -----------------------
