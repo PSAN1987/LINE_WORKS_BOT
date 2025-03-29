@@ -2050,11 +2050,24 @@ FORM_HTML = r"""
       }
     });
     </script>
+    
 <!-- ▼▼ 01. サイズ / ネーム / 番号を入力（3行デフォルト + 追加ボタン） ▼▼ -->
-<h3> 背ネーム・背番号の情報を入力</h3>
-<div style="overflow-x: auto;">
+<h3>背ネーム・背番号の情報を入力</h3>
+<div style="overflow-x:auto;">
   <table id="nameNumberTable" border="1" 
-         style="width:100%; border-collapse:collapse; table-layout:fixed;">
+         style="width: 100%; border-collapse: collapse; table-layout: fixed;">
+    <!-- 列幅指定 -->
+    <colgroup>
+      <!-- No.列: 3ch (2桁+余白) -->
+      <col style="width:3ch;">
+      <!-- サイズ列: 4ch ("LLL" を折り返さず) -->
+      <col style="width:4ch;">
+      <!-- ネーム列: 残りを最大化 -->
+      <col style="width:auto;">
+      <!-- 番号列: 4ch (3桁+余白) -->
+      <col style="width:4ch;">
+    </colgroup>
+
     <thead>
       <tr>
         <th style="white-space:nowrap; text-align:center; padding:8px;">No.</th>
@@ -2065,7 +2078,7 @@ FORM_HTML = r"""
     </thead>
     <tbody>
       <script>
-      // デフォルト3行
+      // デフォルトで3行
       for (let i = 1; i <= 3; i++) {
         document.write(`
           <tr>
@@ -2083,11 +2096,11 @@ FORM_HTML = r"""
             </td>
             <td style="text-align:center; padding:8px;">
               <input type="text" name="list_name[]"
-                     style="width:90%;" />
+                     style="width:95%; box-sizing:border-box;">
             </td>
             <td style="text-align:center; padding:8px;">
               <input type="text" name="list_number[]"
-                     style="width:90%;" />
+                     style="width:90%; box-sizing:border-box;">
             </td>
           </tr>
         `);
@@ -2102,9 +2115,18 @@ FORM_HTML = r"""
 
 <!-- ▼▼ 02. 集計（サイズごとの合計 + 全体合計） ▼▼ -->
 <h3>サイズ別 集計確認</h3>
-<div style="overflow-x: auto;">
+<div style="overflow-x:auto;">
   <table border="1" 
          style="width:100%; border-collapse:collapse; table-layout:fixed;">
+    <colgroup>
+      <col style="width:5ch;"> <!-- SS -->
+      <col style="width:5ch;"> <!-- S -->
+      <col style="width:5ch;"> <!-- M -->
+      <col style="width:5ch;"> <!-- L -->
+      <col style="width:5ch;"> <!-- LL -->
+      <col style="width:5ch;"> <!-- LLL -->
+      <col style="width:5ch;"> <!-- 合計 -->
+    </colgroup>
     <thead>
       <tr>
         <th style="white-space:nowrap; text-align:center; padding:8px;">SS</th>
@@ -2113,7 +2135,7 @@ FORM_HTML = r"""
         <th style="white-space:nowrap; text-align:center; padding:8px;">L</th>
         <th style="white-space:nowrap; text-align:center; padding:8px;">LL</th>
         <th style="white-space:nowrap; text-align:center; padding:8px;">LLL</th>
-        <th style="white-space:nowrap; text-align:center; padding:8px;">全体合計</th>
+        <th style="white-space:nowrap; text-align:center; padding:8px;">合計</th>
       </tr>
     </thead>
     <tbody>
@@ -2135,9 +2157,9 @@ FORM_HTML = r"""
 function addRow() {
   const tableBody = document.getElementById('nameNumberTable')
                             .querySelector('tbody');
-  const currentRows = tableBody.rows.length; // 今の行数
+  const currentRows = tableBody.rows.length;
 
-  const newRow = tableBody.insertRow(-1);   // 末尾に挿入
+  const newRow = tableBody.insertRow(-1);
 
   // No.セル
   const cellNo = newRow.insertCell(0);
@@ -2165,30 +2187,31 @@ function addRow() {
   const cellName = newRow.insertCell(2);
   cellName.style.textAlign = 'center';
   cellName.style.padding = '8px';
-  cellName.innerHTML = `<input type="text" name="list_name[]" style="width:90%;">`;
+  cellName.innerHTML = `<input type="text" name="list_name[]" 
+                         style="width:95%; box-sizing:border-box;">`;
 
   // 番号セル
   const cellNumber = newRow.insertCell(3);
   cellNumber.style.textAlign = 'center';
   cellNumber.style.padding = '8px';
-  cellNumber.innerHTML = `<input type="text" name="list_number[]" style="width:90%;">`;
+  cellNumber.innerHTML = `<input type="text" name="list_number[]" 
+                          style="width:90%; box-sizing:border-box;">`;
 }
 
 // サイズ別合計を計算して表示
 function updateSummary() {
-  // サイズごとのカウント用
+  // カウンタ
   const counts = { SS:0, S:0, M:0, L:0, LL:0, LLL:0 };
 
-  // 全ての select[name="list_size[]"] を取得
-  const sizeSelects = document.querySelectorAll('select[name="list_size[]"]');
-  sizeSelects.forEach(selectElem => {
-    const val = selectElem.value;
+  // 全ての select[name="list_size[]"] を集計
+  document.querySelectorAll('select[name="list_size[]"]').forEach(elem => {
+    const val = elem.value;
     if (counts.hasOwnProperty(val)) {
       counts[val]++;
     }
   });
 
-  // HTMLに反映
+  // 表示更新
   document.getElementById('sumSS').textContent  = counts.SS;
   document.getElementById('sumS').textContent   = counts.S;
   document.getElementById('sumM').textContent   = counts.M;
@@ -2196,11 +2219,11 @@ function updateSummary() {
   document.getElementById('sumLL').textContent  = counts.LL;
   document.getElementById('sumLLL').textContent = counts.LLL;
 
-  // 全体合計
   const total = counts.SS + counts.S + counts.M + counts.L + counts.LL + counts.LLL;
   document.getElementById('sumTotal').textContent = total;
 }
 </script>
+
 
     </div>
     <button type="submit">送信</button>
