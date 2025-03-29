@@ -95,9 +95,9 @@ def get_or_create_worksheet(sheet, title):
                 "前プリントサイズ", "前プリントサイズ指定",
                 "前プリントカラー", "前フォントNo", "前デザインサンプル", "前位置データURL",
                 "前位置選択",
-                "後プリントサイズ", "後プリントサイズ指定",
-                "後プリントカラー", "後フォントNo", "後デザインサンプル", "後位置データURL",
-                "後位置選択",
+                "背中プリントサイズ", "背中プリントサイズ指定",
+                "背中プリントカラー", "背中フォントNo", "背中デザインサンプル", "背中位置データURL",
+                "背中位置選択",
                 "その他プリントサイズ", "その他プリントサイズ指定",
                 "その他プリントカラー", "その他フォントNo", "その他デザインサンプル", "その他位置データURL",
                 "背ネーム番号プリント", "追加デザイン位置", "追加デザイン画像URL",
@@ -113,7 +113,7 @@ def upload_file_to_s3(file_storage, s3_bucket, prefix="uploads/"):
     file_storage: FlaskのFileStorage (request.files['...'])
     s3_bucket: 保存先のS3バケット
     prefix: アップロードパス
-    戻り値: アップロード後のS3ファイルURL (無い場合は空文字)
+    戻り値: アップロード背中のS3ファイルURL (無い場合は空文字)
     """
     if not file_storage or file_storage.filename == "":
         return ""
@@ -1079,8 +1079,8 @@ FORM_HTML = r"""
     <label>お支払い方法:</label>
     <select name="payment_method">
       <option value="代金引換(ヤマト運輸/現金のみ)">代金引換(ヤマト運輸/現金のみ)</option>
-      <option value="後払い(コンビニ/郵便振替)">後払い(コンビニ/郵便振替)</option>
-      <option value="後払い(銀行振込)">後払い(銀行振込)</option>
+      <option value="背中払い(コンビニ/郵便振替)">背中払い(コンビニ/郵便振替)</option>
+      <option value="背中払い(銀行振込)">背中払い(銀行振込)</option>
       <option value="先払い(銀行振込)">先払い(銀行振込)</option>
     </select>
 
@@ -1412,7 +1412,7 @@ FORM_HTML = r"""
     </div>
 
     <!-- ▼▼ 背面プリント ▼▼ -->
-    <h3>プリント位置: 後</h3>
+    <h3>プリント位置: 背中</h3>
     <div class="radio-group">
       <label>
         <input type="radio" name="print_size_back" value="おまかせ (最大:横28cm x 縦35cm以内)" checked>
@@ -1425,8 +1425,8 @@ FORM_HTML = r"""
     </div>
     <input type="text" name="print_size_back_custom" placeholder="例: 20cm x 15cm">
 
-    <!-- ▼▼ プリントカラー(後) - シンプルな選択式 ▼▼ -->
-    <label>プリントカラー(後):</label>
+    <!-- ▼▼ プリントカラー(背中) - シンプルな選択式 ▼▼ -->
+    <label>プリントカラー(背中):</label>
     <select name="print_color_back">
       <option value="">選択してください</option>
       <option value="ホワイト">ホワイト</option>
@@ -1471,7 +1471,7 @@ FORM_HTML = r"""
       <option value="蛍光グリーン">蛍光グリーン</option>
     </select>
 
-    <label>フォントNo.(後):</label>
+    <label>フォントNo.(背中):</label>
     <select name="font_no_back">
       <option value="">選択してください</option>
       <option value="E-01">E-01</option>
@@ -1524,13 +1524,13 @@ FORM_HTML = r"""
       <option value="E-57">E-57</option>
     </select>
 
-    <label>プリントサンプル(後):</label>
+    <label>プリントサンプル(背中):</label>
     <select name="design_sample_back">
       <option value="">選択してください</option>
       <!-- （省略：前面と同様に D-008 ~ D-405 を並べる） -->
     </select>
 
-    <label>プリント位置データ(後) (画像アップロード):</label>
+    <label>プリント位置データ(背中) (画像アップロード):</label>
     <input type="file" name="position_data_back">
     <input type="text" name="back_positions_selected" id="back_positions_selected"
            placeholder="背面 10~14" readonly>
