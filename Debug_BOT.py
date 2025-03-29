@@ -1366,6 +1366,7 @@ FORM_HTML = r"""
 
     <label>カスタムプリントデータ(前) (画像アップロード):</label>
     <input type="file" name="position_data_front">
+    </select>
 
     <!-- ▼▼ プリント位置データ(前) => 選択式に変更 ▼▼ -->
     <label>プリント位置データ(前):</label>
@@ -1501,6 +1502,7 @@ FORM_HTML = r"""
 
     <label>カスタムプリントデータ(背中) (画像アップロード):</label>
     <input type="file" name="position_data_back">
+    </select>
 
     <!-- ▼▼ プリント位置データ(背中) => 選択式に変更 ▼▼ -->
     <label>プリント位置データ(背中):</label>
@@ -1635,6 +1637,7 @@ FORM_HTML = r"""
 
     <label>カスタムプリントデータ(その他):</label>
     <input type="file" name="position_data_other">
+    </select>
 
     <!-- ▼▼ プリント位置データ(その他) => 選択式に変更 ▼▼ -->
     <label>プリント位置データ(その他):</label>
