@@ -1132,10 +1132,56 @@ FORM_HTML = r"""
     </div>
     <input type="text" name="print_size_front_custom" placeholder="例: 20cm x 15cm">
 
+    <!-- ▼▼ プリントカラー(前) を複数選択式に変更 ▼▼ -->
     <label>プリントカラー(前):</label>
-    <input type="text" name="print_color_front" placeholder="全てのカラーをご記入ください。計xx色">
+    <select name="print_color_front[]" multiple style="height: 180px;">
+      <optgroup label="●レギュラーインク">
+        <option value="ホワイト">ホワイト</option>
+        <option value="ライトグレー">ライトグレー</option>
+        <option value="ダークグレー">ダークグレー</option>
+        <option value="ブラック">ブラック</option>
+        <option value="サックス">サックス</option>
+        <option value="ブルー">ブルー</option>
+        <option value="ネイビー">ネイビー</option>
+        <option value="ライトピンク">ライトピンク</option>
+        <option value="ローズピンク">ローズピンク</option>
+        <option value="ホットピンク">ホットピンク</option>
+        <option value="レッド">レッド</option>
+        <option value="ワインレッド">ワインレッド</option>
+        <option value="ミントグリーン">ミントグリーン</option>
+        <option value="エメラルドグリーン">エメラルドグリーン</option>
+        <option value="パステルイエロー">パステルイエロー</option>
+        <option value="イエロー">イエロー</option>
+        <option value="ゴールドイエロー">ゴールドイエロー</option>
+        <option value="オレンジ">オレンジ</option>
+        <option value="イエローグリーン">イエローグリーン</option>
+        <option value="グリーン">グリーン</option>
+        <option value="ダークグリーン">ダークグリーン</option>
+        <option value="ライトパープル">ライトパープル</option>
+        <option value="パープル">パープル</option>
+        <option value="クリーム">クリーム</option>
+        <option value="ライトブラウン">ライトブラウン</option>
+        <option value="ダークブラウン">ダークブラウン</option>
+        <option value="シルバー">シルバー</option>
+        <option value="ゴールド">ゴールド</option>
+      </optgroup>
+      <optgroup label="●オプションインク">
+        <option value="グリッターシルバー">グリッターシルバー</option>
+        <option value="グリッターゴールド">グリッターゴールド</option>
+        <option value="グリッターブラック">グリッターブラック</option>
+        <option value="グリッターイエロー">グリッターイエロー</option>
+        <option value="グリッターピンク">グリッターピンク</option>
+        <option value="グリッターレッド">グリッターレッド</option>
+        <option value="グリッターグリーン">グリッターグリーン</option>
+        <option value="グリッターブルー">グリッターブルー</option>
+        <option value="グリッターパープル">グリッターパープル</option>
+        <option value="蛍光オレンジ">蛍光オレンジ</option>
+        <option value="蛍光ピンク">蛍光ピンク</option>
+        <option value="蛍光グリーン">蛍光グリーン</option>
+      </optgroup>
+    </select>
 
-    <!-- ▼▼ フォントNo.(前) を選択式に変更 ▼▼ -->
+    <!-- ▼▼ フォントNo.(前) ▼▼ -->
     <label>フォントNo.(前):</label>
     <select name="font_no_front">
       <option value="">選択してください</option>
@@ -1189,7 +1235,7 @@ FORM_HTML = r"""
       <option value="E-57">E-57</option>
     </select>
 
-    <!-- ▼▼ プリントサンプル(前) を選択式に変更 ▼▼ -->
+    <!-- ▼▼ プリントサンプル(前) ▼▼ -->
     <label>プリントサンプル(前):</label>
     <select name="design_sample_front">
       <option value="">選択してください</option>
@@ -1384,10 +1430,56 @@ FORM_HTML = r"""
     </div>
     <input type="text" name="print_size_back_custom" placeholder="例: 20cm x 15cm">
 
+    <!-- ▼▼ プリントカラー(後) を複数選択式に変更 ▼▼ -->
     <label>プリントカラー(後):</label>
-    <input type="text" name="print_color_back" placeholder="全てのカラーをご記入ください。計xx色">
+    <select name="print_color_back[]" multiple style="height: 180px;">
+      <optgroup label="●レギュラーインク">
+        <option value="ホワイト">ホワイト</option>
+        <option value="ライトグレー">ライトグレー</option>
+        <option value="ダークグレー">ダークグレー</option>
+        <option value="ブラック">ブラック</option>
+        <option value="サックス">サックス</option>
+        <option value="ブルー">ブルー</option>
+        <option value="ネイビー">ネイビー</option>
+        <option value="ライトピンク">ライトピンク</option>
+        <option value="ローズピンク">ローズピンク</option>
+        <option value="ホットピンク">ホットピンク</option>
+        <option value="レッド">レッド</option>
+        <option value="ワインレッド">ワインレッド</option>
+        <option value="ミントグリーン">ミントグリーン</option>
+        <option value="エメラルドグリーン">エメラルドグリーン</option>
+        <option value="パステルイエロー">パステルイエロー</option>
+        <option value="イエロー">イエロー</option>
+        <option value="ゴールドイエロー">ゴールドイエロー</option>
+        <option value="オレンジ">オレンジ</option>
+        <option value="イエローグリーン">イエローグリーン</option>
+        <option value="グリーン">グリーン</option>
+        <option value="ダークグリーン">ダークグリーン</option>
+        <option value="ライトパープル">ライトパープル</option>
+        <option value="パープル">パープル</option>
+        <option value="クリーム">クリーム</option>
+        <option value="ライトブラウン">ライトブラウン</option>
+        <option value="ダークブラウン">ダークブラウン</option>
+        <option value="シルバー">シルバー</option>
+        <option value="ゴールド">ゴールド</option>
+      </optgroup>
+      <optgroup label="●オプションインク">
+        <option value="グリッターシルバー">グリッターシルバー</option>
+        <option value="グリッターゴールド">グリッターゴールド</option>
+        <option value="グリッターブラック">グリッターブラック</option>
+        <option value="グリッターイエロー">グリッターイエロー</option>
+        <option value="グリッターピンク">グリッターピンク</option>
+        <option value="グリッターレッド">グリッターレッド</option>
+        <option value="グリッターグリーン">グリッターグリーン</option>
+        <option value="グリッターブルー">グリッターブルー</option>
+        <option value="グリッターパープル">グリッターパープル</option>
+        <option value="蛍光オレンジ">蛍光オレンジ</option>
+        <option value="蛍光ピンク">蛍光ピンク</option>
+        <option value="蛍光グリーン">蛍光グリーン</option>
+      </optgroup>
+    </select>
 
-    <!-- ▼▼ フォントNo.(後) を選択式に変更 ▼▼ -->
+    <!-- ▼▼ フォントNo.(後) ▼▼ -->
     <label>フォントNo.(後):</label>
     <select name="font_no_back">
       <option value="">選択してください</option>
@@ -1441,7 +1533,7 @@ FORM_HTML = r"""
       <option value="E-57">E-57</option>
     </select>
 
-    <!-- ▼▼ プリントサンプル(後) を選択式に変更 ▼▼ -->
+    <!-- ▼▼ プリントサンプル(後) ▼▼ -->
     <label>プリントサンプル(後):</label>
     <select name="design_sample_back">
       <option value="">選択してください</option>
@@ -1628,10 +1720,56 @@ FORM_HTML = r"""
     </div>
     <input type="text" name="print_size_other_custom" placeholder="例: 20cm x 15cm">
 
+    <!-- ▼▼ プリントカラー(その他) を複数選択式に変更 ▼▼ -->
     <label>プリントカラー(その他):</label>
-    <input type="text" name="print_color_other" placeholder="全てのカラーをご記入ください。計xx色">
+    <select name="print_color_other[]" multiple style="height: 180px;">
+      <optgroup label="●レギュラーインク">
+        <option value="ホワイト">ホワイト</option>
+        <option value="ライトグレー">ライトグレー</option>
+        <option value="ダークグレー">ダークグレー</option>
+        <option value="ブラック">ブラック</option>
+        <option value="サックス">サックス</option>
+        <option value="ブルー">ブルー</option>
+        <option value="ネイビー">ネイビー</option>
+        <option value="ライトピンク">ライトピンク</option>
+        <option value="ローズピンク">ローズピンク</option>
+        <option value="ホットピンク">ホットピンク</option>
+        <option value="レッド">レッド</option>
+        <option value="ワインレッド">ワインレッド</option>
+        <option value="ミントグリーン">ミントグリーン</option>
+        <option value="エメラルドグリーン">エメラルドグリーン</option>
+        <option value="パステルイエロー">パステルイエロー</option>
+        <option value="イエロー">イエロー</option>
+        <option value="ゴールドイエロー">ゴールドイエロー</option>
+        <option value="オレンジ">オレンジ</option>
+        <option value="イエローグリーン">イエローグリーン</option>
+        <option value="グリーン">グリーン</option>
+        <option value="ダークグリーン">ダークグリーン</option>
+        <option value="ライトパープル">ライトパープル</option>
+        <option value="パープル">パープル</option>
+        <option value="クリーム">クリーム</option>
+        <option value="ライトブラウン">ライトブラウン</option>
+        <option value="ダークブラウン">ダークブラウン</option>
+        <option value="シルバー">シルバー</option>
+        <option value="ゴールド">ゴールド</option>
+      </optgroup>
+      <optgroup label="●オプションインク">
+        <option value="グリッターシルバー">グリッターシルバー</option>
+        <option value="グリッターゴールド">グリッターゴールド</option>
+        <option value="グリッターブラック">グリッターブラック</option>
+        <option value="グリッターイエロー">グリッターイエロー</option>
+        <option value="グリッターピンク">グリッターピンク</option>
+        <option value="グリッターレッド">グリッターレッド</option>
+        <option value="グリッターグリーン">グリッターグリーン</option>
+        <option value="グリッターブルー">グリッターブルー</option>
+        <option value="グリッターパープル">グリッターパープル</option>
+        <option value="蛍光オレンジ">蛍光オレンジ</option>
+        <option value="蛍光ピンク">蛍光ピンク</option>
+        <option value="蛍光グリーン">蛍光グリーン</option>
+      </optgroup>
+    </select>
 
-    <!-- ▼▼ フォントNo.(その他) を選択式に変更 ▼▼ -->
+    <!-- ▼▼ フォントNo.(その他) ▼▼ -->
     <label>フォントNo.(その他):</label>
     <select name="font_no_other">
       <option value="">選択してください</option>
@@ -1685,7 +1823,7 @@ FORM_HTML = r"""
       <option value="E-57">E-57</option>
     </select>
 
-    <!-- ▼▼ プリントサンプル(その他) を選択式に変更 ▼▼ -->
+    <!-- ▼▼ プリントサンプル(その他) ▼▼ -->
     <label>プリントサンプル(その他):</label>
     <select name="design_sample_other">
       <option value="">選択してください</option>
