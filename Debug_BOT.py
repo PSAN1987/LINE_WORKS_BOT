@@ -1405,7 +1405,6 @@ FORM_HTML = r"""
     <!-- ▼▼ プリントカラー(背中) - シンプルな選択式 ▼▼ -->
     <label>プリントカラー(背中):</label>
     <select name="print_color_front[]" multiple onchange="limitSelection(this, 4)">
-    <select name="print_color_back">
       <option value="">選択してください</option>
       <option value="ホワイト">ホワイト</option>
       <option value="ライトグレー">ライトグレー</option>
@@ -1932,6 +1931,7 @@ FORM_HTML = r"""
       <label><input type="checkbox" name="back_name_number_print[]" value="ネーム(小)"> ネーム(小)</label>
       <label><input type="checkbox" name="back_name_number_print[]" value="番号(大)"> 番号(大)</label>
       <label><input type="checkbox" name="back_name_number_print[]" value="番号(小)"> 番号(小)</label>
+      <label><input type="checkbox" name="back_name_number_print[]" value="ネーム＆背番号を使わない"> ネーム＆背番号を使わない</label>
     </div>
 
     <!-- ▼▼ 背ネーム・背番号のカラー設定 ▼▼ -->
