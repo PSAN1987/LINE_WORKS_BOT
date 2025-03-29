@@ -1138,7 +1138,7 @@ FORM_HTML = r"""
 
     <!-- ▼▼ プリントカラー(前) - シンプルな選択式 ▼▼ -->
     <label>プリントカラー(前):</label>
-    <select name="print_color_front">
+    <select name="print_color_front[]" multiple onchange="limitSelection(this, 4)">
       <option value="">選択してください</option>
       <option value="ホワイト">ホワイト</option>
       <option value="ライトグレー">ライトグレー</option>
@@ -1180,6 +1180,9 @@ FORM_HTML = r"""
       <option value="蛍光オレンジ">蛍光オレンジ</option>
       <option value="蛍光ピンク">蛍光ピンク</option>
       <option value="蛍光グリーン">蛍光グリーン</option>
+      <option value="フルカラー(小)">フルカラー(小)</option>
+      <option value="フルカラー(中)">フルカラー(中)</option>
+      <option value="フルカラー(大)">フルカラー(大)</option>
     </select>
 
     <label>フォントNo.(前):</label>
@@ -1400,7 +1403,7 @@ FORM_HTML = r"""
     <input type="text" name="print_size_back_custom" placeholder="例: 20cm x 15cm">
 
     <!-- ▼▼ プリントカラー(背中) - シンプルな選択式 ▼▼ -->
-    <label>プリントカラー(背中):</label>
+    <select name="print_color_front[]" multiple onchange="limitSelection(this, 4)">
     <select name="print_color_back">
       <option value="">選択してください</option>
       <option value="ホワイト">ホワイト</option>
@@ -1443,6 +1446,9 @@ FORM_HTML = r"""
       <option value="蛍光オレンジ">蛍光オレンジ</option>
       <option value="蛍光ピンク">蛍光ピンク</option>
       <option value="蛍光グリーン">蛍光グリーン</option>
+      <option value="フルカラー(小)">フルカラー(小)</option>
+      <option value="フルカラー(中)">フルカラー(中)</option>
+      <option value="フルカラー(大)">フルカラー(大)</option>
     </select>
 
     <label>フォントNo.(背中):</label>
@@ -1664,7 +1670,7 @@ FORM_HTML = r"""
 
     <!-- ▼▼ プリントカラー(その他) - シンプルな選択式 ▼▼ -->
     <label>プリントカラー(その他):</label>
-    <select name="print_color_other">
+    <select name="print_color_front[]" multiple onchange="limitSelection(this, 4)">
       <option value="">選択してください</option>
       <option value="ホワイト">ホワイト</option>
       <option value="ライトグレー">ライトグレー</option>
@@ -1706,6 +1712,9 @@ FORM_HTML = r"""
       <option value="蛍光オレンジ">蛍光オレンジ</option>
       <option value="蛍光ピンク">蛍光ピンク</option>
       <option value="蛍光グリーン">蛍光グリーン</option>
+      <option value="フルカラー(小)">フルカラー(小)</option>
+      <option value="フルカラー(中)">フルカラー(中)</option>
+      <option value="フルカラー(大)">フルカラー(大)</option>
     </select>
 
     <label>フォントNo.(その他):</label>
