@@ -2050,112 +2050,76 @@ FORM_HTML = r"""
       }
     });
     </script>
-
-    <!-- 追加のデザインイメージデータ関連は削除 -->
-
-    <button type="submit">送信</button>
-
-    <script>
-    // ※ もともとのTシャツクリック用スクリプト部分削除
-    //   （「追加のプリント位置選択機能」等も削除のため、ここのJSも不要なので消去）
-    </script>
-  <!-- 01. みんなに書いてもらおう！（サイズ・番号・ネームを最大45行まで入力） -->
-<h3>01 ネーム・番号を入力する</h3>
-<p>※サイズ／番号／ネーム を入力してください（最大45行）</p>
-
-<table id="list01" border="1">
-  <thead>
-    <tr>
-      <th>No.</th>
-      <th>サイズ</th>
-      <th>番号</th>
-      <th>ネーム</th>
-    </tr>
-  </thead>
-  <tbody>
-    <!-- JavaScriptで1～45行を自動生成 -->
-    <script>
-      for (let i = 1; i <= 45; i++) {
+    <!-- ▼▼ 01. ネーム・番号を入力（3行デフォルト + 追加ボタン） ▼▼ -->
+<h3>ネーム・番号を入力</h3>
+<div style="overflow-x:auto;">
+  <table id="nameNumberTable" border="1" style="width: 100%; border-collapse: collapse;">
+    <thead>
+      <tr>
+        <th>No.</th>
+        <th>ネーム</th>
+        <th>番号</th>
+      </tr>
+    </thead>
+    <tbody>
+      <!-- デフォルトで3行を表示 -->
+      <script>
+      for (let i = 1; i <= 3; i++) {
         document.write(`
           <tr>
             <td>${i}</td>
-            <td>
-              <select name="list_size[]" onchange="updateSummary()">
-                <option value="">-</option>
-                <option value="SS">SS</option>
-                <option value="S">S</option>
-                <option value="M">M</option>
-                <option value="L">L</option>
-                <option value="LL">LL</option>
-                <option value="LLL">LLL</option>
-              </select>
-            </td>
-            <td><input type="text" name="list_number[]"></td>
             <td><input type="text" name="list_name[]"></td>
+            <td><input type="text" name="list_number[]"></td>
           </tr>
         `);
       }
-    </script>
-  </tbody>
-</table>
+      </script>
+    </tbody>
+  </table>
+</div>
 
-<!-- 02. サイズごとに集計しよう！（サイズ別と合計が自動計算される） -->
-<h3>02 サイズごとに集計しよう！</h3>
-<table border="1">
-  <thead>
+<!-- 「行を追加」ボタン -->
+<button type="button" onclick="addRow()">＋ 行を追加</button>
+
+<!-- ▼▼ 02. 集計確認（現在の行数を表示するのみ） ▼▼ -->
+<h3>集計確認</h3>
+<div style="overflow-x:auto;">
+  <table border="1" style="width: 100%; border-collapse: collapse;">
     <tr>
-      <th>SS</th>
-      <th>S</th>
-      <th>M</th>
-      <th>L</th>
-      <th>LL</th>
-      <th>LLL</th>
-      <th>合計</th>
+      <td>現在の入力行数: <span id="rowCount">3</span></td>
     </tr>
-  </thead>
-  <tbody>
-    <tr>
-      <td id="sumSS">0</td>
-      <td id="sumS">0</td>
-      <td id="sumM">0</td>
-      <td id="sumL">0</td>
-      <td id="sumLL">0</td>
-      <td id="sumLLL">0</td>
-      <td id="sumTotal">0</td>
-    </tr>
-  </tbody>
-</table>
+  </table>
+</div>
 
 <script>
-  // サイズを集計し、02の表に反映
-  function updateSummary() {
-    // カウント用オブジェクト
-    const counts = { SS: 0, S: 0, M: 0, L: 0, LL: 0, LLL: 0 };
+/**
+ * 「＋ 行を追加」ボタンで行を増やし、行数を再計算
+ */
+function addRow() {
+  const tbody = document.getElementById('nameNumberTable').getElementsByTagName('tbody')[0];
+  const currentRows = tbody.rows.length; // 現在の行数
+  const newRow = tbody.insertRow(-1);    // 最終行の後ろに追加
 
-    // 全ての size セレクトを取得
-    const sizeElems = document.querySelectorAll('select[name="list_size[]"]');
-    sizeElems.forEach(elem => {
-      const val = elem.value;
-      // 対象サイズならカウント
-      if (counts.hasOwnProperty(val)) {
-        counts[val]++;
-      }
-    });
+  // No.セル
+  const cellNo = newRow.insertCell(0);
+  cellNo.textContent = currentRows + 1;
 
-    // それぞれ表示更新
-    document.getElementById("sumSS").textContent = counts.SS;
-    document.getElementById("sumS").textContent = counts.S;
-    document.getElementById("sumM").textContent = counts.M;
-    document.getElementById("sumL").textContent = counts.L;
-    document.getElementById("sumLL").textContent = counts.LL;
-    document.getElementById("sumLLL").textContent = counts.LLL;
+  // ネームセル
+  const cellName = newRow.insertCell(1);
+  cellName.innerHTML = '<input type="text" name="list_name[]">';
 
-    // 合計
-    const total = counts.SS + counts.S + counts.M + counts.L + counts.LL + counts.LLL;
-    document.getElementById("sumTotal").textContent = total;
-  }
+  // 番号セル
+  const cellNumber = newRow.insertCell(2);
+  cellNumber.innerHTML = '<input type="text" name="list_number[]">';
+
+  // 行数表示更新
+  document.getElementById('rowCount').textContent = currentRows + 1;
+}
 </script>
 
+    
+    <button type="submit">送信</button>
+    </script>
   </form>
 </body>
 </html>
