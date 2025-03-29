@@ -64,7 +64,8 @@ def get_or_create_worksheet(sheet, title):
         ws = sheet.worksheet(title)
     except gspread.exceptions.WorksheetNotFound:
         # 新規作成
-        ws = sheet.add_worksheet(title=title, rows=2000, cols=100)
+        # ※ すでに何度か add_worksheet している場合はエラー回避のため title を変えないように注意
+        ws = sheet.add_worksheet(title=title, rows=2000, cols=120)
 
         # ヘッダ行を設定
         if title == "CatalogRequests":
@@ -83,24 +84,37 @@ def get_or_create_worksheet(sheet, title):
             ]])
 
         elif title == "Orders":
-            ws = sheet.add_worksheet(title=title, rows=2000, cols=100)
+            # Ordersシートを追加し、ヘッダを日本語に
+            ws.update('A1:BG1', [[
+                # ①基本情報
+                "申込日", "配達日", "使用日", "学割特典",
+                "学校名", "LINEアカウント名", "団体名", "学校住所",
+                "学校TEL", "担任名", "担任携帯", "担任メール",
+                "代表者名", "代表者TEL", "代表者メール",
 
-            # 52 列あるので A1:Z1 ではなく A1:AZ1 が必要
-            ws.update('A1:AZ1', [[
-                "申込日", "配達日", "使用日", "学割特典", "学校名", "LINEアカウント名",
-                "団体名", "学校住所", "学校TEL", "担任名", "担任携帯", "担任メール",
-                "代表者名", "代表者TEL", "代表者メール", "デザイン確認方法", "お支払い方法",
+                # ②お届け先
+                "お届け先 郵便番号", "お届け先 住所", "お届け先 建物名・部屋番号",
+
+                # ③その他
+                "デザイン確認方法", "お支払い方法",
                 "商品名", "商品カラー",
+
                 "サイズ(SS)", "サイズ(S)", "サイズ(M)", "サイズ(L)", "サイズ(LL)", "サイズ(LLL)",
+
                 "前プリントサイズ", "前プリントサイズ指定",
                 "前プリントカラー", "前フォントNo", "前デザインサンプル", "前位置データURL",
                 "前位置選択",
-                "背中プリントサイズ", "背中プリントサイズ指定",
-                "背中プリントカラー", "背中フォントNo", "背中デザインサンプル", "背中位置データURL",
-                "背中位置選択",
+
+                "背面プリントサイズ", "背面プリントサイズ指定",
+                "背面プリントカラー", "背面フォントNo", "背面デザインサンプル", "背面位置データURL",
+                "背面位置選択",
+
                 "その他プリントサイズ", "その他プリントサイズ指定",
                 "その他プリントカラー", "その他フォントNo", "その他デザインサンプル", "その他位置データURL",
-                "背ネーム番号プリント", "追加デザイン位置", "追加デザイン画像URL",
+
+                "背ネーム・背番号プリント",
+                "追加デザイン位置", "追加デザイン画像URL",
+
                 "合計金額", "単価", "注文番号", "ユーザーID"
             ]])
     return ws
@@ -113,7 +127,7 @@ def upload_file_to_s3(file_storage, s3_bucket, prefix="uploads/"):
     file_storage: FlaskのFileStorage (request.files['...'])
     s3_bucket: 保存先のS3バケット
     prefix: アップロードパス
-    戻り値: アップロード背中のS3ファイルURL (無い場合は空文字)
+    戻り値: アップロード先のS3ファイルURL (無い場合は空文字)
     """
     if not file_storage or file_storage.filename == "":
         return ""
@@ -152,7 +166,6 @@ def write_to_spreadsheet_for_catalog(form_data: dict):
         form_data.get("other", ""),
     ]
     worksheet.append_row(new_row, value_input_option="USER_ENTERED")
-
 
 # -----------------------
 # PRICE_TABLE と 簡易見積
@@ -367,7 +380,6 @@ COLOR_COST_MAP = {
 
 user_estimate_sessions = {}  # 見積フロー管理簡易セッション
 
-
 def write_estimate_to_spreadsheet(user_id, estimate_data, total_price, unit_price):
     gc = get_gspread_client()
     sh = gc.open_by_key(SPREADSHEET_KEY)
@@ -392,7 +404,6 @@ def write_estimate_to_spreadsheet(user_id, estimate_data, total_price, unit_pric
     worksheet.append_row(new_row, value_input_option="USER_ENTERED")
     return quote_number
 
-
 def find_price_row(item_name, discount_type, quantity):
     for row in PRICE_TABLE:
         if (row["item"] == item_name
@@ -400,7 +411,6 @@ def find_price_row(item_name, discount_type, quantity):
             and row["min_qty"] <= quantity <= row["max_qty"]):
             return row
     return None
-
 
 def calculate_estimate(estimate_data):
     item_name = estimate_data['item']
@@ -435,7 +445,6 @@ def calculate_estimate(estimate_data):
     unit_price = base_price + pos_add + color_fee + back_name_fee
     total_price = unit_price * quantity
     return total_price, unit_price
-
 
 # -----------------------
 # Flexメッセージ (見積フロー)
@@ -801,7 +810,6 @@ def process_estimate_flow(event: MessageEvent, text: str):
 # -----------------------
 @app.route("/catalog_form", methods=["GET"])
 def show_catalog_form():
-    # モバイル対応のために <meta name="viewport"> を追加
     html_content = """
 <!DOCTYPE html>
 <html>
@@ -919,7 +927,6 @@ def submit_catalog_form():
         return f"エラーが発生しました: {e}", 500
 
     return "フォーム送信ありがとうございました！ カタログ送付をお待ちください。", 200
-
 # -----------------------
 # WEBフォームから注文 (GET/POST) (省略なし, S3対応)
 # -----------------------
@@ -2131,6 +2138,12 @@ def webform_submit():
     representative= request.form.get("representative","")
     rep_tel = request.form.get("rep_tel","")
     rep_email = request.form.get("rep_email","")
+
+    # ▼▼ お届け先 ▼▼
+    delivery_zip = request.form.get("delivery_zip","")
+    delivery_address = request.form.get("delivery_address","")
+    delivery_address2 = request.form.get("delivery_address2","")
+
     design_confirm= request.form.get("design_confirm","")
     payment_method= request.form.get("payment_method","")
     product_name = request.form.get("product_name","")
@@ -2145,7 +2158,10 @@ def webform_submit():
 
     print_size_front= request.form.get("print_size_front","")
     print_size_front_custom= request.form.get("print_size_front_custom","")
-    print_color_front= request.form.get("print_color_front","")
+    # 前カラー(複数選択)をカンマ区切りに
+    print_color_front_list = request.form.getlist("print_color_front[]")
+    print_color_front= ",".join(print_color_front_list)
+
     font_no_front= request.form.get("font_no_front","")
     design_sample_front= request.form.get("design_sample_front","")
     position_data_front= request.files.get("position_data_front")
@@ -2153,7 +2169,10 @@ def webform_submit():
 
     print_size_back= request.form.get("print_size_back","")
     print_size_back_custom= request.form.get("print_size_back_custom","")
-    print_color_back= request.form.get("print_color_back","")
+    # 背中カラー(複数選択)をカンマ区切りに
+    print_color_back_list = request.form.getlist("print_color_front[]")
+    print_color_back= ",".join(print_color_back_list)
+
     font_no_back= request.form.get("font_no_back","")
     design_sample_back= request.form.get("design_sample_back","")
     position_data_back= request.files.get("position_data_back")
@@ -2161,13 +2180,23 @@ def webform_submit():
 
     print_size_other= request.form.get("print_size_other","")
     print_size_other_custom= request.form.get("print_size_other_custom","")
-    print_color_other= request.form.get("print_color_other","")
+    # その他カラー(複数選択)をカンマ区切りに
+    print_color_other_list = request.form.getlist("print_color_front[]")
+    print_color_other= ",".join(print_color_other_list)
+
     font_no_other= request.form.get("font_no_other","")
     design_sample_other= request.form.get("design_sample_other","")
     position_data_other= request.files.get("position_data_other")
+    other_positions_selected= request.form.get("other_positions_selected","")
 
     back_name_number_opts = request.form.getlist("back_name_number_print[]")
     back_name_number_str = ",".join(back_name_number_opts) if back_name_number_opts else ""
+
+    name_number_color_type= request.form.get("name_number_color_type","")
+    single_color_choice= request.form.get("single_color_choice","")
+    outline_type= request.form.get("outline_type","")
+    outline_text_color= request.form.get("outline_text_color","")
+    outline_edge_color= request.form.get("outline_edge_color","")
 
     additional_design_position= request.form.get("additional_design_position","")
     additional_design_image= request.files.get("additional_design_image")
@@ -2195,7 +2224,7 @@ def webform_submit():
     if discount_option == "早割":
         discount_type = "早割"
 
-    # PRICE_TABLEで単価算出(ごく簡易的: base_unit_price x total_qty)
+    # PRICE_TABLEで単価算出(ごく簡易的)
     row = None
     for r in PRICE_TABLE:
         if (r["item"]==product_name
@@ -2220,26 +2249,36 @@ def webform_submit():
     ws = get_or_create_worksheet(sh, "Orders")
 
     new_row = [
-        application_date,
-        delivery_date,
-        use_date,
-        discount_option,
-        school_name,
-        line_account,
-        group_name,
-        school_address,
-        school_tel,
-        teacher_name,
-        teacher_tel,
-        teacher_email,
-        representative,
-        rep_tel,
-        rep_email,
-        design_confirm,
-        payment_method,
-        product_name,
-        product_color,
+        # --- ①基本情報 ---
+        application_date,   # 申込日
+        delivery_date,      # 配達日
+        use_date,           # 使用日
+        discount_option,    # 学割特典
+        school_name,        # 学校名
+        line_account,       # LINEアカウント名
+        group_name,         # 団体名
+        school_address,     # 学校住所
+        school_tel,         # 学校TEL
+        teacher_name,       # 担任名
+        teacher_tel,        # 担任携帯
+        teacher_email,      # 担任メール
+        representative,     # 代表者名
+        rep_tel,            # 代表者TEL
+        rep_email,          # 代表者メール
+
+        # --- ②お届け先 ---
+        delivery_zip,       # お届け先 郵便番号
+        delivery_address,   # お届け先 住所
+        delivery_address2,  # お届け先 建物名・部屋番号
+
+        # --- ③その他 ---
+        design_confirm,     # デザイン確認方法
+        payment_method,     # お支払い方法
+        product_name,       # 商品名
+        product_color,      # 商品カラー
+
         size_ss, size_s, size_m, size_l, size_ll, size_lll,
+
         print_size_front,
         print_size_front_custom,
         print_color_front,
@@ -2247,6 +2286,7 @@ def webform_submit():
         design_sample_front,
         pos_front_url,
         front_positions_selected,
+
         print_size_back,
         print_size_back_custom,
         print_color_back,
@@ -2254,15 +2294,18 @@ def webform_submit():
         design_sample_back,
         pos_back_url,
         back_positions_selected,
+
         print_size_other,
         print_size_other_custom,
         print_color_other,
         font_no_other,
         design_sample_other,
         pos_other_url,
+
         back_name_number_str,
         additional_design_position,
         add_design_url,
+
         f"¥{total_price:,}",
         f"¥{base_unit_price:,}",
         order_number,
