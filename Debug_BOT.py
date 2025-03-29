@@ -926,6 +926,8 @@ def submit_catalog_form():
 FORM_HTML = r"""
 <!DOCTYPE html>
 <html>
+<!DOCTYPE html>
+<html>
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
@@ -944,12 +946,14 @@ FORM_HTML = r"""
       max-width: 600px;
       margin: 0 auto;
     }
+    /* ▼▼ ここに input[type="file"] を追加 ▼▼ */
     input[type="text"],
     input[type="number"],
     input[type="email"],
     input[type="date"],
     select,
-    button {
+    button,
+    input[type="file"] {
       display: block;
       width: 100%;
       box-sizing: border-box;
