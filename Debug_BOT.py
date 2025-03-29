@@ -1405,7 +1405,6 @@ FORM_HTML = r"""
     <!-- ▼▼ プリントカラー(背中) - シンプルな選択式 ▼▼ -->
     <label>プリントカラー(背中):</label>
     <select name="print_color_front[]" multiple onchange="limitSelection(this, 4)">
-    <select name="print_color_back">
       <option value="">選択してください</option>
       <option value="ホワイト">ホワイト</option>
       <option value="ライトグレー">ライトグレー</option>
