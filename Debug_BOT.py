@@ -1072,6 +1072,20 @@ FORM_HTML = r"""
     <label>代表者メール:</label>
     <input type="email" name="rep_email">
 
+    <!-- ▼▼ ここから「お届け先」追加 ▼▼ -->
+    <label>お届け先 郵便番号:</label>
+    <input type="text" id="delivery_zip" placeholder="例: 1000001">
+    <button type="button" onclick="fetchAddress()">住所を自動入力</button>
+    <div>※半角数字で入力、ハイフン不要</div>
+
+    <label>お届け先住所:</label>
+    <input type="text" id="delivery_address" name="delivery_address" placeholder="都道府県～町域まで自動入力">
+
+    <label>建物・部屋番号 (任意):</label>
+    <input type="text" id="delivery_address2" name="delivery_address2" placeholder="建物名など">
+    <!-- ▼▼ 「お届け先」ここまで ▼▼ -->
+
+
     <label>デザイン確認方法:</label>
     <select name="design_confirm">
       <option value="LINE代表者">LINE代表者</option>
@@ -1136,7 +1150,7 @@ FORM_HTML = r"""
     </div>
     <input type="text" name="print_size_front_custom" placeholder="例: 20cm x 15cm">
 
-    <!-- ▼▼ プリントカラー(前) - シンプルな選択式 ▼▼ -->
+    <!-- ▼▼ プリントカラー(前) - シンプルな選択式 (複数選択) ▼▼ -->
     <label>プリントカラー(前):</label>
     <select name="print_color_front[]" multiple onchange="limitSelection(this, 4)">
       <option value="">選択してください</option>
@@ -1668,7 +1682,7 @@ FORM_HTML = r"""
     </div>
     <input type="text" name="print_size_other_custom" placeholder="例: 20cm x 15cm">
 
-    <!-- ▼▼ プリントカラー(その他) - シンプルな選択式 ▼▼ -->
+    <!-- ▼▼ プリントカラー(その他) - シンプルな選択式 (複数選択) ▼▼ -->
     <label>プリントカラー(その他):</label>
     <select name="print_color_front[]" multiple onchange="limitSelection(this, 4)">
       <option value="">選択してください</option>
@@ -2050,17 +2064,43 @@ FORM_HTML = r"""
         outlineSec.style.display = 'block';
       }
     });
-    </script>
 
-    <!-- 追加のデザインイメージデータ関連は削除 -->
+    // プリントカラー選択を最大4つまでに制限
+    function limitSelection(selectElem, maxCount) {
+      const selectedOptions = Array.from(selectElem.selectedOptions);
+      if (selectedOptions.length > maxCount) {
+        selectedOptions[selectedOptions.length - 1].selected = false;
+        alert("同時に選択できるカラーは最大 " + maxCount + " つまでです。");
+      }
+    }
+
+    // 郵便番号から住所を取得 (Zipcloud)
+    function fetchAddress() {
+      const zip = document.getElementById('delivery_zip').value.replace('-', '').trim();
+      if (!zip) {
+        alert('郵便番号を入力してください');
+        return;
+      }
+      const url = 'https://zipcloud.ibsnet.co.jp/api/search?zipcode=' + encodeURIComponent(zip);
+      fetch(url)
+        .then(res => res.json())
+        .then(data => {
+          if (data.status === 200 && data.results && data.results.length > 0) {
+            const result = data.results[0];
+            const address = result.address1 + result.address2 + result.address3;
+            document.getElementById('delivery_address').value = address;
+          } else {
+            alert('住所を取得できませんでした。郵便番号をご確認ください。');
+          }
+        })
+        .catch(err => {
+          console.error(err);
+          alert('エラーが発生しました。');
+        });
+    }
+    </script>
 
     <button type="submit">送信</button>
-
-    <script>
-    // ※ もともとのTシャツクリック用スクリプト部分削除
-    //   （「追加のプリント位置選択機能」等も削除のため、ここのJSも不要なので消去）
-    </script>
-
   </form>
 </body>
 </html>
