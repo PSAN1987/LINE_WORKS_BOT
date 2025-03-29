@@ -1691,15 +1691,134 @@ FORM_HTML = r"""
     <label>プリント位置データ(その他):</label>
     <input type="file" name="position_data_other">
 
-    <h3>背ネーム・背番号プリント</h3>
-    <p class="instruction">※複数選択可能</p>
-    <div class="checkbox-group">
-      <label><input type="checkbox" name="back_name_number_print[]" value="ネーム&背番号セット"> ネーム&背番号セット</label>
-      <label><input type="checkbox" name="back_name_number_print[]" value="ネーム(大)"> ネーム(大)</label>
-      <label><input type="checkbox" name="back_name_number_print[]" value="ネーム(小)"> ネーム(小)</label>
-      <label><input type="checkbox" name="back_name_number_print[]" value="番号(大)"> 番号(大)</label>
-      <label><input type="checkbox" name="back_name_number_print[]" value="番号(小)"> 番号(小)</label>
-    </div>
+<h3>背ネーム・背番号プリント</h3>
+<p class="instruction">※複数選択可能</p>
+<div class="checkbox-group">
+  <label><input type="checkbox" name="back_name_number_print[]" value="ネーム&背番号セット"> ネーム&背番号セット</label>
+  <label><input type="checkbox" name="back_name_number_print[]" value="ネーム(大)"> ネーム(大)</label>
+  <label><input type="checkbox" name="back_name_number_print[]" value="ネーム(小)"> ネーム(小)</label>
+  <label><input type="checkbox" name="back_name_number_print[]" value="番号(大)"> 番号(大)</label>
+  <label><input type="checkbox" name="back_name_number_print[]" value="番号(小)"> 番号(小)</label>
+</div>
+
+<!-- ▼▼ 背ネーム・背番号のカラー設定 ▼▼ -->
+<h3>背ネーム・背番号 カラー設定</h3>
+<p>「単色」または「フチ付き(2色)」を選択してください。</p>
+
+<!-- ラジオボタン：単色 or フチ付き -->
+<div class="radio-group" id="nameNumberColorType">
+  <label>
+    <input type="radio" name="name_number_color_type" value="single" checked>
+    単色
+  </label>
+  <label>
+    <input type="radio" name="name_number_color_type" value="outline">
+    フチ付き(2色)
+  </label>
+</div>
+
+<!-- ▼ 単色カラー ▼ -->
+<div id="singleColorSection">
+  <label>単色カラー:</label>
+  <select name="single_color_choice">
+    <option value="">選択してください</option>
+    <option value="ホワイト">ホワイト</option>
+    <option value="グレー">グレー</option>
+    <option value="ネイビー">ネイビー</option>
+    <option value="ブラック">ブラック</option>
+    <option value="ライトブルー">ライトブルー</option>
+    <option value="ブルー">ブルー</option>
+    <option value="イエロー">イエロー</option>
+    <option value="オレンジ">オレンジ</option>
+    <option value="ピンク">ピンク</option>
+    <option value="ホットピンク">ホットピンク</option>
+    <option value="レッド">レッド</option>
+    <option value="パープル">パープル</option>
+    <option value="ライトグリーン">ライトグリーン</option>
+    <option value="グリーン">グリーン</option>
+    <option value="シルバー">シルバー</option>
+    <option value="ゴールド">ゴールド</option>
+    <option value="グリッターシルバー">グリッターシルバー</option>
+    <option value="グリッターゴールド">グリッターゴールド</option>
+    <option value="グリッターピンク">グリッターピンク</option>
+  </select>
+</div>
+
+<!-- ▼ フチ付き(2色) ▼ -->
+<div id="outlineColorSection" style="display: none; margin-top:16px;">
+  <label>タイプ (フチ付きデザイン):</label>
+  <select name="outline_type">
+    <option value="">選択してください</option>
+    <option value="FT-01">FT-01</option>
+    <option value="FT-02">FT-02</option>
+  </select>
+
+  <label>文字色:</label>
+  <select name="outline_text_color">
+    <option value="">選択してください</option>
+    <option value="ホワイト">ホワイト</option>
+    <option value="グレー">グレー</option>
+    <option value="ネイビー">ネイビー</option>
+    <option value="ブラック">ブラック</option>
+    <option value="ライトブルー">ライトブルー</option>
+    <option value="ブルー">ブルー</option>
+    <option value="イエロー">イエロー</option>
+    <option value="オレンジ">オレンジ</option>
+    <option value="ピンク">ピンク</option>
+    <option value="ホットピンク">ホットピンク</option>
+    <option value="レッド">レッド</option>
+    <option value="パープル">パープル</option>
+    <option value="ライトグリーン">ライトグリーン</option>
+    <option value="グリーン">グリーン</option>
+    <option value="シルバー">シルバー</option>
+    <option value="ゴールド">ゴールド</option>
+    <option value="グリッターシルバー">グリッターシルバー</option>
+    <option value="グリッターゴールド">グリッターゴールド</option>
+    <option value="グリッターピンク">グリッターピンク</option>
+  </select>
+
+  <label>フチ色:</label>
+  <select name="outline_edge_color">
+    <option value="">選択してください</option>
+    <option value="ホワイト">ホワイト</option>
+    <option value="グレー">グレー</option>
+    <option value="ネイビー">ネイビー</option>
+    <option value="ブラック">ブラック</option>
+    <option value="ライトブルー">ライトブルー</option>
+    <option value="ブルー">ブルー</option>
+    <option value="イエロー">イエロー</option>
+    <option value="オレンジ">オレンジ</option>
+    <option value="ピンク">ピンク</option>
+    <option value="ホットピンク">ホットピンク</option>
+    <option value="レッド">レッド</option>
+    <option value="パープル">パープル</option>
+    <option value="ライトグリーン">ライトグリーン</option>
+    <option value="グリーン">グリーン</option>
+    <option value="シルバー">シルバー</option>
+    <option value="ゴールド">ゴールド</option>
+    <option value="グリッターシルバー">グリッターシルバー</option>
+    <option value="グリッターゴールド">グリッターゴールド</option>
+    <option value="グリッターピンク">グリッターピンク</option>
+  </select>
+</div>
+
+<script>
+// 「単色」か「フチ付き(2色)」かで表示・非表示を切り替え
+const radioGroup = document.getElementById('nameNumberColorType');
+const singleSec = document.getElementById('singleColorSection');
+const outlineSec = document.getElementById('outlineColorSection');
+
+radioGroup.addEventListener('change', function(e) {
+  if (e.target.value === 'single') {
+    singleSec.style.display = 'block';
+    outlineSec.style.display = 'none';
+  } else {
+    singleSec.style.display = 'none';
+    outlineSec.style.display = 'block';
+  }
+});
+</script>
+
 
     <h3>追加のデザインイメージデータ</h3>
     <p class="instruction">プリント位置(前, 左胸, 右胸, 背中, 左袖, 右袖)を選択し、アップロードできます。</p>
