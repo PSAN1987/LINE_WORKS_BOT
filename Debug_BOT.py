@@ -1231,7 +1231,7 @@ FORM_HTML = r"""
       <option value="E-57">E-57</option>
     </select>
 
-    <label>プリントサンプル(前):</label>
+    <label>デザインサンプル(前):</label>
     <select name="design_sample_front">
       <option value="">選択してください</option>
       <option value="D-008">D-008</option>
@@ -1364,52 +1364,21 @@ FORM_HTML = r"""
       <option value="D-405">D-405</option>
     </select>
 
-    <label>プリント位置データ(前) (画像アップロード):</label>
+    <label>カスタムプリントデータ(前) (画像アップロード):</label>
     <input type="file" name="position_data_front">
 
-    <input type="text" name="front_positions_selected" id="front_positions_selected"
-           placeholder="前面 1~9" readonly>
+    <!-- ▼▼ プリント位置データ(前) => 選択式に変更 ▼▼ -->
+    <label>プリント位置データ(前):</label>
+    <select name="front_positions_selected">
+      <option value="">選択してください</option>
+      <option value="左胸">左胸</option>
+      <option value="右胸">右胸</option>
+      <option value="中央">中央</option>
+      <option value="左下">左下</option>
+      <option value="中央(下)">中央(下)</option>
+      <option value="右下">右下</option>
+    </select>
 
-    <div class="tshirt-container">
-      <svg viewBox="0 0 300 300">
-        <path class="tshirt-shape" d="
-          M 90,20
-          L 210,20
-          Q 220,30 210,40
-          L 210,65
-          L 270,65
-          L 270,100
-          L 210,100
-          L 210,240
-          L 90,240
-          L 90,100
-          L 30,100
-          L 30,65
-          L 90,65
-          L 90,40
-          Q 80,30 90,20
-          Z
-        "></path>
-        <circle cx="60" cy="50" r="10" class="click-area" data-num="1"></circle>
-        <text x="60" y="50" class="area-label">1</text>
-        <circle cx="240" cy="50" r="10" class="click-area" data-num="2"></circle>
-        <text x="240" y="50" class="area-label">2</text>
-        <circle cx="120" cy="80" r="10" class="click-area" data-num="3"></circle>
-        <text x="120" y="80" class="area-label">3</text>
-        <circle cx="150" cy="80" r="10" class="click-area" data-num="4"></circle>
-        <text x="150" y="80" class="area-label">4</text>
-        <circle cx="180" cy="80" r="10" class="click-area" data-num="5"></circle>
-        <text x="180" y="80" class="area-label">5</text>
-        <circle cx="150" cy="120" r="10" class="click-area" data-num="6"></circle>
-        <text x="150" y="120" class="area-label">6</text>
-        <circle cx="100" cy="200" r="10" class="click-area" data-num="7"></circle>
-        <text x="100" y="200" class="area-label">7</text>
-        <circle cx="150" cy="200" r="10" class="click-area" data-num="8"></circle>
-        <text x="150" y="200" class="area-label">8</text>
-        <circle cx="200" cy="200" r="10" class="click-area" data-num="9"></circle>
-        <text x="200" y="200" class="area-label">9</text>
-      </svg>
-    </div>
 
     <!-- ▼▼ 背面プリント ▼▼ -->
     <h3>プリント位置: 背中</h3>
@@ -1524,50 +1493,26 @@ FORM_HTML = r"""
       <option value="E-57">E-57</option>
     </select>
 
-    <label>プリントサンプル(背中):</label>
+    <label>デザインサンプル(背中):</label>
     <select name="design_sample_back">
       <option value="">選択してください</option>
       <!-- （省略：前面と同様に D-008 ~ D-405 を並べる） -->
     </select>
 
-    <label>プリント位置データ(背中) (画像アップロード):</label>
+    <label>カスタムプリントデータ(背中) (画像アップロード):</label>
     <input type="file" name="position_data_back">
-    <input type="text" name="back_positions_selected" id="back_positions_selected"
-           placeholder="背面 10~14" readonly>
 
-    <div class="tshirt-container">
-      <svg viewBox="0 0 300 300">
-        <path class="tshirt-shape" d="
-          M 90,20
-          L 210,20
-          Q 220,30 210,40
-          L 210,65
-          L 270,65
-          L 270,100
-          L 210,100
-          L 210,240
-          L 90,240
-          L 90,100
-          L 30,100
-          L 30,65
-          L 90,65
-          L 90,40
-          Q 80,30 90,20
-          Z
-        "></path>
+    <!-- ▼▼ プリント位置データ(背中) => 選択式に変更 ▼▼ -->
+    <label>プリント位置データ(背中):</label>
+    <select name="back_positions_selected">
+      <option value="">選択してください</option>
+      <option value="首下">首下</option>
+      <option value="中央">中央</option>
+      <option value="左下">左下</option>
+      <option value="中央(下)">中央(下)</option>
+      <option value="右下">右下</option>
+    </select>
 
-        <circle cx="150" cy="50" r="10" class="click-area" data-num="10"></circle>
-        <text x="150" y="50" class="area-label">10</text>
-        <circle cx="150" cy="100" r="10" class="click-area" data-num="11"></circle>
-        <text x="150" y="100" class="area-label">11</text>
-        <circle cx="100" cy="200" r="10" class="click-area" data-num="12"></circle>
-        <text x="100" y="200" class="area-label">12</text>
-        <circle cx="150" cy="200" r="10" class="click-area" data-num="13"></circle>
-        <text x="150" y="200" class="area-label">13</text>
-        <circle cx="200" cy="200" r="10" class="click-area" data-num="14"></circle>
-        <text x="200" y="200" class="area-label">14</text>
-      </svg>
-    </div>
 
     <!-- ▼▼ その他プリント ▼▼ -->
     <h3>プリント位置: その他</h3>
@@ -1682,187 +1627,165 @@ FORM_HTML = r"""
       <option value="E-57">E-57</option>
     </select>
 
-    <label>プリントサンプル(その他):</label>
+    <label>デザインサンプル(その他):</label>
     <select name="design_sample_other">
       <option value="">選択してください</option>
       <!-- （省略：前面と同様に D-008 ~ D-405 を並べる） -->
     </select>
 
-    <label>プリント位置データ(その他):</label>
+    <label>カスタムプリントデータ(その他):</label>
     <input type="file" name="position_data_other">
 
-<h3>背ネーム・背番号プリント</h3>
-<p class="instruction">※複数選択可能</p>
-<div class="checkbox-group">
-  <label><input type="checkbox" name="back_name_number_print[]" value="ネーム&背番号セット"> ネーム&背番号セット</label>
-  <label><input type="checkbox" name="back_name_number_print[]" value="ネーム(大)"> ネーム(大)</label>
-  <label><input type="checkbox" name="back_name_number_print[]" value="ネーム(小)"> ネーム(小)</label>
-  <label><input type="checkbox" name="back_name_number_print[]" value="番号(大)"> 番号(大)</label>
-  <label><input type="checkbox" name="back_name_number_print[]" value="番号(小)"> 番号(小)</label>
-</div>
-
-<!-- ▼▼ 背ネーム・背番号のカラー設定 ▼▼ -->
-<h3>背ネーム・背番号 カラー設定</h3>
-<p>「単色」または「フチ付き(2色)」を選択してください。</p>
-
-<!-- ラジオボタン：単色 or フチ付き -->
-<div class="radio-group" id="nameNumberColorType">
-  <label>
-    <input type="radio" name="name_number_color_type" value="single" checked>
-    単色
-  </label>
-  <label>
-    <input type="radio" name="name_number_color_type" value="outline">
-    フチ付き(2色)
-  </label>
-</div>
-
-<!-- ▼ 単色カラー ▼ -->
-<div id="singleColorSection">
-  <label>単色カラー:</label>
-  <select name="single_color_choice">
-    <option value="">選択してください</option>
-    <option value="ホワイト">ホワイト</option>
-    <option value="グレー">グレー</option>
-    <option value="ネイビー">ネイビー</option>
-    <option value="ブラック">ブラック</option>
-    <option value="ライトブルー">ライトブルー</option>
-    <option value="ブルー">ブルー</option>
-    <option value="イエロー">イエロー</option>
-    <option value="オレンジ">オレンジ</option>
-    <option value="ピンク">ピンク</option>
-    <option value="ホットピンク">ホットピンク</option>
-    <option value="レッド">レッド</option>
-    <option value="パープル">パープル</option>
-    <option value="ライトグリーン">ライトグリーン</option>
-    <option value="グリーン">グリーン</option>
-    <option value="シルバー">シルバー</option>
-    <option value="ゴールド">ゴールド</option>
-    <option value="グリッターシルバー">グリッターシルバー</option>
-    <option value="グリッターゴールド">グリッターゴールド</option>
-    <option value="グリッターピンク">グリッターピンク</option>
-  </select>
-</div>
-
-<!-- ▼ フチ付き(2色) ▼ -->
-<div id="outlineColorSection" style="display: none; margin-top:16px;">
-  <label>タイプ (フチ付きデザイン):</label>
-  <select name="outline_type">
-    <option value="">選択してください</option>
-    <option value="FT-01">FT-01</option>
-    <option value="FT-02">FT-02</option>
-  </select>
-
-  <label>文字色:</label>
-  <select name="outline_text_color">
-    <option value="">選択してください</option>
-    <option value="ホワイト">ホワイト</option>
-    <option value="グレー">グレー</option>
-    <option value="ネイビー">ネイビー</option>
-    <option value="ブラック">ブラック</option>
-    <option value="ライトブルー">ライトブルー</option>
-    <option value="ブルー">ブルー</option>
-    <option value="イエロー">イエロー</option>
-    <option value="オレンジ">オレンジ</option>
-    <option value="ピンク">ピンク</option>
-    <option value="ホットピンク">ホットピンク</option>
-    <option value="レッド">レッド</option>
-    <option value="パープル">パープル</option>
-    <option value="ライトグリーン">ライトグリーン</option>
-    <option value="グリーン">グリーン</option>
-    <option value="シルバー">シルバー</option>
-    <option value="ゴールド">ゴールド</option>
-    <option value="グリッターシルバー">グリッターシルバー</option>
-    <option value="グリッターゴールド">グリッターゴールド</option>
-    <option value="グリッターピンク">グリッターピンク</option>
-  </select>
-
-  <label>フチ色:</label>
-  <select name="outline_edge_color">
-    <option value="">選択してください</option>
-    <option value="ホワイト">ホワイト</option>
-    <option value="グレー">グレー</option>
-    <option value="ネイビー">ネイビー</option>
-    <option value="ブラック">ブラック</option>
-    <option value="ライトブルー">ライトブルー</option>
-    <option value="ブルー">ブルー</option>
-    <option value="イエロー">イエロー</option>
-    <option value="オレンジ">オレンジ</option>
-    <option value="ピンク">ピンク</option>
-    <option value="ホットピンク">ホットピンク</option>
-    <option value="レッド">レッド</option>
-    <option value="パープル">パープル</option>
-    <option value="ライトグリーン">ライトグリーン</option>
-    <option value="グリーン">グリーン</option>
-    <option value="シルバー">シルバー</option>
-    <option value="ゴールド">ゴールド</option>
-    <option value="グリッターシルバー">グリッターシルバー</option>
-    <option value="グリッターゴールド">グリッターゴールド</option>
-    <option value="グリッターピンク">グリッターピンク</option>
-  </select>
-</div>
-
-<script>
-// 「単色」か「フチ付き(2色)」かで表示・非表示を切り替え
-const radioGroup = document.getElementById('nameNumberColorType');
-const singleSec = document.getElementById('singleColorSection');
-const outlineSec = document.getElementById('outlineColorSection');
-
-radioGroup.addEventListener('change', function(e) {
-  if (e.target.value === 'single') {
-    singleSec.style.display = 'block';
-    outlineSec.style.display = 'none';
-  } else {
-    singleSec.style.display = 'none';
-    outlineSec.style.display = 'block';
-  }
-});
-</script>
-
-
-    <h3>追加のデザインイメージデータ</h3>
-    <p class="instruction">プリント位置(前, 左胸, 右胸, 背中, 左袖, 右袖)を選択し、アップロードできます。</p>
-    <label>プリント位置:</label>
-    <select name="additional_design_position">
+    <!-- ▼▼ プリント位置データ(その他) => 選択式に変更 ▼▼ -->
+    <label>プリント位置データ(その他):</label>
+    <select name="other_positions_selected">
       <option value="">選択してください</option>
-      <option value="前">前</option>
-      <option value="左胸">左胸</option>
-      <option value="右胸">右胸</option>
-      <option value="背中">背中</option>
-      <option value="左袖">左袖</option>
-      <option value="右袖">右袖</option>
+      <option value="左袖：袖口">左袖：袖口</option>
+      <option value="左袖：長袖中央">左袖：長袖中央</option>
+      <option value="左袖：長袖肩口">左袖：長袖肩口</option>
+      <option value="左袖：長袖袖口">左袖：長袖袖口</option>
+      <option value="右袖：袖口">右袖：袖口</option>
+      <option value="右袖：長袖中央">右袖：長袖中央</option>
+      <option value="右袖：長袖肩口">右袖：長袖肩口</option>
+      <option value="右袖：長袖袖口">右袖：長袖袖口</option>
     </select>
-    <label>デザインイメージデータ:</label>
-    <input type="file" name="additional_design_image">
+
+
+    <h3>背ネーム・背番号プリント</h3>
+    <p class="instruction">※複数選択可能</p>
+    <div class="checkbox-group">
+      <label><input type="checkbox" name="back_name_number_print[]" value="ネーム&背番号セット"> ネーム&背番号セット</label>
+      <label><input type="checkbox" name="back_name_number_print[]" value="ネーム(大)"> ネーム(大)</label>
+      <label><input type="checkbox" name="back_name_number_print[]" value="ネーム(小)"> ネーム(小)</label>
+      <label><input type="checkbox" name="back_name_number_print[]" value="番号(大)"> 番号(大)</label>
+      <label><input type="checkbox" name="back_name_number_print[]" value="番号(小)"> 番号(小)</label>
+    </div>
+
+    <!-- ▼▼ 背ネーム・背番号のカラー設定 ▼▼ -->
+    <h3>背ネーム・背番号 カラー設定</h3>
+    <p>「単色」または「フチ付き(2色)」を選択してください。</p>
+
+    <!-- ラジオボタン：単色 or フチ付き -->
+    <div class="radio-group" id="nameNumberColorType">
+      <label>
+        <input type="radio" name="name_number_color_type" value="single" checked>
+        単色
+      </label>
+      <label>
+        <input type="radio" name="name_number_color_type" value="outline">
+        フチ付き(2色)
+      </label>
+    </div>
+
+    <!-- ▼ 単色カラー ▼ -->
+    <div id="singleColorSection">
+      <label>単色カラー:</label>
+      <select name="single_color_choice">
+        <option value="">選択してください</option>
+        <option value="ホワイト">ホワイト</option>
+        <option value="グレー">グレー</option>
+        <option value="ネイビー">ネイビー</option>
+        <option value="ブラック">ブラック</option>
+        <option value="ライトブルー">ライトブルー</option>
+        <option value="ブルー">ブルー</option>
+        <option value="イエロー">イエロー</option>
+        <option value="オレンジ">オレンジ</option>
+        <option value="ピンク">ピンク</option>
+        <option value="ホットピンク">ホットピンク</option>
+        <option value="レッド">レッド</option>
+        <option value="パープル">パープル</option>
+        <option value="ライトグリーン">ライトグリーン</option>
+        <option value="グリーン">グリーン</option>
+        <option value="シルバー">シルバー</option>
+        <option value="ゴールド">ゴールド</option>
+        <option value="グリッターシルバー">グリッターシルバー</option>
+        <option value="グリッターゴールド">グリッターゴールド</option>
+        <option value="グリッターピンク">グリッターピンク</option>
+      </select>
+    </div>
+
+    <!-- ▼ フチ付き(2色) ▼ -->
+    <div id="outlineColorSection" style="display: none; margin-top:16px;">
+      <label>タイプ (フチ付きデザイン):</label>
+      <select name="outline_type">
+        <option value="">選択してください</option>
+        <option value="FT-01">FT-01</option>
+        <option value="FT-02">FT-02</option>
+      </select>
+
+      <label>文字色:</label>
+      <select name="outline_text_color">
+        <option value="">選択してください</option>
+        <option value="ホワイト">ホワイト</option>
+        <option value="グレー">グレー</option>
+        <option value="ネイビー">ネイビー</option>
+        <option value="ブラック">ブラック</option>
+        <option value="ライトブルー">ライトブルー</option>
+        <option value="ブルー">ブルー</option>
+        <option value="イエロー">イエロー</option>
+        <option value="オレンジ">オレンジ</option>
+        <option value="ピンク">ピンク</option>
+        <option value="ホットピンク">ホットピンク</option>
+        <option value="レッド">レッド</option>
+        <option value="パープル">パープル</option>
+        <option value="ライトグリーン">ライトグリーン</option>
+        <option value="グリーン">グリーン</option>
+        <option value="シルバー">シルバー</option>
+        <option value="ゴールド">ゴールド</option>
+        <option value="グリッターシルバー">グリッターシルバー</option>
+        <option value="グリッターゴールド">グリッターゴールド</option>
+        <option value="グリッターピンク">グリッターピンク</option>
+      </select>
+
+      <label>フチ色:</label>
+      <select name="outline_edge_color">
+        <option value="">選択してください</option>
+        <option value="ホワイト">ホワイト</option>
+        <option value="グレー">グレー</option>
+        <option value="ネイビー">ネイビー</option>
+        <option value="ブラック">ブラック</option>
+        <option value="ライトブルー">ライトブルー</option>
+        <option value="ブルー">ブルー</option>
+        <option value="イエロー">イエロー</option>
+        <option value="オレンジ">オレンジ</option>
+        <option value="ピンク">ピンク</option>
+        <option value="ホットピンク">ホットピンク</option>
+        <option value="レッド">レッド</option>
+        <option value="パープル">パープル</option>
+        <option value="ライトグリーン">ライトグリーン</option>
+        <option value="グリーン">グリーン</option>
+        <option value="シルバー">シルバー</option>
+        <option value="ゴールド">ゴールド</option>
+        <option value="グリッターシルバー">グリッターシルバー</option>
+        <option value="グリッターゴールド">グリッターゴールド</option>
+        <option value="グリッターピンク">グリッターピンク</option>
+      </select>
+    </div>
+
+    <script>
+    // 「単色」か「フチ付き(2色)」かで表示・非表示を切り替え
+    const radioGroup = document.getElementById('nameNumberColorType');
+    const singleSec = document.getElementById('singleColorSection');
+    const outlineSec = document.getElementById('outlineColorSection');
+
+    radioGroup.addEventListener('change', function(e) {
+      if (e.target.value === 'single') {
+        singleSec.style.display = 'block';
+        outlineSec.style.display = 'none';
+      } else {
+        singleSec.style.display = 'none';
+        outlineSec.style.display = 'block';
+      }
+    });
+    </script>
+
+    <!-- 追加のデザインイメージデータ関連は削除 -->
 
     <button type="submit">送信</button>
 
     <script>
-      // 前面(①〜⑨)
-      const frontSvg = document.querySelectorAll('.tshirt-container')[0];
-      const frontAreas = frontSvg.querySelectorAll('.click-area');
-      const frontInput = document.getElementById('front_positions_selected');
-      frontAreas.forEach(area => {
-        area.addEventListener('click', () => {
-          frontAreas.forEach(a => a.classList.remove('selected'));
-          area.classList.add('selected');
-          const num = area.getAttribute('data-num');
-          frontInput.value = num;
-        });
-      });
-
-      // 背面(⑩〜⑭)
-      const backSvg = document.querySelectorAll('.tshirt-container')[1];
-      const backAreas = backSvg.querySelectorAll('.click-area');
-      const backInput = document.getElementById('back_positions_selected');
-      backAreas.forEach(area => {
-        area.addEventListener('click', () => {
-          backAreas.forEach(a => a.classList.remove('selected'));
-          area.classList.add('selected');
-          const num = area.getAttribute('data-num');
-          backInput.value = num;
-        });
-      });
+    // ※ もともとのTシャツクリック用スクリプト部分削除
+    //   （「追加のプリント位置選択機能」等も削除のため、ここのJSも不要なので消去）
     </script>
 
   </form>
