@@ -2059,6 +2059,102 @@ FORM_HTML = r"""
     // ※ もともとのTシャツクリック用スクリプト部分削除
     //   （「追加のプリント位置選択機能」等も削除のため、ここのJSも不要なので消去）
     </script>
+  <!-- 01. みんなに書いてもらおう！（サイズ・番号・ネームを最大45行まで入力） -->
+<h3>01 ネーム・番号を入力する</h3>
+<p>※サイズ／番号／ネーム を入力してください（最大45行）</p>
+
+<table id="list01" border="1">
+  <thead>
+    <tr>
+      <th>No.</th>
+      <th>サイズ</th>
+      <th>番号</th>
+      <th>ネーム</th>
+    </tr>
+  </thead>
+  <tbody>
+    <!-- JavaScriptで1～45行を自動生成 -->
+    <script>
+      for (let i = 1; i <= 45; i++) {
+        document.write(`
+          <tr>
+            <td>${i}</td>
+            <td>
+              <select name="list_size[]" onchange="updateSummary()">
+                <option value="">-</option>
+                <option value="SS">SS</option>
+                <option value="S">S</option>
+                <option value="M">M</option>
+                <option value="L">L</option>
+                <option value="LL">LL</option>
+                <option value="LLL">LLL</option>
+              </select>
+            </td>
+            <td><input type="text" name="list_number[]"></td>
+            <td><input type="text" name="list_name[]"></td>
+          </tr>
+        `);
+      }
+    </script>
+  </tbody>
+</table>
+
+<!-- 02. サイズごとに集計しよう！（サイズ別と合計が自動計算される） -->
+<h3>02 サイズごとに集計しよう！</h3>
+<table border="1">
+  <thead>
+    <tr>
+      <th>SS</th>
+      <th>S</th>
+      <th>M</th>
+      <th>L</th>
+      <th>LL</th>
+      <th>LLL</th>
+      <th>合計</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td id="sumSS">0</td>
+      <td id="sumS">0</td>
+      <td id="sumM">0</td>
+      <td id="sumL">0</td>
+      <td id="sumLL">0</td>
+      <td id="sumLLL">0</td>
+      <td id="sumTotal">0</td>
+    </tr>
+  </tbody>
+</table>
+
+<script>
+  // サイズを集計し、02の表に反映
+  function updateSummary() {
+    // カウント用オブジェクト
+    const counts = { SS: 0, S: 0, M: 0, L: 0, LL: 0, LLL: 0 };
+
+    // 全ての size セレクトを取得
+    const sizeElems = document.querySelectorAll('select[name="list_size[]"]');
+    sizeElems.forEach(elem => {
+      const val = elem.value;
+      // 対象サイズならカウント
+      if (counts.hasOwnProperty(val)) {
+        counts[val]++;
+      }
+    });
+
+    // それぞれ表示更新
+    document.getElementById("sumSS").textContent = counts.SS;
+    document.getElementById("sumS").textContent = counts.S;
+    document.getElementById("sumM").textContent = counts.M;
+    document.getElementById("sumL").textContent = counts.L;
+    document.getElementById("sumLL").textContent = counts.LL;
+    document.getElementById("sumLLL").textContent = counts.LLL;
+
+    // 合計
+    const total = counts.SS + counts.S + counts.M + counts.L + counts.LL + counts.LLL;
+    document.getElementById("sumTotal").textContent = total;
+  }
+</script>
 
   </form>
 </body>
