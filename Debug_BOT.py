@@ -642,9 +642,8 @@ def openai_extract_form_data(ocr_text: str) -> dict:
     """
     OpenAIのChatCompletion等を用いて、OCRテキストを解析し、
     WEBフォーム入力に対応するdictを生成するサンプル。
-
-    - 実際には「OCRテキストをもとに、いつ、誰が、何枚、どのサイズ…」
-      といった情報を正確に抽出するためのプロンプト工夫が必要
+    JSONはコードブロック (\\\\`) で囲まず、そのままのプレーンテキストで出力してください。
+    さらに、先頭や末尾に余計な文章を付けず、JSON 以外の文字は出力しないでください。
     """
     openai_api_key = os.environ.get("OPENAI_API_KEY", "")
     if not openai_api_key:
@@ -686,7 +685,14 @@ def openai_extract_form_data(ocr_text: str) -> dict:
 
     # アシスタントの出力(テキスト)を取得
     assistant_text = response["choices"][0]["message"]["content"].strip()
-
+    assistant_text = assistant_text.strip()
+    # もし「```json」～「```」というブロックがあれば取り除く (最小限の例)
+    assistant_text = assistant_text.replace("```json", "")
+    assistant_text = assistant_text.replace("```", "")
+    # 余計な改行やスペースをさらに strip
+    assistant_text = assistant_text.strip()
+    # その上で json.loads する
+    parsed_data = json.loads(assistant_text)
     # JSONとしてパースできない可能性もあるため、例外処理する
     try:
         parsed_data = json.loads(assistant_text)
