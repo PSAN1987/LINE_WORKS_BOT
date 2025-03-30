@@ -443,6 +443,11 @@ def google_vision_ocr(image_data: bytes) -> str:
 def openai_extract_form_data(ocr_text: str) -> dict:
     """
     OCRテキストをOpenAIに渡して分析し、注文フォーム入力用データを抽出する。
+    あなたは注文用紙のOCR結果から必要な項目を抽出するアシスタントです。
+    入力として渡されるテキスト（OCR結果）を解析し、次のフォーム項目に合致する値を抽出してJSONで返してください。
+    日付項目（application_date, delivery_date, use_date etc）は必ず YYYY-MM-DD の形式で返してください
+    必ず JSON のみを返し、余計な文章は一切出力しないでください。
+    JSONはコードブロック (\\\\`) で囲まず、そのままのプレーンテキストで出力してください。さらに、先頭や末尾に余計な文章を付けず、JSON 以外の文字は出力しないでください。
     """
     if not openai_api_key:
         raise ValueError("環境変数 OPENAI_API_KEY が設定されていません。")
@@ -479,7 +484,15 @@ def openai_extract_form_data(ocr_text: str) -> dict:
     )
 
     assistant_text = response["choices"][0]["message"]["content"].strip()
-
+    assistant_text = assistant_text.strip()
+    # もし「```json」～「```」というブロックがあれば取り除く (最小限の例)
+    assistant_text = assistant_text.replace("```json", "")
+    assistant_text = assistant_text.replace("```", "")
+    # 余計な改行やスペースをさらに strip
+    assistant_text = assistant_text.strip()
+    # その上で json.loads する
+    parsed_data = json.loads(assistant_text)
+    
     # JSONとしてパース
     try:
         parsed_data = json.loads(assistant_text)
