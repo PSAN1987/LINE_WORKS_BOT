@@ -25,6 +25,10 @@ import openai
 from google.cloud import vision
 from google.oauth2 import service_account
 
+import logging
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
+
 app = Flask(__name__)
 
 # -----------------------
