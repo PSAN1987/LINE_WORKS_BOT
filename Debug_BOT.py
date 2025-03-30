@@ -204,7 +204,6 @@ def find_price_row(item_name, discount_type, quantity):
             return row
     return None
 
-# Flexメッセージ
 from linebot.models import FlexSendMessage
 
 def flex_usage_date():
@@ -702,21 +701,32 @@ def submit_catalog_form():
 # -----------------------
 
 #
-# 先に、フルカラー判定を分ける関数を用意します
+# グリッター／蛍光色を判定して「1色につき100円加算」するロジックを追加
 #
 def parse_print_colors(color_str):
     """
     カンマ区切りの色リストを解析し、
       - 通常色の個数 (normal_color_count)
       - フルカラー固定加算の合計 (fullcolor_cost)
-    を返す
+      - グリッター／蛍光色の個数 (glitter_fluo_count)
+    を返す。
+
+    戻り値:
+      (normal_color_count, fullcolor_cost, glitter_fluo_count)
     """
     if not color_str.strip():
-        return 0, 0
+        return 0, 0, 0
 
     colors = [c.strip() for c in color_str.split(",") if c.strip()]
     normal_color_count = 0
     fullcolor_cost = 0
+    glitter_fluo_count = 0
+
+    glitter_or_fluo_list = [
+        "グリッターシルバー","グリッターゴールド","グリッターブラック","グリッターイエロー",
+        "グリッターピンク","グリッターレッド","グリッターグリーン","グリッターブルー","グリッターパープル",
+        "蛍光オレンジ","蛍光ピンク","蛍光グリーン"
+    ]
 
     for c in colors:
         if "フルカラー(小)" in c:
@@ -726,10 +736,12 @@ def parse_print_colors(color_str):
         elif "フルカラー(大)" in c:
             fullcolor_cost += 990
         else:
-            # 上記以外は通常色とみなす
+            # 通常色扱い（ただしグリッター／蛍光の場合は別途カウント）
             normal_color_count += 1
+            if c in glitter_or_fluo_list:
+                glitter_fluo_count += 1
 
-    return normal_color_count, fullcolor_cost
+    return normal_color_count, fullcolor_cost, glitter_fluo_count
 
 
 @app.route("/webform", methods=["GET"])
@@ -772,7 +784,6 @@ def webform_submit():
     product_name = request.form.get("product_name","")
     product_color= request.form.get("product_color","")
 
-    # サイズ入力
     def to_int(val):
         try:
             return int(val)
@@ -790,7 +801,7 @@ def webform_submit():
     # 前面プリント
     print_size_front= request.form.get("print_size_front","")
     print_size_front_custom= request.form.get("print_size_front_custom","")
-    print_color_front_list = request.form.getlist("print_color_front[]")  # name="print_color_front[]"
+    print_color_front_list = request.form.getlist("print_color_front[]")
     print_color_front = ",".join(print_color_front_list)
     font_no_front= request.form.get("font_no_front","")
     design_sample_front= request.form.get("design_sample_front","")
@@ -800,8 +811,7 @@ def webform_submit():
     # 背面プリント
     print_size_back= request.form.get("print_size_back","")
     print_size_back_custom= request.form.get("print_size_back_custom","")
-    # name="print_color_back[]" にしている想定で getlist("print_color_back[]")
-    print_color_back_list = request.form.getlist("print_color_back[]")  # <= HTMLで修正
+    print_color_back_list = request.form.getlist("print_color_back[]")
     print_color_back = ",".join(print_color_back_list)
     font_no_back= request.form.get("font_no_back","")
     design_sample_back= request.form.get("design_sample_back","")
@@ -811,7 +821,7 @@ def webform_submit():
     # その他プリント
     print_size_other= request.form.get("print_size_other","")
     print_size_other_custom= request.form.get("print_size_other_custom","")
-    print_color_other_list = request.form.getlist("print_color_other[]")  # <= HTMLで修正
+    print_color_other_list = request.form.getlist("print_color_other[]")
     print_color_other = ",".join(print_color_other_list)
     font_no_other= request.form.get("font_no_other","")
     design_sample_other= request.form.get("design_sample_other","")
@@ -865,20 +875,23 @@ def webform_submit():
     else:
         pos_add_fee = base_pos_add
 
-    # (B) カラー数をフルカラーと通常色に分けて計算
-    #     parse_print_colors で (normal_color_count, fullcolor_cost)を取得
-    f_normal, f_full = parse_print_colors(print_color_front)
-    b_normal, b_full = parse_print_colors(print_color_back)
-    o_normal, o_full = parse_print_colors(print_color_other)
+    # (B) カラー数をフルカラーと通常色に分けて計算 + グリッター／蛍光色数をカウント
+    f_normal, f_full, f_gf = parse_print_colors(print_color_front)
+    b_normal, b_full, b_gf = parse_print_colors(print_color_back)
+    o_normal, o_full, o_gf = parse_print_colors(print_color_other)
 
     total_normal_color = f_normal + b_normal + o_normal
     total_fullcolor_cost = f_full + b_full + o_full
+    total_glitter_fluo_count = f_gf + b_gf + o_gf
 
-    # 1色目無料,2色目から base_color_addという例
+    # 1色目無料, 2色目から color_add
     if total_normal_color > 1:
         normal_color_fee = base_color_add * (total_normal_color - 1)
     else:
         normal_color_fee = 0
+
+    # グリッター／蛍光色 加算 (1色あたり100円)
+    glitter_fluo_fee = total_glitter_fluo_count * 100
 
     # (C) 背ネーム背番号プリント加算
     backname_fee = 0
@@ -899,11 +912,10 @@ def webform_submit():
 
     # (D) 背ネーム・番号カラー追加料金(例)
     backname_color_fee = 0
-    # 例としてフチ付きなら+100
     if name_number_color_type == "outline":
         backname_color_fee = 100
     else:
-        # 単色(特定カラーに応じ加算)の例は省略
+        # 単色の場合は特になければ0円
         pass
 
     # (E) 単価計算
@@ -914,6 +926,7 @@ def webform_submit():
         + total_fullcolor_cost
         + backname_fee
         + backname_color_fee
+        + glitter_fluo_fee
     )
     total_price = unit_price * total_qty
 
@@ -924,6 +937,7 @@ def webform_submit():
         f"📚 プリント位置追加: ¥{pos_add_fee:,}\n"
         f"📚 通常色: ¥{normal_color_fee:,}\n"
         f"📚 フルカラー: ¥{total_fullcolor_cost:,}\n"
+        f"📚 グリッター／蛍光色加算: ¥{glitter_fluo_fee:,}\n"
         f"📚 背ネーム/番号プリント: ¥{backname_fee:,}\n"
         f"📚 背ネームカラー: ¥{backname_color_fee:,}\n"
         "--------------------------------------\n"
@@ -1005,16 +1019,13 @@ def webform_submit():
     ws.append_row(new_row, value_input_option="USER_ENTERED")
 
     # (H) LINEへの通知メッセージ組み立て
-    # プリント位置&カラー情報
     front_text = f"前面プリント色: {print_color_front}" if front_used else ""
     back_text  = f"背面プリント色: {print_color_back}"  if back_used  else ""
     oth_text   = f"その他プリント色: {print_color_other}" if other_used else ""
     used_positions_text = "\n".join([t for t in [front_text, back_text, oth_text] if t])
 
-    # 背ネーム/番号
     backname_text = back_name_number_str if back_name_number_str else "無し"
 
-    # 背ネームカラー設定
     if name_number_color_type == "single":
         backname_color_text = f"単色({single_color_choice})"
     else:
