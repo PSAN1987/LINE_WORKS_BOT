@@ -12,13 +12,19 @@ from oauth2client.service_account import ServiceAccountCredentials
 from linebot import LineBotApi, WebhookHandler
 from linebot.exceptions import InvalidSignatureError
 from linebot.models import (
-    MessageEvent, TextMessage, TextSendMessage, FlexSendMessage
+    MessageEvent, TextMessage, TextSendMessage, FlexSendMessage,
+    ImageMessage
 )
 from werkzeug.utils import secure_filename
 
 # --- 別ファイルに分割されているテーブル類をインポート ---
 from price_table import PRICE_TABLE, COLOR_COST_MAP
 from webform_template import FORM_HTML  # HTMLテンプレート
+
+import openai
+from google.cloud import vision
+from google.oauth2 import service_account
+from linebot.models import MessageEvent, TextMessage, ImageMessage, TextSendMessage
 
 app = Flask(__name__)
 
@@ -37,6 +43,7 @@ S3_BUCKET_NAME = os.environ.get("S3_BUCKET_NAME", "")
 
 line_bot_api = LineBotApi(LINE_CHANNEL_ACCESS_TOKEN)
 handler = WebhookHandler(LINE_CHANNEL_SECRET)
+
 
 # -----------------------
 # Google Sheets 接続
@@ -58,6 +65,7 @@ def get_gspread_client():
     ]
     credentials = ServiceAccountCredentials.from_json_keyfile_dict(service_account_dict, scope)
     return gspread.authorize(credentials)
+
 
 def get_or_create_worksheet(sheet, title):
     """
@@ -119,6 +127,7 @@ def get_or_create_worksheet(sheet, title):
             ]])
     return ws
 
+
 # -----------------------
 # S3アップロード機能
 # -----------------------
@@ -147,6 +156,7 @@ def upload_file_to_s3(file_storage, s3_bucket, prefix="uploads/"):
     url = f"https://{s3_bucket}.s3.amazonaws.com/{s3_key}"
     return url
 
+
 # -----------------------
 # カタログ申し込みフォーム
 # -----------------------
@@ -166,6 +176,7 @@ def write_to_spreadsheet_for_catalog(form_data: dict):
         form_data.get("other", ""),
     ]
     worksheet.append_row(new_row, value_input_option="USER_ENTERED")
+
 
 # -----------------------
 # 簡易見積
@@ -196,6 +207,7 @@ def write_estimate_to_spreadsheet(user_id, estimate_data, total_price, unit_pric
     worksheet.append_row(new_row, value_input_option="USER_ENTERED")
     return quote_number
 
+
 def find_price_row(item_name, discount_type, quantity):
     for row in PRICE_TABLE:
         if (row["item"] == item_name
@@ -204,7 +216,7 @@ def find_price_row(item_name, discount_type, quantity):
             return row
     return None
 
-# Flexメッセージ
+
 from linebot.models import FlexSendMessage
 
 def flex_usage_date():
@@ -389,6 +401,126 @@ def flex_back_name():
     }
     return FlexSendMessage(alt_text="背ネーム・番号を選択してください", contents=bubble)
 
+
+# -----------------------
+# 注文用紙OCR・OpenAI抽出の擬似セッション管理
+# -----------------------
+# 「注文用紙から注文」のフローで画像を送ってもらう場合の管理用
+user_order_form_image_sessions = {}
+
+
+# -----------------------
+# (Mock) Google Vision AI OCR
+# -----------------------
+def mock_google_vision_ocr(image_content: bytes) -> str:
+    """
+    本来はGoogle Vision AIを利用して画像から文字認識する。
+    ここではMockとして固定の文字列を返すか、適当にOCR結果を返す。
+    """
+    # 実際にはVision APIを呼ぶ処理を書く。
+    # 例： image_annotator_client.text_detection(...)
+    # ここではデモ用に固定文字を返す。
+    # （要件に合わせて実装する）
+    if not image_content:
+        raise ValueError("画像データが取得できません。")
+
+    # デモ用のOCR結果(仮)
+    ocr_text_mock = """申込日：2025/04/01
+学校名：サンプル高校
+代表者名：山田太郎
+サイズ：S 10枚、M 15枚
+背ネーム：ネーム(大)
+カラー：ゴールド
+使用日：14日前以上
+
+"""
+    return ocr_text_mock
+
+
+# -----------------------
+# (Mock) OpenAI APIでテキスト抽出→WEBフォーム入力用データへ変換
+# -----------------------
+def mock_openai_extract_form_data(ocr_text: str) -> dict:
+    """
+    本来はOpenAI API等を利用して自然言語解析し、
+    OCRしたテキストからフォーム入力を自動抽出する想定。
+    ここでは擬似的にdictを作成して返す。
+    """
+    if not ocr_text.strip():
+        raise ValueError("OCRテキストが空です。")
+
+    # デモ用に、それらしいデータを返す
+    # 項目は /webform に入力するものに対応
+    # （例：application_date, school_name, size_s, size_mなど）
+    form_data = {
+        "application_date": "2025-04-01",
+        "delivery_date": "",
+        "use_date": "2025-04-15",
+        "discount_option": "早割",  # OCRした結果 "14日前以上" → "早割"
+        "school_name": "サンプル高校",
+        "line_account": "",
+        "group_name": "バレー部",
+        "school_address": "サンプル県サンプル市1-2-3",
+        "school_tel": "000-1111-2222",
+        "teacher_name": "山本先生",
+        "teacher_tel": "",
+        "teacher_email": "",
+        "representative": "山田太郎",
+        "rep_tel": "090-xxxx-xxxx",
+        "rep_email": "taro.yamada@example.com",
+
+        "delivery_zip": "",
+        "delivery_address": "",
+        "delivery_address2": "",
+
+        "design_confirm": "",
+        "payment_method": "",
+        "product_name": "ヘビーウェイトTシャツ",
+        "product_color": "ホワイト",
+
+        "size_ss": "0",
+        "size_s": "10",
+        "size_m": "15",
+        "size_l": "0",
+        "size_ll": "0",
+        "size_lll": "0",
+
+        "print_size_front": "",
+        "print_size_front_custom": "",
+        # 例： OCRから「前面カラー：赤,青」などと読み取れたら
+        "print_color_front[]": ["赤"],
+        "font_no_front": "",
+        "design_sample_front": "",
+        "front_positions_selected": "",
+
+        "print_size_back": "",
+        "print_size_back_custom": "",
+        "print_color_back[]": ["ゴールド"],  # OCRから "カラー：ゴールド"
+        "font_no_back": "",
+        "design_sample_back": "",
+        "back_positions_selected": "",
+
+        "print_size_other": "",
+        "print_size_other_custom": "",
+        "print_color_other[]": [],
+        "font_no_other": "",
+        "design_sample_other": "",
+        "other_positions_selected": "",
+
+        # 背ネーム・背番号
+        "back_name_number_print[]": ["ネーム(大)"],  # OCRで「背ネーム: ネーム(大)」
+        "name_number_color_type": "single",
+        "single_color_choice": "ゴールド",  # OCRテキストを解析
+        "outline_type": "",
+        "outline_text_color": "",
+        "outline_edge_color": "",
+
+        # 追加デザイン
+        "additional_design_position": "",
+    }
+    return form_data
+
+
 # -----------------------
 # LINEコールバック
 # -----------------------
@@ -405,11 +537,18 @@ def line_callback():
         abort(400, f"Invalid signature: {e}")
     return "OK", 200
 
+
 @handler.add(MessageEvent, message=TextMessage)
-def handle_message(event: MessageEvent):
+def handle_text_message(event: MessageEvent):
+    """
+    テキストメッセージを受信したときの処理。
+    既存の「お見積り」などのフローに加え、
+    「注文用紙から注文」のフローを追加。
+    """
     user_id = event.source.user_id
     text = event.message.text.strip()
 
+    # --- 既存の簡易見積りフロー ---
     # すでに見積りフロー中かどうか
     if user_id in user_estimate_sessions and user_estimate_sessions[user_id]["step"]>0:
         process_estimate_flow(event, text)
@@ -451,13 +590,201 @@ def handle_message(event: MessageEvent):
         )
         return
 
-    # その他
+    # --- ここからが 新規「注文用紙から注文」フロー ---
+    if text == "注文用紙から注文":
+        # ユーザーに「注文用紙の写真を送ってください」と案内
+        user_order_form_image_sessions[user_id] = "waiting_for_image"
+        reply_text = "注文用紙の写真を送ってください。(スマホで撮影した写真でOKですが、フォーム形式を無視すると認識率が下がります)"
+        line_bot_api.reply_message(event.reply_token, TextSendMessage(text=reply_text))
+        return
+
+    # その他のテキスト
     return
 
+# =====================================
+# Google Vision OCR (実際のAPI呼び出し)
+# =====================================
+def google_vision_ocr(image_data: bytes) -> str:
+    """
+    Google Vision APIを使用して実際にOCRを行う関数。
+    """
+    # GCPサービスアカウント情報を環境変数 SERVICE_ACCOUNT_FILE から読み込む想定
+    service_account_json = os.environ.get("GCP_SERVICE_ACCOUNT_JSON", "")
+    if not service_account_json:
+        raise ValueError("環境変数 GCP_SERVICE_ACCOUNT_JSON が設定されていません。")
+
+    service_account_dict = json.loads(service_account_json)
+    credentials = service_account.Credentials.from_service_account_info(service_account_dict)
+
+    # Visionクライアントを初期化
+    client = vision.ImageAnnotatorClient(credentials=credentials)
+
+    # 画像をvision.Imageに詰める
+    image = vision.Image(content=image_data)
+
+    # OCR実行
+    response = client.text_detection(image=image)
+    if response.error.message:
+        raise RuntimeError(f"Google Vision OCRエラー: {response.error.message}")
+
+    # テキスト抽出
+    #   pages[0].blocks[0].paragraphs[0].words[...] のような構造ですが
+    #   最も簡易的には .full_text_annotation.text で全文が取れます
+    ocr_text = response.full_text_annotation.text
+
+    return ocr_text
+
+
+# =====================================
+# OpenAIでフォーム項目抽出 (実際のAPI呼び出し)
+# =====================================
+def openai_extract_form_data(ocr_text: str) -> dict:
+    """
+    OpenAIのChatCompletion等を用いて、OCRテキストを解析し、
+    WEBフォーム入力に対応するdictを生成するサンプル。
+
+    - 実際には「OCRテキストをもとに、いつ、誰が、何枚、どのサイズ…」
+      といった情報を正確に抽出するためのプロンプト工夫が必要
+    """
+    openai_api_key = os.environ.get("OPENAI_API_KEY", "")
+    if not openai_api_key:
+        raise ValueError("環境変数 OPENAI_API_KEY が設定されていません。")
+    openai.api_key = openai_api_key
+
+    # システム役割のメッセージ (抽出したい項目などの指示)
+    system_message = {
+        "role": "system",
+        "content": (
+            "You are an AI assistant that extracts order form information from the provided text. "
+            "Output in JSON that matches the following keys: "
+            "application_date, delivery_date, use_date, discount_option, school_name, line_account, group_name, "
+            "school_address, school_tel, teacher_name, teacher_tel, teacher_email, representative, rep_tel, rep_email, "
+            "delivery_zip, delivery_address, delivery_address2, design_confirm, payment_method, product_name, product_color, "
+            "size_ss, size_s, size_m, size_l, size_ll, size_lll, "
+            "print_size_front, print_size_front_custom, print_color_front, font_no_front, design_sample_front, front_positions_selected, "
+            "print_size_back, print_size_back_custom, print_color_back, font_no_back, design_sample_back, back_positions_selected, "
+            "print_size_other, print_size_other_custom, print_color_other, font_no_other, design_sample_other, other_positions_selected, "
+            "back_name_number_print, name_number_color_type, single_color_choice, outline_type, outline_text_color, outline_edge_color, "
+            "additional_design_position. "
+            "Values should be text or string array, or empty if not found. "
+            "Use an array of strings for multiple colors in print_color_front, print_color_back, print_color_other, back_name_number_print."
+        )
+    }
+
+    # ユーザーロールのメッセージ (OCRテキストを入れる)
+    user_message = {
+        "role": "user",
+        "content": f"Extract the form data from this OCR text:\n{ocr_text}"
+    }
+
+    # ChatCompletion呼び出し
+    response = openai.ChatCompletion.create(
+        model="gpt-3.5-turbo",
+        messages=[system_message, user_message],
+        temperature=0.0
+    )
+
+    # アシスタントの出力(テキスト)を取得
+    assistant_text = response["choices"][0]["message"]["content"].strip()
+
+    # JSONとしてパースできない可能性もあるため、例外処理する
+    try:
+        parsed_data = json.loads(assistant_text)
+    except json.JSONDecodeError:
+        raise ValueError("OpenAI応答がJSONとしてパースできませんでした。\n応答内容:\n" + assistant_text)
+
+    # 例: parsed_dataが以下のようなdictになっている前提
+    # {
+    #   "application_date": "2025-04-01",
+    #   "delivery_date": "",
+    #   "use_date": "2025-04-15",
+    #   ...
+    #   "print_color_front": ["赤","青"],
+    #   ...
+    #   "back_name_number_print": ["ネーム(大)"],
+    #   ...
+    # }
+
+    # 必要に応じてキーが無い場合は追加・型変換などの処理を行う
+    # (最小限のサンプル)
+
+    return parsed_data
+
+
+# =====================================
+# 実際の handle_image_message の例
+# =====================================
+def handle_image_message(event: MessageEvent):
+    """
+    「注文用紙から注文」フローで受け取った画像に対し、
+      1) Vision APIでOCR
+      2) OpenAIでテキスト抽出
+      3) 結果をWEBフォームに自動入力(サーバー側に保存)しユーザーへ通知
+    """
+    user_id = event.source.user_id
+
+    # 「注文用紙の写真を待っている」状態かどうかを判定
+    #   → コード全体では user_order_form_image_sessions[user_id] == "waiting_for_image" 等の管理を想定
+    #   ここでは例示として if not in session: return
+    if user_id not in user_order_form_image_sessions:
+        return
+    if user_order_form_image_sessions[user_id] != "waiting_for_image":
+        return
+
+    try:
+        # A) 受信メッセージに対して「OCR処理中…」応答
+        line_bot_api.reply_message(
+            event.reply_token,
+            TextSendMessage(text="画像を受信しました。OCR処理を行いますので、10秒程度お待ちください")
+        )
+
+        # B) 画像バイナリ取得
+        message_id = event.message.id
+        message_content = line_bot_api.get_message_content(message_id)
+        image_data = b""
+        for chunk in message_content.iter_content():
+            image_data += chunk
+
+        # C) Google VisionでOCR
+        ocr_text = google_vision_ocr(image_data)
+
+        # D) OpenAIでフォーム項目抽出
+        extracted_form_data = openai_extract_form_data(ocr_text)
+
+        # E) 抽出結果をWEBフォームに反映するためにサーバー側に保存 (ここでは例としてグローバルdictに保存)
+        #    実装例：
+        # webform_prepopulate_data[user_id] = extracted_form_data
+
+        # F) ユーザーに「入力が完了したのでフォーム確認して送信して」とメッセージ
+        form_url = f"https://{request.host}/webform?user_id={user_id}"
+        finish_text = (
+            "注文用紙の写真から情報を読み取りました。\n"
+            "WEBフォームに自動入力しましたので、内容をご確認・修正のうえ、送信してください。\n\n"
+            f"{form_url}"
+        )
+        line_bot_api.push_message(user_id, TextSendMessage(text=finish_text))
+
+    except Exception as e:
+        # 失敗したらユーザーへ通知し、再度やり直してもらう
+        error_msg = (
+            f"OCRまたはOpenAI解析でエラーが発生しました: {e}\n"
+            "もう一度写真を送るか、フォームから直接ご入力ください。"
+        )
+        line_bot_api.push_message(user_id, TextSendMessage(text=error_msg))
+
+    finally:
+        # セッションを解除
+        if user_id in user_order_form_image_sessions:
+            del user_order_form_image_sessions[user_id]
+
+# -----------------------
+# 簡易見積りフロー処理
+# -----------------------
 def start_estimate_flow(event: MessageEvent):
     user_id = event.source.user_id
     user_estimate_sessions[user_id] = {"step":1, "answers":{}}
     line_bot_api.reply_message(event.reply_token, flex_usage_date())
+
 
 def process_estimate_flow(event: MessageEvent, text: str):
     user_id = event.source.user_id
@@ -530,7 +857,7 @@ def process_estimate_flow(event: MessageEvent, text: str):
             session_data["answers"]["back_name"] = text
             session_data["step"] = 8
 
-            # 簡易計算 (カンタン版: ベース単価 + 枚数 x ...
+            # 簡易計算
             edata = session_data["answers"]
             quantity = int(edata["quantity"])
             row = find_price_row(edata["item"], edata["discount_type"], quantity)
@@ -572,6 +899,7 @@ def process_estimate_flow(event: MessageEvent, text: str):
         line_bot_api.reply_message(event.reply_token,TextSendMessage(text="エラーが発生しました。最初からやり直してください。"))
         if user_id in user_estimate_sessions:
             del user_estimate_sessions[user_id]
+
 
 # -----------------------
 # カタログ申し込みフォーム (GET/POST)
@@ -677,6 +1005,7 @@ def show_catalog_form():
 """
     return render_template_string(html_content)
 
+
 @app.route("/submit_form", methods=["POST"])
 def submit_catalog_form():
     form_data = {
@@ -706,16 +1035,13 @@ BACKNAME_COLOR_MAP = {
     "グリッターシルバー": 200,
     "グリッターゴールド": 200,
     "グリッターピンク": 200,
-    # 必要に応じて他のカラーを追加
 }
+
 
 # -----------------------
 # WEBフォームから注文 (GET/POST) (S3対応 + 合計金額ロジック改良版)
 # -----------------------
 
-#
-# グリッター／蛍光色を判定して「1色につき100円追加」するロジック
-#
 def parse_print_colors(color_str):
     """
     カンマ区切りの色リストを解析し、
@@ -749,7 +1075,6 @@ def parse_print_colors(color_str):
         elif "フルカラー(大)" in c:
             fullcolor_cost += 990
         else:
-            # 通常色扱い（ただしグリッター／蛍光の場合は別途カウント）
             normal_color_count += 1
             if c in glitter_or_fluo_list:
                 glitter_fluo_count += 1
@@ -762,13 +1087,13 @@ def show_webform():
     user_id = request.args.get("user_id","")
     return render_template_string(FORM_HTML, user_id=user_id)
 
+
 @app.route("/webform_submit", methods=["POST"])
 def webform_submit():
     """
     フォームの入力を受け取り、合計金額を計算してスプレッドシートに書き込み、
     さらにLINEに注文番号などを通知します。
     """
-    # (1) フォーム内容取得
     user_id = request.form.get("user_id","")
 
     application_date = request.form.get("application_date","")
@@ -787,7 +1112,6 @@ def webform_submit():
     rep_tel = request.form.get("rep_tel","")
     rep_email = request.form.get("rep_email","")
 
-    # お届け先
     delivery_zip = request.form.get("delivery_zip","")
     delivery_address = request.form.get("delivery_address","")
     delivery_address2 = request.form.get("delivery_address2","")
@@ -811,7 +1135,6 @@ def webform_submit():
     size_lll= to_int(request.form.get("size_lll","0"))
     total_qty = size_ss + size_s + size_m + size_l + size_ll + size_lll
 
-    # 前面プリント
     print_size_front= request.form.get("print_size_front","")
     print_size_front_custom= request.form.get("print_size_front_custom","")
     print_color_front_list = request.form.getlist("print_color_front[]")
@@ -821,7 +1144,6 @@ def webform_submit():
     position_data_front= request.files.get("position_data_front")
     front_positions_selected= request.form.get("front_positions_selected","")
 
-    # 背面プリント
     print_size_back= request.form.get("print_size_back","")
     print_size_back_custom= request.form.get("print_size_back_custom","")
     print_color_back_list = request.form.getlist("print_color_back[]")
@@ -831,7 +1153,6 @@ def webform_submit():
     position_data_back= request.files.get("position_data_back")
     back_positions_selected= request.form.get("back_positions_selected","")
 
-    # その他プリント
     print_size_other= request.form.get("print_size_other","")
     print_size_other_custom= request.form.get("print_size_other_custom","")
     print_color_other_list = request.form.getlist("print_color_other[]")
@@ -841,33 +1162,27 @@ def webform_submit():
     position_data_other= request.files.get("position_data_other")
     other_positions_selected= request.form.get("other_positions_selected","")
 
-    # 背ネーム・背番号
     back_name_number_opts = request.form.getlist("back_name_number_print[]")
     back_name_number_str = ",".join(back_name_number_opts) if back_name_number_opts else ""
 
-    # 背ネームカラー設定
     name_number_color_type= request.form.get("name_number_color_type","")
     single_color_choice= request.form.get("single_color_choice","")
     outline_type= request.form.get("outline_type","")
     outline_text_color= request.form.get("outline_text_color","")
     outline_edge_color= request.form.get("outline_edge_color","")
 
-    # 追加デザイン
     additional_design_position= request.form.get("additional_design_position","")
     additional_design_image= request.files.get("additional_design_image")
 
-    # (2) S3アップロード
     pos_front_url = upload_file_to_s3(position_data_front, S3_BUCKET_NAME, prefix="uploads/")
     pos_back_url  = upload_file_to_s3(position_data_back,  S3_BUCKET_NAME, prefix="uploads/")
     pos_other_url = upload_file_to_s3(position_data_other, S3_BUCKET_NAME, prefix="uploads/")
     add_design_url= upload_file_to_s3(additional_design_image, S3_BUCKET_NAME, prefix="uploads/")
 
-    # (3) 割引(早割or通常)判定
     discount_type = "通常"
     if discount_option == "早割":
         discount_type = "早割"
 
-    # (4) PRICE_TABLE からベース単価
     row = find_price_row(product_name, discount_type, total_qty)
     if row is None:
         base_unit_price = 0
@@ -878,7 +1193,6 @@ def webform_submit():
         base_pos_add = row["pos_add"]
         base_color_add = row["color_add"]
 
-    # (A) プリント位置の判定(2か所以上で pos_add)
     front_used = bool(print_color_front.strip())
     back_used  = bool(print_color_back.strip())
     other_used = bool(print_color_other.strip())
@@ -888,7 +1202,6 @@ def webform_submit():
     else:
         pos_add_fee = base_pos_add
 
-    # (B) カラー数をフルカラーと通常色に分けて計算 + グリッター／蛍光色数をカウント
     f_normal, f_full, f_gf = parse_print_colors(print_color_front)
     b_normal, b_full, b_gf = parse_print_colors(print_color_back)
     o_normal, o_full, o_gf = parse_print_colors(print_color_other)
@@ -897,16 +1210,13 @@ def webform_submit():
     total_fullcolor_cost = f_full + b_full + o_full
     total_glitter_fluo_count = f_gf + b_gf + o_gf
 
-    # 1色目無料, 2色目から color_add
     if total_normal_color > 1:
         normal_color_fee = base_color_add * (total_normal_color - 1)
     else:
         normal_color_fee = 0
 
-    # グリッター／蛍光色 加算 (1色あたり100円)
     glitter_fluo_fee = total_glitter_fluo_count * 100
 
-    # (C) 背ネーム背番号プリント加算
     backname_fee = 0
     if back_name_number_opts:
         for val in back_name_number_opts:
@@ -921,28 +1231,20 @@ def webform_submit():
                 backname_fee += 550
             elif v == "番号(小)":
                 backname_fee += 250
-            # 他は加算なし
 
-    # (D) 背ネーム・番号カラー追加料金
-    # 例としてフチ付きなら+100円を加算
     backname_outline_base = 0
     if name_number_color_type == "outline":
-        backname_outline_base = 100  # フチ付きを選んだ場合のベース加算
+        backname_outline_base = 100
 
-    # 背ネームカラー(単色 or フチ付き2色)の加算
     backname_colors_fee = 0
     if name_number_color_type == "outline":
-        # 文字色
         backname_colors_fee += BACKNAME_COLOR_MAP.get(outline_text_color, 0)
-        # フチ色
         backname_colors_fee += BACKNAME_COLOR_MAP.get(outline_edge_color, 0)
     elif name_number_color_type == "single":
-        # 単色の場合
         backname_colors_fee += BACKNAME_COLOR_MAP.get(single_color_choice, 0)
 
     backname_color_fee = backname_outline_base + backname_colors_fee
 
-    # (E) 単価計算
     unit_price = (
         base_unit_price
         + pos_add_fee
@@ -954,7 +1256,6 @@ def webform_submit():
     )
     total_price = unit_price * total_qty
 
-    # (F) 計算内訳を文字列化
     calculation_breakdown = (
         "【単価計算内訳】\n"
         f"📚 ベース単価: ¥{base_unit_price:,}\n"
@@ -970,7 +1271,6 @@ def webform_submit():
         f"📚【合計金額】¥{total_price:,}\n"
     )
 
-    # (G) スプレッドシート書き込み
     order_number = f"O{int(time.time())}"
 
     gc = get_gspread_client()
@@ -978,7 +1278,6 @@ def webform_submit():
     ws = get_or_create_worksheet(sh, "Orders")
 
     new_row = [
-        # ①基本情報
         application_date,
         delivery_date,
         use_date,
@@ -995,12 +1294,10 @@ def webform_submit():
         rep_tel,
         rep_email,
 
-        # ②お届け先
         delivery_zip,
         delivery_address,
         delivery_address2,
 
-        # ③その他
         design_confirm,
         payment_method,
         product_name,
@@ -1042,7 +1339,6 @@ def webform_submit():
     ]
     ws.append_row(new_row, value_input_option="USER_ENTERED")
 
-    # (H) LINEへの通知メッセージ組み立て
     front_text = f"前面プリント色: {print_color_front}" if front_used else ""
     back_text  = f"背面プリント色: {print_color_back}"  if back_used  else ""
     oth_text   = f"その他プリント色: {print_color_other}" if other_used else ""
@@ -1050,7 +1346,6 @@ def webform_submit():
 
     backname_text = back_name_number_str if back_name_number_str else "無し"
 
-    # 背ネーム・番号カラー表示
     if name_number_color_type == "single":
         backname_color_text = f"単色({single_color_choice})"
     else:
@@ -1069,7 +1364,6 @@ def webform_submit():
         f"⚠️ 合計金額が3万円未満、または無地ご注文は別途送料を申し受けます。"
     )
 
-    # (I) LINEにpush
     if user_id:
         try:
             line_bot_api.push_message(
@@ -1086,12 +1380,14 @@ def webform_submit():
         f"合計金額: ¥{total_price:,} / 単価: ¥{unit_price:,}"
     ), 200
 
+
 # -----------------------
 # 動作確認用
 # -----------------------
 @app.route("/", methods=["GET"])
 def health_check():
     return "LINE Bot is running.", 200
+
 
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=5000, debug=True)
