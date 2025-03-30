@@ -714,6 +714,7 @@ def openai_extract_form_data(ocr_text: str) -> dict:
 # =====================================
 # 実際の handle_image_message の例
 # =====================================
+@handler.add(MessageEvent, message=ImageMessage)
 def handle_image_message(event: MessageEvent):
     """
     「注文用紙から注文」フローで受け取った画像に対し、
