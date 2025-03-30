@@ -889,6 +889,20 @@ def webform_submit():
     # (E) 1枚あたりの単価計算
     unit_price = base_unit_price + pos_add_fee + color_fee + backname_fee + backname_color_fee
     total_price = unit_price * total_qty
+    calculation_breakdown = (
+    f"【単価計算内訳】\n"
+    f"ベース単価: ¥{base_unit_price:,}\n"
+    f"プリント箇所追加(pos_add): ¥{pos_add_fee:,}\n"
+    f"通常色加算: ¥{normal_color_fee:,}\n"
+    f"グリッター/蛍光加算: ¥{glitter_fluo_fee:,}\n"
+    f"フルカラー加算: ¥{fullcolor_fee:,}\n"
+    f"背ネーム/番号プリント加算: ¥{backname_fee:,}\n"
+    f"背ネームカラー加算: ¥{backname_color_fee:,}\n"
+    f"----------------------------\n"
+    f"1枚あたり単価: ¥{unit_price:,}\n"
+    f"合計枚数: {total_qty}枚\n"
+    f"【合計金額】¥{total_price:,}\n"
+)
 
     # (F) スプレッドシート書き込み
     order_number = f"O{int(time.time())}"
@@ -989,45 +1003,6 @@ def webform_submit():
 
     # 4) 返信メッセージを整形
     reply_msg = (
-        f"【ご注文ありがとうございます】\n"
-        f"注文番号: {order_number}\n"
-        f"商品名: {product_name}\n"
-        f"商品カラー: {product_color}\n"
-        f"合計枚数: {total_qty}枚\n"
-        "\n"
-        # プリント位置ごとの情報 (使われているものだけ改行で並べる)
-        f"{front_text}\n" if front_text else "" +
-        f"{back_text}\n" if back_text else "" +
-        f"{other_text}\n" if other_text else "" +
-        "\n"
-        f"背ネーム・背番号プリント: {backname_text}\n"
-        f"背ネーム・背番号カラー設定: {backname_color_text}\n"
-        "\n"
-        f"【1枚あたり単価】¥{unit_price:,}\n"
-        f"【合計金額】¥{total_price:,}\n"
-
-    )
-    
-    # (E) 単価計算が完了したあと、この辺りで変数を使って内訳を文字列化する
-
-# 例: 各加算要素をまとめた内訳表示
-calculation_breakdown = (
-    f"【単価計算内訳】\n"
-    f"ベース単価: ¥{base_unit_price:,}\n"
-    f"プリント箇所追加(pos_add): ¥{pos_add_fee:,}\n"
-    f"通常色加算: ¥{normal_color_fee:,}\n"
-    f"グリッター/蛍光加算: ¥{glitter_fluo_fee:,}\n"
-    f"フルカラー加算: ¥{fullcolor_fee:,}\n"
-    f"背ネーム/番号プリント加算: ¥{backname_fee:,}\n"
-    f"背ネームカラー加算: ¥{backname_color_fee:,}\n"
-    f"----------------------------\n"
-    f"1枚あたり単価: ¥{unit_price:,}\n"
-    f"合計枚数: {total_qty}枚\n"
-    f"【合計金額】¥{total_price:,}\n"
-)
-
-# 返信メッセージ（例）
-reply_msg = (
     f"【ご注文ありがとうございます】\n"
     f"注文番号: {order_number}\n"
     f"商品名: {product_name}\n"
@@ -1040,7 +1015,7 @@ reply_msg = (
     "\n"
     # 計算内訳
     f"{calculation_breakdown}"
-)
+    )
 
 # 5) LINEへ push_message
 if user_id:
