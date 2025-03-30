@@ -920,16 +920,16 @@ def webform_submit():
     # (F) 計算内訳を文字列化
     calculation_breakdown = (
         "【単価計算内訳】\n"
-        f"ベース単価: ¥{base_unit_price:,}\n"
-        f"プリント箇所追加(pos_add): ¥{pos_add_fee:,}\n"
-        f"通常色加算: ¥{normal_color_fee:,}\n"
-        f"フルカラー加算: ¥{total_fullcolor_cost:,}\n"
-        f"背ネーム/番号プリント加算: ¥{backname_fee:,}\n"
-        f"背ネームカラー加算: ¥{backname_color_fee:,}\n"
-        "----------------------------\n"
-        f"1枚あたり単価: ¥{unit_price:,}\n"
-        f"合計枚数: {total_qty}枚\n"
-        f"【合計金額】¥{total_price:,}\n"
+        f"📚 ベース単価: ¥{base_unit_price:,}\n"
+        f"📚 プリント位置追加: ¥{pos_add_fee:,}\n"
+        f"📚 通常色: ¥{normal_color_fee:,}\n"
+        f"📚 フルカラー: ¥{total_fullcolor_cost:,}\n"
+        f"📚 背ネーム/番号プリント: ¥{backname_fee:,}\n"
+        f"📚 背ネームカラー: ¥{backname_color_fee:,}\n"
+        "--------------------------------------\n"
+        f"📚 1枚あたり単価: ¥{unit_price:,}\n"
+        f"📚 合計枚数: {total_qty}枚\n"
+        f"📚【合計金額】¥{total_price:,}\n"
     )
 
     # (G) スプレッドシート書き込み
@@ -1021,17 +1021,16 @@ def webform_submit():
         backname_color_text = f"フチ付き(文字色:{outline_text_color}, フチ色:{outline_edge_color}, タイプ:{outline_type})"
 
     reply_msg = (
-        f"【ご注文ありがとうございます】\n"
-        f"注文番号: {order_number}\n"
-        f"商品名: {product_name}\n"
-        f"商品カラー: {product_color}\n"
-        f"合計枚数: {total_qty}枚\n"
-        "\n"
-        f"{used_positions_text}\n\n"
-        f"背ネーム・背番号プリント: {backname_text}\n"
-        f"背ネーム・背番号カラー設定: {backname_color_text}\n"
-        "\n"
-        f"{calculation_breakdown}"
+        f"🎁【ご注文ありがとうございます】🎁 \n"
+        f"📦 注文番号: {order_number}\n"
+        f"📦 商品名: {product_name}\n"
+        f"📦 商品カラー: {product_color}\n"
+        f"📦 合計枚数: {total_qty}枚\n"
+        f"📦 {used_positions_text}\n\n"
+        f"📦 背ネーム・背番号プリント: {backname_text}\n"
+        f"📦 背ネーム・背番号カラー: {backname_color_text}\n"
+        f"{calculation_breakdown}\n"
+        f"⚠️ 合計金額が3万円未満、または無地ご注文は別途送料を申し受けます。"
     )
 
     # (I) LINEにpush
