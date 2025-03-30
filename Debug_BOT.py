@@ -24,7 +24,6 @@ from webform_template import FORM_HTML  # HTMLテンプレート
 import openai
 from google.cloud import vision
 from google.oauth2 import service_account
-from linebot.models import MessageEvent, TextMessage, ImageMessage, TextSendMessage
 
 app = Flask(__name__)
 
@@ -41,9 +40,17 @@ AWS_ACCESS_KEY_ID = os.environ.get("AWS_ACCESS_KEY_ID", "")
 AWS_SECRET_ACCESS_KEY = os.environ.get("AWS_SECRET_ACCESS_KEY", "")
 S3_BUCKET_NAME = os.environ.get("S3_BUCKET_NAME", "")
 
+openai_api_key = os.environ.get("OPENAI_API_KEY", "")
+
 line_bot_api = LineBotApi(LINE_CHANNEL_ACCESS_TOKEN)
 handler = WebhookHandler(LINE_CHANNEL_SECRET)
 
+# -----------------------
+# グローバル辞書
+# -----------------------
+# 「注文用紙から注文」フローで OCR & OpenAI により抽出したフォーム入力データを保持する
+# キー: user_id, 値: dict (extracted_form_data)
+webform_prepopulate_data = {}
 
 # -----------------------
 # Google Sheets 接続
@@ -216,8 +223,6 @@ def find_price_row(item_name, discount_type, quantity):
             return row
     return None
 
-
-from linebot.models import FlexSendMessage
 
 def flex_usage_date():
     bubble = {
@@ -403,122 +408,85 @@ def flex_back_name():
 
 
 # -----------------------
-# 注文用紙OCR・OpenAI抽出の擬似セッション管理
+# 注文用紙から注文フロー用: ユーザーが画像を送るまでの簡易管理
 # -----------------------
-# 「注文用紙から注文」のフローで画像を送ってもらう場合の管理用
 user_order_form_image_sessions = {}
 
 
 # -----------------------
-# (Mock) Google Vision AI OCR
+# Google Vision OCR (実際のAPI呼び出し)
 # -----------------------
-def mock_google_vision_ocr(image_content: bytes) -> str:
+def google_vision_ocr(image_data: bytes) -> str:
     """
-    本来はGoogle Vision AIを利用して画像から文字認識する。
-    ここではMockとして固定の文字列を返すか、適当にOCR結果を返す。
+    Google Vision APIを使用して実際にOCRを行う関数。
     """
-    # 実際にはVision APIを呼ぶ処理を書く。
-    # 例： image_annotator_client.text_detection(...)
-    # ここではデモ用に固定文字を返す。
-    # （要件に合わせて実装する）
-    if not image_content:
-        raise ValueError("画像データが取得できません。")
+    if not SERVICE_ACCOUNT_FILE:
+        raise ValueError("環境変数 GCP_SERVICE_ACCOUNT_JSON が設定されていません。")
 
-    # デモ用のOCR結果(仮)
-    ocr_text_mock = """申込日：2025/04/01
-学校名：サンプル高校
-代表者名：山田太郎
-サイズ：S 10枚、M 15枚
-背ネーム：ネーム(大)
-カラー：ゴールド
-使用日：14日前以上
+    service_account_dict = json.loads(SERVICE_ACCOUNT_FILE)
+    credentials = service_account.Credentials.from_service_account_info(service_account_dict)
 
-"""
-    return ocr_text_mock
+    client = vision.ImageAnnotatorClient(credentials=credentials)
+    image = vision.Image(content=image_data)
+
+    response = client.text_detection(image=image)
+    if response.error.message:
+        raise RuntimeError(f"Google Vision OCRエラー: {response.error.message}")
+
+    ocr_text = response.full_text_annotation.text
+    return ocr_text
 
 
 # -----------------------
-# (Mock) OpenAI APIでテキスト抽出→WEBフォーム入力用データへ変換
+# OpenAI でフォーム項目抽出 (実際のAPI呼び出し)
 # -----------------------
-def mock_openai_extract_form_data(ocr_text: str) -> dict:
+def openai_extract_form_data(ocr_text: str) -> dict:
     """
-    本来はOpenAI API等を利用して自然言語解析し、
-    OCRしたテキストからフォーム入力を自動抽出する想定。
-    ここでは擬似的にdictを作成して返す。
+    OCRテキストをOpenAIに渡して分析し、注文フォーム入力用データを抽出する。
     """
-    if not ocr_text.strip():
-        raise ValueError("OCRテキストが空です。")
+    if not openai_api_key:
+        raise ValueError("環境変数 OPENAI_API_KEY が設定されていません。")
+    openai.api_key = openai_api_key
 
-    # デモ用に、それらしいデータを返す
-    # 項目は /webform に入力するものに対応
-    # （例：application_date, school_name, size_s, size_mなど）
-    form_data = {
-        "application_date": "2025-04-01",
-        "delivery_date": "",
-        "use_date": "2025-04-15",
-        "discount_option": "早割",  # OCRした結果 "14日前以上" → "早割"
-        "school_name": "サンプル高校",
-        "line_account": "",
-        "group_name": "バレー部",
-        "school_address": "サンプル県サンプル市1-2-3",
-        "school_tel": "000-1111-2222",
-        "teacher_name": "山本先生",
-        "teacher_tel": "",
-        "teacher_email": "",
-        "representative": "山田太郎",
-        "rep_tel": "090-xxxx-xxxx",
-        "rep_email": "taro.yamada@example.com",
-
-        "delivery_zip": "",
-        "delivery_address": "",
-        "delivery_address2": "",
-
-        "design_confirm": "",
-        "payment_method": "",
-        "product_name": "ヘビーウェイトTシャツ",
-        "product_color": "ホワイト",
-
-        "size_ss": "0",
-        "size_s": "10",
-        "size_m": "15",
-        "size_l": "0",
-        "size_ll": "0",
-        "size_lll": "0",
-
-        "print_size_front": "",
-        "print_size_front_custom": "",
-        # 例： OCRから「前面カラー：赤,青」などと読み取れたら
-        "print_color_front[]": ["赤"],
-        "font_no_front": "",
-        "design_sample_front": "",
-        "front_positions_selected": "",
-
-        "print_size_back": "",
-        "print_size_back_custom": "",
-        "print_color_back[]": ["ゴールド"],  # OCRから "カラー：ゴールド"
-        "font_no_back": "",
-        "design_sample_back": "",
-        "back_positions_selected": "",
-
-        "print_size_other": "",
-        "print_size_other_custom": "",
-        "print_color_other[]": [],
-        "font_no_other": "",
-        "design_sample_other": "",
-        "other_positions_selected": "",
-
-        # 背ネーム・背番号
-        "back_name_number_print[]": ["ネーム(大)"],  # OCRで「背ネーム: ネーム(大)」
-        "name_number_color_type": "single",
-        "single_color_choice": "ゴールド",  # OCRテキストを解析
-        "outline_type": "",
-        "outline_text_color": "",
-        "outline_edge_color": "",
-
-        # 追加デザイン
-        "additional_design_position": "",
+    system_message = {
+        "role": "system",
+        "content": (
+            "You are an AI assistant that extracts order form information from the provided text. "
+            "Output in JSON that matches the following keys: "
+            "application_date, delivery_date, use_date, discount_option, school_name, line_account, group_name, "
+            "school_address, school_tel, teacher_name, teacher_tel, teacher_email, representative, rep_tel, rep_email, "
+            "delivery_zip, delivery_address, delivery_address2, design_confirm, payment_method, product_name, product_color, "
+            "size_ss, size_s, size_m, size_l, size_ll, size_lll, "
+            "print_size_front, print_size_front_custom, print_color_front, font_no_front, design_sample_front, front_positions_selected, "
+            "print_size_back, print_size_back_custom, print_color_back, font_no_back, design_sample_back, back_positions_selected, "
+            "print_size_other, print_size_other_custom, print_color_other, font_no_other, design_sample_other, other_positions_selected, "
+            "back_name_number_print, name_number_color_type, single_color_choice, outline_type, outline_text_color, outline_edge_color, "
+            "additional_design_position. "
+            "Values should be text or string array, or empty if not found. "
+            "Use an array of strings for multiple colors in print_color_front, print_color_back, print_color_other, back_name_number_print."
+        )
     }
-    return form_data
+
+    user_message = {
+        "role": "user",
+        "content": f"Extract the form data from this OCR text:\n{ocr_text}"
+    }
+
+    response = openai.ChatCompletion.create(
+        model="gpt-3.5-turbo",
+        messages=[system_message, user_message],
+        temperature=0.0
+    )
+
+    assistant_text = response["choices"][0]["message"]["content"].strip()
+
+    # JSONとしてパース
+    try:
+        parsed_data = json.loads(assistant_text)
+    except json.JSONDecodeError:
+        raise ValueError("OpenAI応答がJSONとしてパースできませんでした。\n応答内容:\n" + assistant_text)
+
+    return parsed_data
 
 
 # -----------------------
@@ -540,21 +508,15 @@ def line_callback():
 
 @handler.add(MessageEvent, message=TextMessage)
 def handle_text_message(event: MessageEvent):
-    """
-    テキストメッセージを受信したときの処理。
-    既存の「お見積り」などのフローに加え、
-    「注文用紙から注文」のフローを追加。
-    """
     user_id = event.source.user_id
     text = event.message.text.strip()
 
-    # --- 既存の簡易見積りフロー ---
-    # すでに見積りフロー中かどうか
+    # 簡易見積りフロー中かどうか
     if user_id in user_estimate_sessions and user_estimate_sessions[user_id]["step"]>0:
         process_estimate_flow(event, text)
         return
 
-    # 見積りフロー開始
+    # 「お見積り」フロー開始
     if text == "お見積り":
         start_estimate_flow(event)
         return
@@ -590,189 +552,61 @@ def handle_text_message(event: MessageEvent):
         )
         return
 
-    # --- ここからが 新規「注文用紙から注文」フロー ---
+    # 注文用紙から注文
     if text == "注文用紙から注文":
-        # ユーザーに「注文用紙の写真を送ってください」と案内
         user_order_form_image_sessions[user_id] = "waiting_for_image"
-        reply_text = "注文用紙の写真を送ってください。(スマホで撮影した写真でOKですが、フォーム形式を無視すると認識率が下がります)"
+        reply_text = "注文用紙の写真を送ってください。(スマホで撮影した写真でOKです)"
         line_bot_api.reply_message(event.reply_token, TextSendMessage(text=reply_text))
         return
 
-    # その他のテキスト
-    return
 
-# =====================================
-# Google Vision OCR (実際のAPI呼び出し)
-# =====================================
-def google_vision_ocr(image_data: bytes) -> str:
-    """
-    Google Vision APIを使用して実際にOCRを行う関数。
-    """
-    # GCPサービスアカウント情報を環境変数 SERVICE_ACCOUNT_FILE から読み込む想定
-    service_account_json = os.environ.get("GCP_SERVICE_ACCOUNT_JSON", "")
-    if not service_account_json:
-        raise ValueError("環境変数 GCP_SERVICE_ACCOUNT_JSON が設定されていません。")
-
-    service_account_dict = json.loads(service_account_json)
-    credentials = service_account.Credentials.from_service_account_info(service_account_dict)
-
-    # Visionクライアントを初期化
-    client = vision.ImageAnnotatorClient(credentials=credentials)
-
-    # 画像をvision.Imageに詰める
-    image = vision.Image(content=image_data)
-
-    # OCR実行
-    response = client.text_detection(image=image)
-    if response.error.message:
-        raise RuntimeError(f"Google Vision OCRエラー: {response.error.message}")
-
-    # テキスト抽出
-    #   pages[0].blocks[0].paragraphs[0].words[...] のような構造ですが
-    #   最も簡易的には .full_text_annotation.text で全文が取れます
-    ocr_text = response.full_text_annotation.text
-
-    return ocr_text
-
-
-# =====================================
-# OpenAIでフォーム項目抽出 (実際のAPI呼び出し)
-# =====================================
-def openai_extract_form_data(ocr_text: str) -> dict:
-    """
-    OpenAIのChatCompletion等を用いて、OCRテキストを解析し、
-    WEBフォーム入力に対応するdictを生成するサンプル。
-    JSONはコードブロック (\\\\`) で囲まず、そのままのプレーンテキストで出力してください。
-    さらに、先頭や末尾に余計な文章を付けず、JSON 以外の文字は出力しないでください。
-    """
-    openai_api_key = os.environ.get("OPENAI_API_KEY", "")
-    if not openai_api_key:
-        raise ValueError("環境変数 OPENAI_API_KEY が設定されていません。")
-    openai.api_key = openai_api_key
-
-    # システム役割のメッセージ (抽出したい項目などの指示)
-    system_message = {
-        "role": "system",
-        "content": (
-            "You are an AI assistant that extracts order form information from the provided text. "
-            "Output in JSON that matches the following keys: "
-            "application_date, delivery_date, use_date, discount_option, school_name, line_account, group_name, "
-            "school_address, school_tel, teacher_name, teacher_tel, teacher_email, representative, rep_tel, rep_email, "
-            "delivery_zip, delivery_address, delivery_address2, design_confirm, payment_method, product_name, product_color, "
-            "size_ss, size_s, size_m, size_l, size_ll, size_lll, "
-            "print_size_front, print_size_front_custom, print_color_front, font_no_front, design_sample_front, front_positions_selected, "
-            "print_size_back, print_size_back_custom, print_color_back, font_no_back, design_sample_back, back_positions_selected, "
-            "print_size_other, print_size_other_custom, print_color_other, font_no_other, design_sample_other, other_positions_selected, "
-            "back_name_number_print, name_number_color_type, single_color_choice, outline_type, outline_text_color, outline_edge_color, "
-            "additional_design_position. "
-            "Values should be text or string array, or empty if not found. "
-            "Use an array of strings for multiple colors in print_color_front, print_color_back, print_color_other, back_name_number_print."
-        )
-    }
-
-    # ユーザーロールのメッセージ (OCRテキストを入れる)
-    user_message = {
-        "role": "user",
-        "content": f"Extract the form data from this OCR text:\n{ocr_text}"
-    }
-
-    # ChatCompletion呼び出し
-    response = openai.ChatCompletion.create(
-        model="gpt-3.5-turbo",
-        messages=[system_message, user_message],
-        temperature=0.0
-    )
-
-    # アシスタントの出力(テキスト)を取得
-    assistant_text = response["choices"][0]["message"]["content"].strip()
-    assistant_text = assistant_text.strip()
-    # もし「```json」～「```」というブロックがあれば取り除く (最小限の例)
-    assistant_text = assistant_text.replace("```json", "")
-    assistant_text = assistant_text.replace("```", "")
-    # 余計な改行やスペースをさらに strip
-    assistant_text = assistant_text.strip()
-    # その上で json.loads する
-    parsed_data = json.loads(assistant_text)
-    # JSONとしてパースできない可能性もあるため、例外処理する
-    try:
-        parsed_data = json.loads(assistant_text)
-    except json.JSONDecodeError:
-        raise ValueError("OpenAI応答がJSONとしてパースできませんでした。\n応答内容:\n" + assistant_text)
-
-    # 例: parsed_dataが以下のようなdictになっている前提
-    # {
-    #   "application_date": "2025-04-01",
-    #   "delivery_date": "",
-    #   "use_date": "2025-04-15",
-    #   ...
-    #   "print_color_front": ["赤","青"],
-    #   ...
-    #   "back_name_number_print": ["ネーム(大)"],
-    #   ...
-    # }
-
-    # 必要に応じてキーが無い場合は追加・型変換などの処理を行う
-    # (最小限のサンプル)
-
-    return parsed_data
-
-
-# =====================================
-# 実際の handle_image_message の例
-# =====================================
 @handler.add(MessageEvent, message=ImageMessage)
 def handle_image_message(event: MessageEvent):
     """
-    「注文用紙から注文」フローで受け取った画像に対し、
-      1) Vision APIでOCR
-      2) OpenAIでテキスト抽出
-      3) 結果をWEBフォームに自動入力(サーバー側に保存)しユーザーへ通知
+    注文用紙から注文のフロー:
+      1) 画像受信 → OCR実行 → OpenAI解析
+      2) 抽出結果を一時保存
+      3) ユーザーにフォームURLを案内
     """
     user_id = event.source.user_id
-
-    # 「注文用紙の写真を待っている」状態かどうかを判定
-    #   → コード全体では user_order_form_image_sessions[user_id] == "waiting_for_image" 等の管理を想定
-    #   ここでは例示として if not in session: return
     if user_id not in user_order_form_image_sessions:
         return
     if user_order_form_image_sessions[user_id] != "waiting_for_image":
         return
 
     try:
-        # A) 受信メッセージに対して「OCR処理中…」応答
+        # 1) まずOCR中メッセージを返す
         line_bot_api.reply_message(
             event.reply_token,
-            TextSendMessage(text="画像を受信しました。OCR処理を行いますので、10秒程度お待ちください")
+            TextSendMessage(text="画像を受信しました。OCR解析を行っています。少しお待ちください...")
         )
 
-        # B) 画像バイナリ取得
+        # 2) 画像バイナリ取得
         message_id = event.message.id
         message_content = line_bot_api.get_message_content(message_id)
         image_data = b""
         for chunk in message_content.iter_content():
             image_data += chunk
 
-        # C) Google VisionでOCR
+        # 3) Google VisionでOCR
         ocr_text = google_vision_ocr(image_data)
 
-        # D) OpenAIでフォーム項目抽出
+        # 4) OpenAIでフォーム項目抽出
         extracted_form_data = openai_extract_form_data(ocr_text)
 
-        # E) 抽出結果をWEBフォームに反映するためにサーバー側に保存 (ここでは例としてグローバルdictに保存)
-        #    実装例：
-        # webform_prepopulate_data[user_id] = extracted_form_data
+        # 5) 抽出結果をグローバル辞書に保存
+        webform_prepopulate_data[user_id] = extracted_form_data
 
-        # F) ユーザーに「入力が完了したのでフォーム確認して送信して」とメッセージ
+        # 6) フォームURLを案内
         form_url = f"https://{request.host}/webform?user_id={user_id}"
         finish_text = (
-            "注文用紙の写真から情報を読み取りました。\n"
-            "WEBフォームに自動入力しましたので、内容をご確認・修正のうえ、送信してください。\n\n"
+            "注文用紙の画像から情報を読み取りました。\n"
+            "WEBフォームに自動入力しておりますので、内容をご確認・修正のうえ送信ください。\n\n"
             f"{form_url}"
         )
         line_bot_api.push_message(user_id, TextSendMessage(text=finish_text))
 
     except Exception as e:
-        # 失敗したらユーザーへ通知し、再度やり直してもらう
         error_msg = (
             f"OCRまたはOpenAI解析でエラーが発生しました: {e}\n"
             "もう一度写真を送るか、フォームから直接ご入力ください。"
@@ -780,12 +614,13 @@ def handle_image_message(event: MessageEvent):
         line_bot_api.push_message(user_id, TextSendMessage(text=error_msg))
 
     finally:
-        # セッションを解除
+        # セッション解除
         if user_id in user_order_form_image_sessions:
             del user_order_form_image_sessions[user_id]
 
+
 # -----------------------
-# 簡易見積りフロー処理
+# 簡易見積りフロー
 # -----------------------
 def start_estimate_flow(event: MessageEvent):
     user_id = event.source.user_id
@@ -864,7 +699,6 @@ def process_estimate_flow(event: MessageEvent, text: str):
             session_data["answers"]["back_name"] = text
             session_data["step"] = 8
 
-            # 簡易計算
             edata = session_data["answers"]
             quantity = int(edata["quantity"])
             row = find_price_row(edata["item"], edata["discount_type"], quantity)
@@ -902,7 +736,6 @@ def process_estimate_flow(event: MessageEvent, text: str):
         else:
             line_bot_api.reply_message(event.reply_token,TextSendMessage(text="背ネーム・番号の選択肢からお選びください。"))
     else:
-        # エラー時
         line_bot_api.reply_message(event.reply_token,TextSendMessage(text="エラーが発生しました。最初からやり直してください。"))
         if user_id in user_estimate_sessions:
             del user_estimate_sessions[user_id]
@@ -1046,19 +879,15 @@ BACKNAME_COLOR_MAP = {
 
 
 # -----------------------
-# WEBフォームから注文 (GET/POST) (S3対応 + 合計金額ロジック改良版)
+# WEBフォーム注文 (GET/POST)
 # -----------------------
-
 def parse_print_colors(color_str):
     """
-    カンマ区切りの色リストを解析し、
-      - 通常色の個数 (normal_color_count)
-      - フルカラー固定加算の合計 (fullcolor_cost)
-      - グリッター／蛍光色の個数 (glitter_fluo_count)
-    を返す。
-
-    戻り値:
-      (normal_color_count, fullcolor_cost, glitter_fluo_count)
+    カンマ区切りの色リストを解析:
+      - 通常色の個数
+      - フルカラー固定加算(合計)
+      - グリッター／蛍光色の個数
+    を返すタプル (normal_color_count, fullcolor_cost, glitter_fluo_count)
     """
     if not color_str.strip():
         return 0, 0, 0
@@ -1091,18 +920,25 @@ def parse_print_colors(color_str):
 
 @app.route("/webform", methods=["GET"])
 def show_webform():
+    """
+    注文用WEBフォームを表示する。
+    もし事前に OCR & OpenAI で抽出したデータがあれば、それをデフォルト値として埋め込む。
+    """
     user_id = request.args.get("user_id","")
-    return render_template_string(FORM_HTML, user_id=user_id)
+    extracted_data = webform_prepopulate_data.get(user_id, {})
+
+    return render_template_string(FORM_HTML, user_id=user_id, extracted_data=extracted_data)
 
 
 @app.route("/webform_submit", methods=["POST"])
 def webform_submit():
     """
     フォームの入力を受け取り、合計金額を計算してスプレッドシートに書き込み、
-    さらにLINEに注文番号などを通知します。
+    さらにLINEに注文番号などを通知。
     """
     user_id = request.form.get("user_id","")
 
+    # 以下、フォームからの入力取得 (全て同一)
     application_date = request.form.get("application_date","")
     delivery_date = request.form.get("delivery_date","")
     use_date = request.form.get("use_date","")
@@ -1181,11 +1017,13 @@ def webform_submit():
     additional_design_position= request.form.get("additional_design_position","")
     additional_design_image= request.files.get("additional_design_image")
 
+    # 画像アップロード (S3)
     pos_front_url = upload_file_to_s3(position_data_front, S3_BUCKET_NAME, prefix="uploads/")
     pos_back_url  = upload_file_to_s3(position_data_back,  S3_BUCKET_NAME, prefix="uploads/")
     pos_other_url = upload_file_to_s3(position_data_other, S3_BUCKET_NAME, prefix="uploads/")
     add_design_url= upload_file_to_s3(additional_design_image, S3_BUCKET_NAME, prefix="uploads/")
 
+    # 割引区分
     discount_type = "通常"
     if discount_option == "早割":
         discount_type = "早割"
@@ -1200,6 +1038,7 @@ def webform_submit():
         base_pos_add = row["pos_add"]
         base_color_add = row["color_add"]
 
+    # プリント位置数での追加費用
     front_used = bool(print_color_front.strip())
     back_used  = bool(print_color_back.strip())
     other_used = bool(print_color_other.strip())
@@ -1209,6 +1048,7 @@ def webform_submit():
     else:
         pos_add_fee = base_pos_add
 
+    # 色数解析
     f_normal, f_full, f_gf = parse_print_colors(print_color_front)
     b_normal, b_full, b_gf = parse_print_colors(print_color_back)
     o_normal, o_full, o_gf = parse_print_colors(print_color_other)
@@ -1217,13 +1057,16 @@ def webform_submit():
     total_fullcolor_cost = f_full + b_full + o_full
     total_glitter_fluo_count = f_gf + b_gf + o_gf
 
+    # 通常色2色目以降
     if total_normal_color > 1:
         normal_color_fee = base_color_add * (total_normal_color - 1)
     else:
         normal_color_fee = 0
 
+    # グリッター／蛍光 加算
     glitter_fluo_fee = total_glitter_fluo_count * 100
 
+    # 背ネーム・番号
     backname_fee = 0
     if back_name_number_opts:
         for val in back_name_number_opts:
@@ -1239,6 +1082,7 @@ def webform_submit():
             elif v == "番号(小)":
                 backname_fee += 250
 
+    # フチ付き指定
     backname_outline_base = 0
     if name_number_color_type == "outline":
         backname_outline_base = 100
@@ -1252,6 +1096,7 @@ def webform_submit():
 
     backname_color_fee = backname_outline_base + backname_colors_fee
 
+    # 単価計算
     unit_price = (
         base_unit_price
         + pos_add_fee
