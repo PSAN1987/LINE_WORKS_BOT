@@ -962,26 +962,96 @@ def webform_submit():
     ws.append_row(new_row, value_input_option="USER_ENTERED")
 
     # (G) ユーザーへのLINE通知
+    #  ここを修正して「各プリント位置 + 各カラー情報」「背ネーム/背番号 + カラー設定」などをまとめて返す
+
+    # 1) プリント位置ごとのカラー情報をまとめる
+    front_text = ""
+    if front_used:
+        front_text = f"前面プリント色: {print_color_front}"
+
+    back_text = ""
+    if back_used:
+        back_text = f"背面プリント色: {print_color_back}"
+
+    other_text = ""
+    if other_used:
+        other_text = f"その他プリント色: {print_color_other}"
+
+    # 2) 背ネーム・背番号プリント情報
+    backname_text = back_name_number_str if back_name_number_str else "無し"
+
+    # 3) 背ネーム/番号 カラー設定
+    #   単色 or フチ付き などの情報をまとめる
+    if name_number_color_type == "single":
+        backname_color_text = f"単色({single_color_choice})"
+    else:
+        backname_color_text = f"フチ付き(文字色:{outline_text_color}, フチ色:{outline_edge_color}, タイプ:{outline_type})"
+
+    # 4) 返信メッセージを整形
     reply_msg = (
         f"【ご注文ありがとうございます】\n"
         f"注文番号: {order_number}\n"
         f"商品名: {product_name}\n"
+        f"商品カラー: {product_color}\n"
         f"合計枚数: {total_qty}枚\n"
-        f"合計金額: ¥{total_price:,}\n"
-        f"単価: ¥{unit_price:,}\n"
-    )
-    if user_id:
-        try:
-            line_bot_api.push_message(user_id, TextSendMessage(text=reply_msg))
-        except Exception as e:
-            print(f"[ERROR] push_message failed: {e}")
+        "\n"
+        # プリント位置ごとの情報 (使われているものだけ改行で並べる)
+        f"{front_text}\n" if front_text else "" +
+        f"{back_text}\n" if back_text else "" +
+        f"{other_text}\n" if other_text else "" +
+        "\n"
+        f"背ネーム・背番号プリント: {backname_text}\n"
+        f"背ネーム・背番号カラー設定: {backname_color_text}\n"
+        "\n"
+        f"【1枚あたり単価】¥{unit_price:,}\n"
+        f"【合計金額】¥{total_price:,}\n"
 
-    return (
-        "注文フォームを受け付けました。スプレッドシートに記録しました。<br>"
-        f"注文番号: {order_number}<br>"
-        f"合計枚数: {total_qty}枚<br>"
-        f"合計金額: ¥{total_price:,} / 単価: ¥{unit_price:,}"
-    ), 200
+    )
+    
+    # (E) 単価計算が完了したあと、この辺りで変数を使って内訳を文字列化する
+
+# 例: 各加算要素をまとめた内訳表示
+calculation_breakdown = (
+    f"【単価計算内訳】\n"
+    f"ベース単価: ¥{base_unit_price:,}\n"
+    f"プリント箇所追加(pos_add): ¥{pos_add_fee:,}\n"
+    f"通常色加算: ¥{normal_color_fee:,}\n"
+    f"グリッター/蛍光加算: ¥{glitter_fluo_fee:,}\n"
+    f"フルカラー加算: ¥{fullcolor_fee:,}\n"
+    f"背ネーム/番号プリント加算: ¥{backname_fee:,}\n"
+    f"背ネームカラー加算: ¥{backname_color_fee:,}\n"
+    f"----------------------------\n"
+    f"1枚あたり単価: ¥{unit_price:,}\n"
+    f"合計枚数: {total_qty}枚\n"
+    f"【合計金額】¥{total_price:,}\n"
+)
+
+# 返信メッセージ（例）
+reply_msg = (
+    f"【ご注文ありがとうございます】\n"
+    f"注文番号: {order_number}\n"
+    f"商品名: {product_name}\n"
+    f"商品カラー: {product_color}\n"
+    f"合計枚数: {total_qty}枚\n"
+    "\n"
+    f"{used_positions_text}\n\n"    # 例: 前面/背面/その他カラー
+    f"背ネーム・背番号プリント: {backname_text}\n"
+    f"背ネーム・背番号カラー設定: {backname_color_text}\n"
+    "\n"
+    # 計算内訳
+    f"{calculation_breakdown}"
+)
+
+# 5) LINEへ push_message
+if user_id:
+    try:
+        line_bot_api.push_message(
+            to=user_id,
+            messages=TextSendMessage(text=reply_msg)
+        )
+    except Exception as e:
+        print(f"[ERROR] push_message failed: {e}")
+
 
 # -----------------------
 # 動作確認用
