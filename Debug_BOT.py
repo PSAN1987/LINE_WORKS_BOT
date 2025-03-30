@@ -16,7 +16,7 @@ from linebot.models import (
 )
 from werkzeug.utils import secure_filename
 
-# --- ここで別ファイルに分割されているテーブル類をインポート ---
+# --- 別ファイルに分割されているテーブル類をインポート ---
 from price_table import PRICE_TABLE, COLOR_COST_MAP
 from webform_template import FORM_HTML  # HTMLテンプレート
 
@@ -530,14 +530,13 @@ def process_estimate_flow(event: MessageEvent, text: str):
             session_data["answers"]["back_name"] = text
             session_data["step"] = 8
 
-            # 見積計算(簡易)
+            # 簡易計算
             edata = session_data["answers"]
             quantity = int(edata["quantity"])
             row = find_price_row(edata["item"], edata["discount_type"], quantity)
             if row is None:
                 total_price, unit_price = 0, 0
             else:
-                # 簡易例: 1箇所プリントなら pos_add=0, 2箇所以上なら row["pos_add"]
                 base_unit_price = row["unit_price"]
                 if edata["print_position"] in ["前のみ","背中のみ"]:
                     pos_add = 0
@@ -563,11 +562,8 @@ def process_estimate_flow(event: MessageEvent, text: str):
                 f"【合計金額】¥{total_price:,}\n"
                 f"【1枚あたり】¥{unit_price:,}\n"
             )
-
-            # 見積り結果を返信
             line_bot_api.reply_message(event.reply_token, TextSendMessage(text=reply_msg))
 
-            # 使い終わったらセッション削除
             del user_estimate_sessions[user_id]
         else:
             line_bot_api.reply_message(event.reply_token,TextSendMessage(text="背ネーム・番号の選択肢からお選びください。"))
@@ -704,6 +700,38 @@ def submit_catalog_form():
 # -----------------------
 # WEBフォームから注文 (GET/POST) (S3対応 + 合計金額ロジック改良版)
 # -----------------------
+
+#
+# 先に、フルカラー判定を分ける関数を用意します
+#
+def parse_print_colors(color_str):
+    """
+    カンマ区切りの色リストを解析し、
+      - 通常色の個数 (normal_color_count)
+      - フルカラー固定加算の合計 (fullcolor_cost)
+    を返す
+    """
+    if not color_str.strip():
+        return 0, 0
+
+    colors = [c.strip() for c in color_str.split(",") if c.strip()]
+    normal_color_count = 0
+    fullcolor_cost = 0
+
+    for c in colors:
+        if "フルカラー(小)" in c:
+            fullcolor_cost += 350
+        elif "フルカラー(中)" in c:
+            fullcolor_cost += 550
+        elif "フルカラー(大)" in c:
+            fullcolor_cost += 990
+        else:
+            # 上記以外は通常色とみなす
+            normal_color_count += 1
+
+    return normal_color_count, fullcolor_cost
+
+
 @app.route("/webform", methods=["GET"])
 def show_webform():
     user_id = request.args.get("user_id","")
@@ -712,12 +740,9 @@ def show_webform():
 @app.route("/webform_submit", methods=["POST"])
 def webform_submit():
     """
-    背面カラー、その他カラーが前面カラーと混同しないように HTML 側の name属性を修正し、
-    それに応じてここでも getlist() するキーを修正します。
-
-    また、サイズ入力の際に合計数が正しく算出されるように、未入力なら0を扱うようにしています。
+    フォームの入力を受け取り、合計金額を計算してスプレッドシートに書き込み、
+    さらにLINEに注文番号などを通知します。
     """
-
     # (1) フォーム内容取得
     user_id = request.form.get("user_id","")
 
@@ -737,7 +762,7 @@ def webform_submit():
     rep_tel = request.form.get("rep_tel","")
     rep_email = request.form.get("rep_email","")
 
-    # ▼▼ お届け先 ▼▼
+    # お届け先
     delivery_zip = request.form.get("delivery_zip","")
     delivery_address = request.form.get("delivery_address","")
     delivery_address2 = request.form.get("delivery_address2","")
@@ -747,7 +772,7 @@ def webform_submit():
     product_name = request.form.get("product_name","")
     product_color= request.form.get("product_color","")
 
-    # サイズ (数値変換 - 空なら0)
+    # サイズ入力
     def to_int(val):
         try:
             return int(val)
@@ -775,8 +800,8 @@ def webform_submit():
     # 背面プリント
     print_size_back= request.form.get("print_size_back","")
     print_size_back_custom= request.form.get("print_size_back_custom","")
-    # 「背面カラー用」の name属性に合わせてキーを変更してください (例: "print_color_back[]")
-    print_color_back_list = request.form.getlist("print_color_back[]")
+    # name="print_color_back[]" にしている想定で getlist("print_color_back[]")
+    print_color_back_list = request.form.getlist("print_color_back[]")  # <= HTMLで修正
     print_color_back = ",".join(print_color_back_list)
     font_no_back= request.form.get("font_no_back","")
     design_sample_back= request.form.get("design_sample_back","")
@@ -786,8 +811,7 @@ def webform_submit():
     # その他プリント
     print_size_other= request.form.get("print_size_other","")
     print_size_other_custom= request.form.get("print_size_other_custom","")
-    # 「その他カラー用」の name属性に合わせてキーを変更 (例: "print_color_other[]")
-    print_color_other_list = request.form.getlist("print_color_other[]")
+    print_color_other_list = request.form.getlist("print_color_other[]")  # <= HTMLで修正
     print_color_other = ",".join(print_color_other_list)
     font_no_other= request.form.get("font_no_other","")
     design_sample_other= request.form.get("design_sample_other","")
@@ -799,7 +823,7 @@ def webform_submit():
     back_name_number_str = ",".join(back_name_number_opts) if back_name_number_opts else ""
 
     # 背ネームカラー設定
-    name_number_color_type= request.form.get("name_number_color_type","")  # single or outline
+    name_number_color_type= request.form.get("name_number_color_type","")
     single_color_choice= request.form.get("single_color_choice","")
     outline_type= request.form.get("outline_type","")
     outline_text_color= request.form.get("outline_text_color","")
@@ -815,12 +839,12 @@ def webform_submit():
     pos_other_url = upload_file_to_s3(position_data_other, S3_BUCKET_NAME, prefix="uploads/")
     add_design_url= upload_file_to_s3(additional_design_image, S3_BUCKET_NAME, prefix="uploads/")
 
-    # (3) 早割 or 通常 判定
+    # (3) 割引(早割or通常)判定
     discount_type = "通常"
     if discount_option == "早割":
         discount_type = "早割"
 
-    # PRICE_TABLE からベース単価検索
+    # (4) PRICE_TABLE からベース単価
     row = find_price_row(product_name, discount_type, total_qty)
     if row is None:
         base_unit_price = 0
@@ -831,9 +855,7 @@ def webform_submit():
         base_pos_add = row["pos_add"]
         base_color_add = row["color_add"]
 
-    # 以下、サンプル実装として最低限の変数定義を行いつつ「単価計算内訳」が表示される例にします。
-
-    # (A) プリント箇所数チェック
+    # (A) プリント位置の判定(2か所以上で pos_add)
     front_used = bool(print_color_front.strip())
     back_used  = bool(print_color_back.strip())
     other_used = bool(print_color_other.strip())
@@ -843,29 +865,22 @@ def webform_submit():
     else:
         pos_add_fee = base_pos_add
 
-    # (B) カラー加算の簡易例
-    def parse_colors(color_str):
-        if not color_str.strip():
-            return 0
-        return len([c for c in color_str.split(",") if c.strip()])
+    # (B) カラー数をフルカラーと通常色に分けて計算
+    #     parse_print_colors で (normal_color_count, fullcolor_cost)を取得
+    f_normal, f_full = parse_print_colors(print_color_front)
+    b_normal, b_full = parse_print_colors(print_color_back)
+    o_normal, o_full = parse_print_colors(print_color_other)
 
-    front_ncol = parse_colors(print_color_front)
-    back_ncol  = parse_colors(print_color_back)
-    other_ncol = parse_colors(print_color_other)
-    total_color_count = front_ncol + back_ncol + other_ncol
+    total_normal_color = f_normal + b_normal + o_normal
+    total_fullcolor_cost = f_full + b_full + o_full
 
-    # 1色目は無料、2色目から base_color_add という簡易ロジック
-    if total_color_count > 1:
-        color_fee = base_color_add * (total_color_count - 1)
+    # 1色目無料,2色目から base_color_addという例
+    if total_normal_color > 1:
+        normal_color_fee = base_color_add * (total_normal_color - 1)
     else:
-        color_fee = 0
+        normal_color_fee = 0
 
-    # 追加で利用すると想定されているが、ここでは最小限
-    normal_color_fee = color_fee
-    glitter_fluo_fee = 0  # 例: 今回未実装
-    fullcolor_fee    = 0  # 例: 今回未実装
-
-    # (C) 背ネーム・背番号プリント
+    # (C) 背ネーム背番号プリント加算
     backname_fee = 0
     if back_name_number_opts:
         for val in back_name_number_opts:
@@ -880,45 +895,52 @@ def webform_submit():
                 backname_fee += 550
             elif v == "番号(小)":
                 backname_fee += 250
-            # "ネーム＆背番号を使わない" は加算なし
+            # 他は加算なし
 
-    # (D) 背ネーム・番号カラー設定
+    # (D) 背ネーム・番号カラー追加料金(例)
     backname_color_fee = 0
-    if name_number_color_type == "single":
-        # 単色の特殊加算などは適宜
-        pass
-    else:
-        # フチ付き 例: +100円
+    # 例としてフチ付きなら+100
+    if name_number_color_type == "outline":
         backname_color_fee = 100
+    else:
+        # 単色(特定カラーに応じ加算)の例は省略
+        pass
 
-    # (E) 1枚あたり単価
-    unit_price = base_unit_price + pos_add_fee + color_fee + backname_fee + backname_color_fee
+    # (E) 単価計算
+    unit_price = (
+        base_unit_price
+        + pos_add_fee
+        + normal_color_fee
+        + total_fullcolor_cost
+        + backname_fee
+        + backname_color_fee
+    )
     total_price = unit_price * total_qty
 
-    # 単価計算内訳を表示するための文字列
+    # (F) 計算内訳を文字列化
     calculation_breakdown = (
-        f"【単価計算内訳】\n"
+        "【単価計算内訳】\n"
         f"ベース単価: ¥{base_unit_price:,}\n"
         f"プリント箇所追加(pos_add): ¥{pos_add_fee:,}\n"
         f"通常色加算: ¥{normal_color_fee:,}\n"
-        f"グリッター/蛍光加算: ¥{glitter_fluo_fee:,}\n"
-        f"フルカラー加算: ¥{fullcolor_fee:,}\n"
+        f"フルカラー加算: ¥{total_fullcolor_cost:,}\n"
         f"背ネーム/番号プリント加算: ¥{backname_fee:,}\n"
         f"背ネームカラー加算: ¥{backname_color_fee:,}\n"
-        f"----------------------------\n"
+        "----------------------------\n"
         f"1枚あたり単価: ¥{unit_price:,}\n"
         f"合計枚数: {total_qty}枚\n"
         f"【合計金額】¥{total_price:,}\n"
     )
 
-    # (F) スプレッドシート書き込み
+    # (G) スプレッドシート書き込み
     order_number = f"O{int(time.time())}"
+
     gc = get_gspread_client()
     sh = gc.open_by_key(SPREADSHEET_KEY)
     ws = get_or_create_worksheet(sh, "Orders")
 
     new_row = [
-        # --- ①基本情報 ---
+        # ①基本情報
         application_date,
         delivery_date,
         use_date,
@@ -935,12 +957,12 @@ def webform_submit():
         rep_tel,
         rep_email,
 
-        # --- ②お届け先 ---
+        # ②お届け先
         delivery_zip,
         delivery_address,
         delivery_address2,
 
-        # --- ③その他 ---
+        # ③その他
         design_confirm,
         payment_method,
         product_name,
@@ -982,17 +1004,17 @@ def webform_submit():
     ]
     ws.append_row(new_row, value_input_option="USER_ENTERED")
 
-    # (G) ユーザーへのLINE通知
-    # プリント箇所ごとにまとめた文字列
+    # (H) LINEへの通知メッセージ組み立て
+    # プリント位置&カラー情報
     front_text = f"前面プリント色: {print_color_front}" if front_used else ""
     back_text  = f"背面プリント色: {print_color_back}"  if back_used  else ""
-    other_text = f"その他プリント色: {print_color_other}" if other_used else ""
+    oth_text   = f"その他プリント色: {print_color_other}" if other_used else ""
+    used_positions_text = "\n".join([t for t in [front_text, back_text, oth_text] if t])
 
-    # まとめて整形
-    # （空文字は無視するために filter(None, [...]) として改行でjoin）
-    used_positions_text = "\n".join(filter(None, [front_text, back_text, other_text]))
-
+    # 背ネーム/番号
     backname_text = back_name_number_str if back_name_number_str else "無し"
+
+    # 背ネームカラー設定
     if name_number_color_type == "single":
         backname_color_text = f"単色({single_color_choice})"
     else:
@@ -1012,7 +1034,7 @@ def webform_submit():
         f"{calculation_breakdown}"
     )
 
-    # push_message で送信（同じ関数内で user_id が見える）
+    # (I) LINEにpush
     if user_id:
         try:
             line_bot_api.push_message(
