@@ -452,6 +452,7 @@ def openai_extract_form_data(ocr_text: str) -> dict:
     日付項目（application_date, delivery_date, use_date etc）は必ず YYYY-MM-DD の形式で返してください
     必ず JSON のみを返し、余計な文章は一切出力しないでください。
     JSONはコードブロック (\\\\`) で囲まず、そのままのプレーンテキストで出力してください。さらに、先頭や末尾に余計な文章を付けず、JSON 以外の文字は出力しないでください。
+    application_date, delivery_date, use_date は必ず「YYYY-MM-DD」形式の文字列で返す。discount_option は "早割", "タダ割", "いっしょ割り" のうち1つのみ。size_s, size_m, size_l などは必ず整数値とし、文字列ではなく数字として返す。print_color_front は カンマ区切りの1つの文字列にまとめる (例: "赤,白" )
     """
     if not openai_api_key:
         raise ValueError("環境変数 OPENAI_API_KEY が設定されていません。")
@@ -629,7 +630,7 @@ def handle_image_message(event: MessageEvent):
     except Exception as e:
         error_msg = (
             f"OCRまたはOpenAI解析でエラーが発生しました: {e}\n"
-            "もう一度写真を送るか、フォームから直接ご入力ください。"
+            "メニューに戻っていただき、「注文用紙から注文」を再度クリックお願いします。"
         )
         line_bot_api.push_message(user_id, TextSendMessage(text=error_msg))
 
