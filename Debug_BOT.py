@@ -609,7 +609,10 @@ def handle_image_message(event: MessageEvent):
 
         # 5) 抽出結果をグローバル辞書に保存
         webform_prepopulate_data[user_id] = extracted_form_data
-
+        
+        # ▼▼ ここでログに出す ▼▼
+        logger.info(f"[DEBUG] user_id={user_id} の extracted_form_data: {extracted_form_data}")
+        
         # 6) フォームURLを案内
         form_url = f"https://{request.host}/webform?user_id={user_id}"
         finish_text = (
