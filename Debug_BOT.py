@@ -204,6 +204,7 @@ def find_price_row(item_name, discount_type, quantity):
             return row
     return None
 
+# Flexメッセージ
 from linebot.models import FlexSendMessage
 
 def flex_usage_date():
@@ -529,7 +530,7 @@ def process_estimate_flow(event: MessageEvent, text: str):
             session_data["answers"]["back_name"] = text
             session_data["step"] = 8
 
-            # 簡易計算
+            # 簡易計算 (カンタン版: ベース単価 + 枚数 x ...
             edata = session_data["answers"]
             quantity = int(edata["quantity"])
             row = find_price_row(edata["item"], edata["discount_type"], quantity)
@@ -697,11 +698,23 @@ def submit_catalog_form():
 
 
 # -----------------------
+# (追加) 背ネームカラー加算用の辞書
+# -----------------------
+BACKNAME_COLOR_MAP = {
+    "シルバー": 100,
+    "ゴールド": 100,
+    "グリッターシルバー": 200,
+    "グリッターゴールド": 200,
+    "グリッターピンク": 200,
+    # 必要に応じて他のカラーを追加
+}
+
+# -----------------------
 # WEBフォームから注文 (GET/POST) (S3対応 + 合計金額ロジック改良版)
 # -----------------------
 
 #
-# グリッター／蛍光色を判定して「1色につき100円加算」するロジックを追加
+# グリッター／蛍光色を判定して「1色につき100円追加」するロジック
 #
 def parse_print_colors(color_str):
     """
@@ -910,13 +923,24 @@ def webform_submit():
                 backname_fee += 250
             # 他は加算なし
 
-    # (D) 背ネーム・番号カラー追加料金(例)
-    backname_color_fee = 0
+    # (D) 背ネーム・番号カラー追加料金
+    # 例としてフチ付きなら+100円を加算
+    backname_outline_base = 0
     if name_number_color_type == "outline":
-        backname_color_fee = 100
-    else:
-        # 単色の場合は特になければ0円
-        pass
+        backname_outline_base = 100  # フチ付きを選んだ場合のベース加算
+
+    # 背ネームカラー(単色 or フチ付き2色)の加算
+    backname_colors_fee = 0
+    if name_number_color_type == "outline":
+        # 文字色
+        backname_colors_fee += BACKNAME_COLOR_MAP.get(outline_text_color, 0)
+        # フチ色
+        backname_colors_fee += BACKNAME_COLOR_MAP.get(outline_edge_color, 0)
+    elif name_number_color_type == "single":
+        # 単色の場合
+        backname_colors_fee += BACKNAME_COLOR_MAP.get(single_color_choice, 0)
+
+    backname_color_fee = backname_outline_base + backname_colors_fee
 
     # (E) 単価計算
     unit_price = (
@@ -1026,6 +1050,7 @@ def webform_submit():
 
     backname_text = back_name_number_str if back_name_number_str else "無し"
 
+    # 背ネーム・番号カラー表示
     if name_number_color_type == "single":
         backname_color_text = f"単色({single_color_choice})"
     else:
