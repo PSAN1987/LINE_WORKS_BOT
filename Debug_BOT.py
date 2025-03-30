@@ -1286,7 +1286,9 @@ def webform_submit():
         f"{calculation_breakdown}\n"
         f"⚠️ 合計金額が3万円未満、または無地ご注文は別途送料を申し受けます。"
     )
-
+    
+    webform_prepopulate_data.pop(user_id, None)
+    
     if user_id:
         try:
             line_bot_api.push_message(
